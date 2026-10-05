@@ -78,7 +78,7 @@ const insertCategory = db.prepare(`
 for (const row of seedCategories) insertCategory.run(...row);
 
 const defaultFeeds = [
-  ['G1', 'https://g1.globo.com/rss/g1/'],
+  ['Agência Brasil', 'https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml'],
   ['Tecnoblog', 'https://tecnoblog.net/feed/'],
   ['The Verge', 'https://www.theverge.com/rss/index.xml'],
   ['Ars Technica', 'https://feeds.arstechnica.com/arstechnica/index'],
