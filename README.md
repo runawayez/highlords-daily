@@ -1,37 +1,57 @@
 <p align="center">
-  <img src="public/assets/highlords-logo.svg" width="160" alt="Highlords Post" />
+  <img src="public/assets/highlords-logo.svg" width="150" alt="Highlords Daily" />
 </p>
 
-# Highlords Post
+# Highlords Daily
 
-**Seu jornal pessoal, local e inteligente.**
+**Tecnologia sem ruído. Uma newsletter diária, local e gerada por IA.**
 
-Highlords Post coleta feeds RSS/Atom, usa uma LLM local via **Ollama** para classificar, resumir e ranquear matérias e monta uma edição editorial rápida para você ler no navegador.
+Highlords Daily coleta fontes RSS/Atom, usa uma LLM local via **Ollama** para filtrar, classificar, resumir e pontuar matérias e monta uma newsletter diária com as notícias mais importantes de tecnologia.
 
-O projeto nasce com três princípios: **local-first**, **interface leve** e **controle do usuário sobre as categorias**.
+A edição pode ser lida em `localhost` e exportada para **PDF** sob demanda.
 
-## MVP 0.3
+## As sete seções fixas
 
-- RSS/Atom configurável pela interface.
-- Feeds iniciais adicionados automaticamente na primeira execução.
-- Categorias personalizadas, editáveis, pausáveis e removíveis.
-- Filtro rápido por categoria e botão **Todos**.
-- Ollama local para headline, resumo, categoria, score e tags.
-- **Editor-chefe local** para escolher manchete, ordem das seções e seleção de matérias.
-- Processamento paralelo configurável, com fila limitada por atualização para não travar a máquina.
-- Progresso em tempo real: coleta, análise e montagem da edição.
-- Thumbnails extraídas dos feeds quando disponíveis, com fallback visual da marca.
-- Interface editorial responsiva inspirada em dashboards modernos de notícias, sem framework de frontend.
-- Fallback automático para ranking se a etapa editorial falhar.
-- Cache curto da edição para evitar chamadas repetidas ao modelo.
-- Saída sempre em português brasileiro.
-- SQLite local.
-- Atualização manual e agendada.
-- Docker opcional.
+1. IA
+2. Desenvolvimento
+3. Mobile & Gadgets
+4. Hardware
+5. Software & Internet
+6. Games
+7. Futuro
 
-### Feeds iniciais
+Não existe uma categoria genérica "Tecnologia": o próprio Highlords Daily já é uma publicação de tecnologia. Política, geopolítica, crime, celebridades, esportes e notícias gerais ficam fora da seleção.
 
-Na primeira execução o banco recebe um conjunto pequeno de fontes para você testar imediatamente: Agência Brasil, Tecnoblog, The Verge, Ars Technica, BBC World, The Guardian World e Hacker News. Elas podem ser removidas normalmente pela interface e não são recriadas depois.
+## Como funciona
+
+```text
+RSS / Atom
+   ↓
+coleta das fontes
+   ↓
+Ollama analisa cada matéria
+   ├─ headline em PT-BR
+   ├─ resumo curto
+   ├─ 1 das 7 categorias
+   ├─ score 0-10
+   └─ tags
+   ↓
+SQLite
+   ↓
+Editor-chefe local (Ollama)
+   ├─ escolhe a manchete
+   ├─ escolhe até 2 matérias por seção
+   ├─ prioriza importância, novidade e variedade
+   ├─ escreve título da edição
+   └─ escreve uma introdução curta
+   ↓
+Highlords Daily
+   ├─ newsletter em localhost
+   ├─ arquivo de edições
+   └─ PDF sob demanda
+```
+
+As sete seções sempre aparecem. Quando não existe conteúdo bom o bastante para uma delas, a seção fica sem destaque em vez de ser preenchida com uma matéria fraca.
 
 ## Stack
 
@@ -40,17 +60,18 @@ Na primeira execução o banco recebe um conjunto pequeno de fontes para você t
 - SQLite via `node:sqlite`
 - `rss-parser`
 - Ollama
-- HTML/CSS/JavaScript sem build de frontend
+- PDFKit
+- HTML/CSS/JavaScript sem framework de frontend
 
 ## Rodando localmente
 
-1. Instale o Ollama e baixe um modelo:
+1. Instale o Ollama e baixe o modelo:
 
 ```bash
 ollama pull qwen3:4b
 ```
 
-2. Configure e instale:
+2. Configure o projeto:
 
 ```bash
 cp .env.example .env
@@ -59,83 +80,102 @@ npm run check
 npm run dev
 ```
 
+No Windows, se o PowerShell bloquear `npm.ps1`, use:
+
+```powershell
+npm.cmd install
+npm.cmd run check
+npm.cmd run dev
+```
+
 3. Abra:
 
 ```text
 http://localhost:8090
 ```
 
-O banco será criado automaticamente em `./data/highlords-post.db`.
+Na primeira execução, clique em **Gerar Daily**. O frontend coleta os feeds, processa toda a fila pendente e só depois pede ao editor-chefe local para montar a edição.
 
-Na primeira execução, abra o site e clique em **Atualizar agora**. O topo da interface mostra o estágio atual e o número de matérias já analisadas.
+## PDF
 
-### Ajustando velocidade
+Cada edição salva pode ser baixada em PDF pelo botão **Baixar PDF**.
 
-Os principais controles ficam no `.env`:
+A API também expõe:
+
+```text
+GET /api/daily/:data/pdf
+```
+
+Exemplo:
+
+```text
+/api/daily/2026-10-05/pdf
+```
+
+O PDF é gerado localmente pelo servidor com PDFKit e não depende de navegador externo nem de serviço em nuvem.
+
+## Edições e arquivo
+
+Cada data possui no máximo uma edição persistida em `daily_editions`. Regenerar a edição do mesmo dia substitui a versão anterior daquele dia.
+
+Endpoints principais:
+
+```text
+GET  /api/daily/current
+GET  /api/daily/latest
+GET  /api/daily/archive
+GET  /api/daily/:data
+POST /api/daily/generate
+GET  /api/daily/:data/pdf
+```
+
+## Banco de dados
+
+O banco principal é:
+
+```text
+./data/highlords-daily.db
+```
+
+Se existir uma instalação antiga com `highlords-post.db`, o projeto migra o arquivo automaticamente na primeira inicialização.
+
+## Configuração
+
+Principais opções do `.env`:
 
 ```env
+OLLAMA_HOST=http://localhost:11434
+OLLAMA_MODEL=qwen3:4b
+TIME_ZONE=America/Sao_Paulo
+
+DAILY_LOOKBACK_HOURS=48
+DAILY_ITEMS_PER_CATEGORY=2
+MIN_SCORE=5
+
 MAX_ITEMS_PER_FEED=12
 MAX_PROCESS_PER_RUN=36
 ANALYSIS_CONCURRENCY=2
 ```
 
-`MAX_PROCESS_PER_RUN` evita que uma primeira sincronização enorme tente analisar tudo de uma vez. Se restarem matérias, o botão passa a mostrar quantas continuam na fila. `ANALYSIS_CONCURRENCY=2` é um bom ponto de partida para GPUs de 8 GB com `qwen3:4b`.
+`DAILY_LOOKBACK_HOURS` define a janela de notícias candidatas para uma edição. `DAILY_ITEMS_PER_CATEGORY` aceita de 1 a 3 matérias por seção; o padrão é 2.
 
-## Docker
+### Geração automática opcional
 
-Se o Ollama estiver rodando nativamente no computador, ajuste no `.env`:
+Por padrão a edição é manual. Para gerar uma edição automaticamente quando o servidor estiver rodando:
 
 ```env
-OLLAMA_HOST=http://host.docker.internal:11434
+DAILY_AUTO_GENERATE=true
+DAILY_GENERATE_HOUR=8
 ```
 
-Depois:
+O horário segue `TIME_ZONE`.
 
-```bash
-docker compose up -d --build
-```
+## Fontes
 
-Acesse `http://localhost:8090`.
+As fontes iniciais incluem Tecnoblog, The Verge, Ars Technica, Hacker News, TechCrunch, GitHub Blog, InfoQ, Tom's Hardware e Rock Paper Shotgun. Elas podem ser removidas ou complementadas pela interface.
 
-## Como funciona
-
-```text
-RSS / Atom
-   ↓
-coleta + artwork
-   ↓
-fila limitada
-   ↓
-Ollama / editores de matéria em paralelo
-   ├─ headline em PT-BR
-   ├─ resumo em PT-BR
-   ├─ categoria
-   ├─ score 0-10
-   └─ tags
-   ↓
-SQLite
-   ↓
-Ollama / editor-chefe
-   ├─ manchete principal
-   ├─ ordem das seções
-   └─ seleção das matérias
-   ↓
-edição Highlords Post
-```
-
-O Ollama nunca gera o HTML. Ele devolve dados estruturados; a interface é responsável pelo layout. Isso mantém o projeto previsível, rápido e fácil de evoluir.
-
-## Próximos passos
-
-- Deduplicação semântica entre fontes diferentes.
-- Feedback `quero mais / quero menos`.
-- Página de leitura posterior.
-- Busca semântica local.
-- Extração opcional do texto integral das matérias.
-- Importação/exportação de OPML.
-- Fontes além de RSS: APIs, Reddit, GitHub Releases e YouTube.
-- PWA / modo offline.
+As categorias, por outro lado, são parte da identidade editorial e não são editáveis pela interface.
 
 ## Privacidade
 
-A análise acontece no seu próprio Ollama. O Highlords Post não precisa enviar o conteúdo das notícias para uma API de LLM na nuvem.
+A classificação, o resumo e a curadoria acontecem no Ollama local. O Highlords Daily não precisa enviar o conteúdo das notícias para uma API de LLM na nuvem.
