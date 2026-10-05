@@ -10,27 +10,20 @@
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
-  <div class="network-strip">
-    <div class="shell network-strip-inner">
-      <span>HIGH LORDS NEWSROOM</span>
-      <span class="network-copy">RSS · IA LOCAL · SEM NUVEM</span>
-    </div>
-  </div>
-
   <header class="site-header">
     <div class="shell header-inner">
       <a class="brand" href="/" aria-label="Highlords Post">
         <img src="/assets/highlords-logo.svg" alt="" class="brand-logo" />
         <div class="brand-copy">
-          <span class="brand-kicker">SEU JORNAL PESSOAL</span>
           <strong>Highlords Post</strong>
+          <span>SEU JORNAL PESSOAL</span>
         </div>
       </a>
 
       <div class="header-actions">
         <span id="ollamaStatus" class="status-pill">Ollama</span>
-        <button id="settingsBtn" class="button secondary">Fontes & categorias</button>
-        <button id="refreshBtn" class="button primary">Atualizar agora</button>
+        <button id="settingsBtn" class="button secondary">Configurar</button>
+        <button id="refreshBtn" class="button primary">Atualizar</button>
       </div>
     </div>
   </header>
@@ -38,10 +31,10 @@
   <div id="refreshPanel" class="refresh-panel hidden" aria-live="polite">
     <div class="shell refresh-panel-inner">
       <div class="refresh-copy">
-        <span id="refreshStage" class="refresh-stage">Preparando atualização…</span>
-        <span id="refreshDetail" class="refresh-detail"></span>
+        <strong id="refreshStage">Atualizando</strong>
+        <span id="refreshDetail"></span>
       </div>
-      <div class="refresh-track"><span id="refreshBar"></span></div>
+      <div class="refresh-track" aria-hidden="true"><span id="refreshBar"></span></div>
     </div>
   </div>
 
@@ -49,7 +42,7 @@
     <section class="edition-toolbar">
       <div>
         <p id="dateLabel" class="edition-date"></p>
-        <p class="edition-subtitle">Um briefing enxuto, filtrado e resumido localmente.</p>
+        <p class="edition-subtitle">Notícias relevantes, filtradas e resumidas localmente.</p>
       </div>
       <div class="run-meta">
         <span id="editorStatus" class="editor-status"></span>
@@ -57,22 +50,23 @@
       </div>
     </section>
 
-    <nav id="categoryBar" class="category-bar" aria-label="Filtrar por categorias"></nav>
+    <nav id="categoryBar" class="category-bar" aria-label="Filtrar notícias por categoria"></nav>
 
     <div id="loading" class="loading-state hidden">
       <span class="loading-pulse"></span>
-      <span>Montando sua edição…</span>
+      <span>Carregando edição…</span>
     </div>
     <div id="errorBox" class="error-box hidden"></div>
 
     <section id="edition" class="edition hidden">
       <section class="front-page">
         <article id="lead" class="lead-story"></article>
+
         <aside class="front-rail">
           <div class="rail-heading">
             <div>
-              <span class="section-eyebrow">AGORA</span>
-              <h2>Em destaque</h2>
+              <span class="section-eyebrow">DESTAQUES</span>
+              <h2>Agora</h2>
             </div>
             <span id="editionCount" class="count-badge"></span>
           </div>
@@ -81,10 +75,10 @@
       </section>
 
       <section class="edition-stats" aria-label="Resumo da edição">
-        <div><span class="stat-label">MATÉRIAS</span><strong id="statArticles">0</strong></div>
-        <div><span class="stat-label">FONTES</span><strong id="statSources">0</strong></div>
-        <div><span class="stat-label">EDIÇÃO</span><strong id="statMode">Ranking</strong></div>
-        <div><span class="stat-label">MODELO</span><strong id="statModel">qwen3:4b</strong></div>
+        <div><span>Matérias</span><strong id="statArticles">0</strong></div>
+        <div><span>Fontes</span><strong id="statSources">0</strong></div>
+        <div><span>Curadoria</span><strong id="statMode">Ranking</strong></div>
+        <div><span>Modelo</span><strong id="statModel">qwen3:4b</strong></div>
       </section>
 
       <div id="sections" class="sections"></div>
@@ -92,28 +86,31 @@
 
     <section id="welcome" class="welcome hidden">
       <div class="welcome-mark"><img src="/assets/highlords-logo.svg" alt="" /></div>
-      <div>
+      <div class="welcome-copy-wrap">
         <span class="section-eyebrow">HIGH LORDS POST</span>
-        <h2>Sua edição ainda está vazia.</h2>
-        <p>Os feeds iniciais já estão configurados. Clique em <strong>Atualizar agora</strong> para buscar, classificar e resumir as notícias com o Ollama.</p>
-        <button class="button primary" data-open-settings>Revisar fontes</button>
+        <h2 id="welcomeTitle">Sua edição ainda está vazia.</h2>
+        <p id="welcomeCopy">Os feeds iniciais já estão configurados. Clique em <strong>Atualizar</strong> para começar.</p>
+        <button class="button secondary" data-open-settings>Revisar fontes</button>
       </div>
     </section>
   </main>
 
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <div class="footer-brand"><img src="/assets/highlords-logo.svg" alt="" /><strong>Highlords Post</strong></div>
-      <p>Local-first · RSS + Ollama · seus dados ficam na sua máquina.</p>
+      <div class="footer-brand">
+        <img src="/assets/highlords-logo.svg" alt="" />
+        <strong>Highlords Post</strong>
+      </div>
+      <p>RSS + Ollama · processamento local</p>
     </div>
   </footer>
 
   <dialog id="settingsDialog" class="settings-dialog">
     <div class="dialog-head">
       <div>
-        <span class="section-eyebrow">NEWSROOM</span>
-        <h2>Fontes & categorias</h2>
-        <p>Controle o que entra no seu jornal. As alterações valem na próxima atualização.</p>
+        <span class="section-eyebrow">CONFIGURAÇÕES</span>
+        <h2>Personalize seu jornal</h2>
+        <p>Escolha fontes e diga à IA o que cada categoria deve priorizar.</p>
       </div>
       <button id="closeSettings" class="icon-button" aria-label="Fechar">×</button>
     </div>
@@ -123,11 +120,11 @@
         <div class="settings-title-row">
           <div>
             <span class="settings-number">01</span>
-            <h3>Feeds RSS / Atom</h3>
+            <h3>Fontes RSS / Atom</h3>
           </div>
           <span id="feedCount" class="mini-badge"></span>
         </div>
-        <p class="settings-help">Adicione veículos ou feeds especializados. O Highlords Post lê somente os feeds que você escolher.</p>
+        <p class="settings-help">Adicione veículos ou feeds especializados. Só o que estiver aqui entra na coleta.</p>
         <form id="feedForm" class="stack-form">
           <input name="name" placeholder="Nome da fonte" maxlength="100" required />
           <input name="url" placeholder="https://exemplo.com/rss" type="url" required />
@@ -147,11 +144,11 @@
           </div>
           <button id="cancelCategoryEdit" class="button tertiary compact hidden" type="button">Cancelar</button>
         </div>
-        <p class="settings-help">A descrição funciona como instrução editorial para a LLM: diga exatamente o que você quer ver em cada seção.</p>
+        <p class="settings-help">A descrição é a instrução editorial usada pela LLM para classificar e dar relevância às notícias.</p>
         <form id="categoryForm" class="stack-form">
           <input type="hidden" name="id" />
           <input name="name" placeholder="Nome da categoria" maxlength="80" required />
-          <textarea name="description" placeholder="Ex.: hardware, Linux, open source e lançamentos relevantes; evitar rumores." rows="4"></textarea>
+          <textarea name="description" placeholder="Ex.: hardware, Linux e open source; evitar rumores e publieditoriais." rows="4"></textarea>
           <label class="checkbox-row hidden" id="categoryEnabledRow">
             <input name="enabled" type="checkbox" checked />
             <span>Categoria ativa</span>
