@@ -20,6 +20,8 @@ export const config = {
   lookbackHours: numberEnv('LOOKBACK_HOURS', 48),
   refreshIntervalMinutes: numberEnv('REFRESH_INTERVAL_MINUTES', 120),
   refreshOnStart: booleanEnv('REFRESH_ON_START', false),
-  maxItemsPerFeed: numberEnv('MAX_ITEMS_PER_FEED', 20),
+  maxItemsPerFeed: numberEnv('MAX_ITEMS_PER_FEED', 12),
+  maxProcessPerRun: numberEnv('MAX_PROCESS_PER_RUN', 36),
+  analysisConcurrency: Math.max(1, Math.min(4, numberEnv('ANALYSIS_CONCURRENCY', 2))),
   minScore: numberEnv('MIN_SCORE', 5)
 };
