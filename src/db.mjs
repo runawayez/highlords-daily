@@ -67,13 +67,11 @@ if (!articleColumns.has('image_url')) {
 }
 
 const seedCategories = [
-  ['brasil', 'Brasil', 'Política pública, economia, sociedade, infraestrutura e acontecimentos relevantes no Brasil. Evite fofoca e celebridades.', 10],
-  ['mundo', 'Mundo', 'Geopolítica, acontecimentos internacionais, economia global e fatos relevantes fora do Brasil.', 20],
-  ['tecnologia', 'Tecnologia', 'Hardware, software, internet, dispositivos, segurança, open source e mudanças relevantes na indústria de tecnologia.', 30],
-  ['ia', 'IA', 'Inteligência artificial, modelos de linguagem, agentes, pesquisa, ferramentas e impactos reais de IA.', 40],
-  ['games', 'Games', 'PC gaming, consoles, Steam, jogos indie, RPGs, lançamentos e indústria de jogos. Evite esports salvo grandes acontecimentos.', 50],
-  ['ciencia', 'Ciência', 'Pesquisa científica, espaço, física, biologia, medicina e descobertas com relevância pública.', 60],
-  ['qa-dev', 'QA & Dev', 'Engenharia de software, QA, automação de testes, Playwright, CI/CD, DevOps, GitHub, MCP e ferramentas para desenvolvimento.', 70]
+  ['tecnologia', 'Tecnologia', 'Hardware, software, dispositivos, sistemas operacionais, internet, segurança, open source, semicondutores, produtos e mudanças relevantes na indústria de tecnologia.', 10],
+  ['ia', 'IA', 'Inteligência artificial, modelos de linguagem, agentes, pesquisa aplicada, ferramentas, chips para IA, produtos e usos práticos de IA.', 20],
+  ['qa-dev', 'Desenvolvimento', 'Engenharia de software, programação, QA, automação de testes, Playwright, frameworks, linguagens, APIs, bancos de dados, DevOps, cloud, GitHub, CI/CD e ferramentas para desenvolvedores.', 30],
+  ['games', 'Games', 'Jogos de PC e console, Steam, indies, RPGs, lançamentos, engines, hardware gamer, desenvolvimento de jogos e movimentos relevantes da indústria. Evite esports e celebridades.', 40],
+  ['inovacao', 'Inovação', 'Novas tecnologias, protótipos, computação emergente, robótica, realidade virtual e aumentada, interfaces, pesquisa aplicada e descobertas com impacto direto em tecnologia.', 50]
 ];
 
 const insertCategory = db.prepare(`
@@ -83,21 +81,102 @@ const insertCategory = db.prepare(`
 for (const row of seedCategories) insertCategory.run(...row);
 
 const defaultFeeds = [
-  ['Agência Brasil', 'https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml'],
   ['Tecnoblog', 'https://tecnoblog.net/feed/'],
   ['The Verge', 'https://www.theverge.com/rss/index.xml'],
   ['Ars Technica', 'https://feeds.arstechnica.com/arstechnica/index'],
-  ['BBC World', 'https://feeds.bbci.co.uk/news/world/rss.xml'],
-  ['The Guardian World', 'https://www.theguardian.com/world/rss'],
-  ['Hacker News', 'https://news.ycombinator.com/rss']
+  ['Hacker News', 'https://news.ycombinator.com/rss'],
+  ['TechCrunch', 'https://techcrunch.com/feed/'],
+  ['GitHub Blog', 'https://github.blog/feed/'],
+  ['InfoQ', 'https://feed.infoq.com/'],
+  ["Tom's Hardware", 'https://www.tomshardware.com/feeds/all'],
+  ['Rock Paper Shotgun', 'https://www.rockpapershotgun.com/feed']
 ];
 
-const seedKey = 'default-feeds-v1';
+const seedKey = 'default-feeds-v2';
 const alreadySeeded = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(seedKey);
 if (!alreadySeeded) {
   const insertFeed = db.prepare('INSERT OR IGNORE INTO feeds (name, url) VALUES (?, ?)');
   for (const feed of defaultFeeds) insertFeed.run(...feed);
   db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(seedKey, new Date().toISOString());
+}
+
+// v0.8 changes the editorial scope from general news to a calm technology reader.
+// Existing installations are migrated once so old political/general-news content
+// does not keep leaking into the new edition.
+const focusMigrationKey = 'tech-focus-v1';
+const focusMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(focusMigrationKey);
+if (!focusMigrated) {
+  db.exec(`
+    DELETE FROM articles
+    WHERE source IN ('Agência Brasil', 'BBC World', 'The Guardian World')
+       OR category_slug IN ('brasil', 'mundo', 'ciencia');
+
+    DELETE FROM feeds
+    WHERE url IN (
+      'https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml',
+      'https://feeds.bbci.co.uk/news/world/rss.xml',
+      'https://www.theguardian.com/world/rss'
+    );
+
+    DELETE FROM categories WHERE slug IN ('brasil', 'mundo', 'ciencia');
+
+    UPDATE categories
+    SET name = 'Tecnologia',
+        description = 'Hardware, software, dispositivos, sistemas operacionais, internet, segurança, open source, semicondutores, produtos e mudanças relevantes na indústria de tecnologia.',
+        position = 10,
+        enabled = 1
+    WHERE slug = 'tecnologia';
+
+    UPDATE categories
+    SET name = 'IA',
+        description = 'Inteligência artificial, modelos de linguagem, agentes, pesquisa aplicada, ferramentas, chips para IA, produtos e usos práticos de IA.',
+        position = 20,
+        enabled = 1
+    WHERE slug = 'ia';
+
+    UPDATE categories
+    SET name = 'Desenvolvimento',
+        description = 'Engenharia de software, programação, QA, automação de testes, Playwright, frameworks, linguagens, APIs, bancos de dados, DevOps, cloud, GitHub, CI/CD e ferramentas para desenvolvedores.',
+        position = 30,
+        enabled = 1
+    WHERE slug = 'qa-dev';
+
+    UPDATE categories
+    SET name = 'Games',
+        description = 'Jogos de PC e console, Steam, indies, RPGs, lançamentos, engines, hardware gamer, desenvolvimento de jogos e movimentos relevantes da indústria. Evite esports e celebridades.',
+        position = 40,
+        enabled = 1
+    WHERE slug = 'games';
+
+    UPDATE categories
+    SET enabled = 0
+    WHERE slug NOT IN ('tecnologia', 'ia', 'qa-dev', 'games', 'inovacao');
+
+    UPDATE articles
+    SET headline = NULL,
+        summary = NULL,
+        category_slug = NULL,
+        score = 0,
+        tags_json = '[]',
+        processed = 0,
+        updated_at = CURRENT_TIMESTAMP;
+  `);
+
+  const upsertCategory = db.prepare(`
+    INSERT INTO categories (slug, name, description, position, enabled)
+    VALUES (?, ?, ?, ?, 1)
+    ON CONFLICT(slug) DO UPDATE SET
+      name = excluded.name,
+      description = excluded.description,
+      position = excluded.position,
+      enabled = 1
+  `);
+  for (const row of seedCategories) upsertCategory.run(...row);
+
+  const insertFeed = db.prepare('INSERT OR IGNORE INTO feeds (name, url) VALUES (?, ?)');
+  for (const feed of defaultFeeds) insertFeed.run(...feed);
+
+  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(focusMigrationKey, new Date().toISOString());
 }
 
 export function slugify(input) {
