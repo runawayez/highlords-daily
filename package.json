@@ -1,13 +1,13 @@
 {
   "name": "highlords-post",
-  "version": "0.3.0",
+  "version": "0.4.1",
   "private": true,
   "type": "module",
   "description": "Jornal pessoal com RSS + Ollama, local, leve e rápido.",
   "scripts": {
     "dev": "node --watch src/server.mjs",
     "start": "node src/server.mjs",
-    "check": "node --check src/server.mjs && node --check src/db.mjs && node --check src/services/rss.mjs && node --check src/services/news.mjs && node --check src/services/ollama.mjs && node --check public/app.js"
+    "check": "node --check src/server.mjs && node --check src/db.mjs && node --check src/services/rss.mjs && node --check src/services/image.mjs && node --check src/services/news.mjs && node --check src/services/ollama.mjs && node --check public/app.js"
   },
   "engines": {
     "node": ">=22.5.0"
