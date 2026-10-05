@@ -11,18 +11,23 @@ const timeFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-dig
 el('dateLabel').textContent = dateFmt.format(new Date());
 
 async function api(url, options = {}) {
+  const headers = { ...(options.headers || {}) };
+  if (options.body != null && !headers['content-type'] && !headers['Content-Type']) {
+    headers['content-type'] = 'application/json';
+  }
+
   const response = await fetch(url, {
     ...options,
-    headers: { 'content-type': 'application/json', ...(options.headers || {}) }
+    headers
   });
   const body = await response.json().catch(() => ({}));
-  if (!response.ok) throw new Error(body.error || `HTTP ${response.status}`);
+  if (!response.ok) throw new Error(body.message || body.error || `HTTP ${response.status}`);
   return body;
 }
 
 function escapeHtml(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+  return String(value).replace(/[&<>'\"]/g, char => ({
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '\"': '&quot;'
   })[char]);
 }
 
@@ -265,13 +270,15 @@ async function pollRefresh() {
 
 el('refreshBtn').addEventListener('click', async () => {
   try {
+    el('errorBox').classList.add('hidden');
     el('refreshBtn').disabled = true;
     el('refreshBtn').textContent = 'Atualizando…';
     await api('/api/refresh', { method: 'POST' });
-    pollRefresh().catch(console.error);
+    await pollRefresh();
   } catch (error) {
     el('errorBox').textContent = error.message;
     el('errorBox').classList.remove('hidden');
+    await loadHealth();
   }
 });
 
