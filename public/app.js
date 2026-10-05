@@ -1,14 +1,24 @@
 const state = {
   categories: [],
-  selected: new Set(JSON.parse(localStorage.getItem('highlords:selected') || '[]')),
+  activeFilter: localStorage.getItem('highlords:filter') || 'all',
   feeds: [],
   edition: null,
   health: null
 };
 
 const el = id => document.getElementById(id);
-const dateFmt = new Intl.DateTimeFormat('pt-BR', { weekday: 'long', day: '2-digit', month: 'long', year: 'numeric' });
-const timeFmt = new Intl.DateTimeFormat('pt-BR', { day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit' });
+const dateFmt = new Intl.DateTimeFormat('pt-BR', {
+  weekday: 'long',
+  day: '2-digit',
+  month: 'long',
+  year: 'numeric'
+});
+const timeFmt = new Intl.DateTimeFormat('pt-BR', {
+  day: '2-digit',
+  month: '2-digit',
+  hour: '2-digit',
+  minute: '2-digit'
+});
 
 el('dateLabel').textContent = dateFmt.format(new Date()).toUpperCase();
 
@@ -26,8 +36,21 @@ async function api(url, options = {}) {
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
+    '&': '&amp;',
+    '<': '&lt;',
+    '>': '&gt;',
+    "'": '&#39;',
+    '"': '&quot;'
   })[char]);
+}
+
+function safeUrl(value) {
+  try {
+    const url = new URL(String(value || ''), window.location.origin);
+    return ['http:', 'https:'].includes(url.protocol) ? url.href : '#';
+  } catch {
+    return '#';
+  }
 }
 
 function relativeDate(value) {
@@ -40,8 +63,7 @@ function relativeDate(value) {
   if (minutes < 60) return `há ${minutes} min`;
   const hours = Math.round(minutes / 60);
   if (hours < 24) return `há ${hours}h`;
-  const days = Math.round(hours / 24);
-  return `há ${days}d`;
+  return `há ${Math.round(hours / 24)}d`;
 }
 
 function categoryName(article) {
@@ -49,18 +71,26 @@ function categoryName(article) {
 }
 
 function articleMeta(article, compact = false) {
-  const score = Number(article.score || 0).toFixed(1);
+  const score = Number(article?.score || 0).toFixed(1);
   return `<div class="story-meta ${compact ? 'compact' : ''}">
-    <span class="source-name">${escapeHtml(article.source)}</span>
-    <span>${relativeDate(article.publishedAt)}</span>
-    <span class="score-chip">${score}</span>
+    <span class="source-name">${escapeHtml(article?.source || '')}</span>
+    <span>${escapeHtml(relativeDate(article?.publishedAt))}</span>
+    <span class="relevance" title="Relevância editorial">${score}</span>
   </div>`;
 }
 
-function media(article, className = '') {
-  const image = article?.imageUrl;
-  return `<div class="story-media ${className} ${image ? 'has-image' : ''}">
-    ${image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" referrerpolicy="no-referrer" onerror="this.parentElement.classList.remove('has-image');this.remove()" />` : ''}
+function media(article, className = '', minWidth = 260) {
+  const image = article?.imageUrl ? safeUrl(article.imageUrl) : null;
+  return `<div class="story-media ${className}">
+    ${image && image !== '#' ? `<img
+      src="${escapeHtml(image)}"
+      alt=""
+      loading="lazy"
+      decoding="async"
+      referrerpolicy="no-referrer"
+      data-remote-image
+      data-min-width="${minWidth}"
+    />` : ''}
     <div class="media-fallback">
       <img src="/assets/highlords-logo.svg" alt="" />
       <span>${escapeHtml(categoryName(article))}</span>
@@ -68,67 +98,116 @@ function media(article, className = '') {
   </div>`;
 }
 
+function hydrateImages(root = document) {
+  root.querySelectorAll('img[data-remote-image]').forEach(img => {
+    if (img.dataset.hydrated === 'true') return;
+    img.dataset.hydrated = 'true';
+    const wrapper = img.closest('.story-media');
+    const minWidth = Number(img.dataset.minWidth || 240);
+
+    const reject = () => {
+      wrapper?.classList.remove('has-image');
+      img.remove();
+    };
+
+    const accept = () => {
+      const width = img.naturalWidth || 0;
+      const height = img.naturalHeight || 0;
+      const ratio = height ? width / height : 0;
+      if (width < minWidth || height < 120 || ratio < 0.75 || ratio > 3.2) {
+        reject();
+        return;
+      }
+      wrapper?.classList.add('has-image');
+    };
+
+    img.addEventListener('load', accept, { once: true });
+    img.addEventListener('error', reject, { once: true });
+    if (img.complete) queueMicrotask(() => (img.naturalWidth ? accept() : reject()));
+  });
+}
+
+function storyTitle(article) {
+  return escapeHtml(article?.headline || article?.originalTitle || 'Sem título');
+}
+
+function storyLink(article) {
+  return escapeHtml(safeUrl(article?.link));
+}
+
 function renderLead(article) {
   if (!article) return '';
   return `
-    ${media(article, 'lead-media')}
+    <a class="lead-media-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
+      ${media(article, 'lead-media', 440)}
+    </a>
     <div class="lead-copy">
-      <div class="story-kicker"><span>${escapeHtml(categoryName(article))}</span><span>MANCHETE</span></div>
-      <a class="story-link" href="${escapeHtml(article.link)}" target="_blank" rel="noopener noreferrer">
-        <h1>${escapeHtml(article.headline || article.originalTitle)}</h1>
+      <div class="story-kicker">${escapeHtml(categoryName(article))}<span>Manchete</span></div>
+      <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
+        <h1>${storyTitle(article)}</h1>
       </a>
       <p class="lead-summary">${escapeHtml(article.summary || article.excerpt || '')}</p>
-      ${articleMeta(article)}
-      <a class="read-link" href="${escapeHtml(article.link)}" target="_blank" rel="noopener noreferrer">Abrir matéria <span>↗</span></a>
-    </div>
-  `;
+      <div class="lead-footer">
+        ${articleMeta(article)}
+        <a class="read-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">Ler matéria <span>↗</span></a>
+      </div>
+    </div>`;
 }
 
 function renderHighlight(article, index) {
   return `<article class="highlight-item">
     <span class="highlight-index">${String(index + 1).padStart(2, '0')}</span>
     <div class="highlight-copy">
-      <span class="story-kicker single">${escapeHtml(categoryName(article))}</span>
-      <a class="story-link" href="${escapeHtml(article.link)}" target="_blank" rel="noopener noreferrer">
-        <h3>${escapeHtml(article.headline || article.originalTitle)}</h3>
+      <span class="story-kicker compact-kicker">${escapeHtml(categoryName(article))}</span>
+      <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
+        <h3>${storyTitle(article)}</h3>
       </a>
       ${articleMeta(article, true)}
     </div>
   </article>`;
 }
 
-function renderSection(section) {
-  const [featured, ...rest] = section.articles;
+function renderCompactStory(article) {
+  return `<article class="list-story">
+    <div class="list-story-copy">
+      <span class="story-kicker compact-kicker">${escapeHtml(categoryName(article))}</span>
+      <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
+        <h3>${storyTitle(article)}</h3>
+      </a>
+      ${articleMeta(article, true)}
+    </div>
+    ${article.imageUrl ? `<div class="mini-thumb">${media(article, 'mini-media', 120)}</div>` : ''}
+  </article>`;
+}
+
+function renderSection(section, leadId) {
+  const articles = (section.articles || []).filter(article => article.id !== leadId);
+  const [featured, ...rest] = articles;
   if (!featured) return '';
 
   return `<section class="news-section" id="section-${escapeHtml(section.slug)}">
     <header class="section-header">
-      <div><span class="section-eyebrow">SEÇÃO</span><h2>${escapeHtml(section.name)}</h2></div>
-      <span class="section-count">${section.articles.length} matéria${section.articles.length === 1 ? '' : 's'}</span>
+      <div>
+        <span class="section-eyebrow">${escapeHtml(section.name)}</span>
+        <h2>${escapeHtml(section.name)}</h2>
+      </div>
+      <span class="section-count">${articles.length} matéria${articles.length === 1 ? '' : 's'}</span>
     </header>
+
     <div class="section-grid">
       <article class="section-feature">
-        ${media(featured, 'section-media')}
+        <a href="${storyLink(featured)}" target="_blank" rel="noopener noreferrer" class="section-media-link">
+          ${media(featured, 'section-media', 320)}
+        </a>
         <div class="section-feature-copy">
-          <a class="story-link" href="${escapeHtml(featured.link)}" target="_blank" rel="noopener noreferrer">
-            <h3>${escapeHtml(featured.headline || featured.originalTitle)}</h3>
+          <a class="story-link" href="${storyLink(featured)}" target="_blank" rel="noopener noreferrer">
+            <h3>${storyTitle(featured)}</h3>
           </a>
           <p>${escapeHtml(featured.summary || featured.excerpt || '')}</p>
           ${articleMeta(featured)}
         </div>
       </article>
-      <div class="section-list">
-        ${rest.map(article => `<article class="list-story">
-          <div>
-            <span class="story-kicker single">${escapeHtml(categoryName(article))}</span>
-            <a class="story-link" href="${escapeHtml(article.link)}" target="_blank" rel="noopener noreferrer">
-              <h3>${escapeHtml(article.headline || article.originalTitle)}</h3>
-            </a>
-            ${articleMeta(article, true)}
-          </div>
-          ${article.imageUrl ? `<div class="mini-thumb">${media(article, 'mini-media')}</div>` : ''}
-        </article>`).join('')}
-      </div>
+      <div class="section-list">${rest.slice(0, 5).map(renderCompactStory).join('')}</div>
     </div>
   </section>`;
 }
@@ -137,82 +216,106 @@ function enabledCategories() {
   return state.categories.filter(category => category.enabled);
 }
 
-function saveSelection() {
-  localStorage.setItem('highlords:selected', JSON.stringify([...state.selected]));
-}
-
-function selectAllCategories() {
-  state.selected = new Set(enabledCategories().map(category => category.slug));
-  saveSelection();
+function normalizeFilter() {
+  const valid = new Set(enabledCategories().map(category => category.slug));
+  if (state.activeFilter !== 'all' && !valid.has(state.activeFilter)) state.activeFilter = 'all';
+  localStorage.setItem('highlords:filter', state.activeFilter);
 }
 
 function renderCategories() {
   const bar = el('categoryBar');
   const categories = enabledCategories();
-  if (!categories.length) {
-    bar.innerHTML = '';
-    return;
-  }
-
-  if (state.selected.size === 0) selectAllCategories();
-  const allSelected = categories.every(category => state.selected.has(category.slug));
+  normalizeFilter();
 
   bar.innerHTML = `
-    <button class="category-chip category-all ${allSelected ? 'active' : ''}" data-select-all>Todos</button>
-    ${categories.map(category => `<button class="category-chip ${state.selected.has(category.slug) ? 'active' : ''}" data-category="${escapeHtml(category.slug)}">${escapeHtml(category.name)}</button>`).join('')}
-  `;
+    <button class="category-chip ${state.activeFilter === 'all' ? 'active' : ''}" data-filter="all" aria-pressed="${state.activeFilter === 'all'}">Todos</button>
+    ${categories.map(category => `<button
+      class="category-chip ${state.activeFilter === category.slug ? 'active' : ''}"
+      data-filter="${escapeHtml(category.slug)}"
+      aria-pressed="${state.activeFilter === category.slug}"
+    >${escapeHtml(category.name)}</button>`).join('')}`;
 
-  bar.querySelector('[data-select-all]')?.addEventListener('click', async () => {
-    selectAllCategories();
-    renderCategories();
-    await loadEdition();
-  });
-
-  bar.querySelectorAll('[data-category]').forEach(button => {
-    button.addEventListener('click', async () => {
-      const slug = button.dataset.category;
-      if (state.selected.has(slug)) state.selected.delete(slug);
-      else state.selected.add(slug);
-      if (state.selected.size === 0) state.selected.add(slug);
-      saveSelection();
+  bar.querySelectorAll('[data-filter]').forEach(button => {
+    button.addEventListener('click', () => {
+      state.activeFilter = button.dataset.filter || 'all';
+      localStorage.setItem('highlords:filter', state.activeFilter);
       renderCategories();
-      await loadEdition();
+      if (state.edition) renderEdition(state.edition);
     });
   });
 }
 
-function editionHighlights(edition) {
-  return edition.sections
-    .flatMap(section => section.articles || [])
-    .filter(article => article.id !== edition.lead?.id)
-    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
-    .slice(0, 5);
+function uniqueArticles(articles) {
+  const seen = new Set();
+  return articles.filter(article => {
+    if (!article || seen.has(article.id)) return false;
+    seen.add(article.id);
+    return true;
+  });
 }
 
-function renderEdition(edition) {
-  state.edition = edition;
-  el('editorStatus').textContent = edition.curatedBy === 'ollama' ? 'Editor-chefe IA' : 'Edição por ranking';
+function viewEdition(edition) {
+  if (!edition || state.activeFilter === 'all') return edition;
+
+  const section = edition.sections.find(item => item.slug === state.activeFilter);
+  const candidates = uniqueArticles([
+    edition.lead?.category === state.activeFilter ? edition.lead : null,
+    ...(section?.articles || [])
+  ].filter(Boolean));
+
+  const lead = candidates[0] || null;
+  const category = enabledCategories().find(item => item.slug === state.activeFilter);
+
+  return {
+    ...edition,
+    lead,
+    stats: {
+      articles: candidates.length,
+      sources: new Set(candidates.map(article => article.source)).size
+    },
+    sections: category ? [{ ...category, articles: candidates.slice(1) }] : []
+  };
+}
+
+function editionHighlights(edition) {
+  if (!edition) return [];
+  return uniqueArticles([
+    ...edition.sections.flatMap(section => section.articles || [])
+  ])
+    .filter(article => article.id !== edition.lead?.id)
+    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
+    .slice(0, 4);
+}
+
+function renderEdition(rawEdition) {
+  state.edition = rawEdition;
+  const edition = viewEdition(rawEdition);
+  if (!edition) return;
+
+  el('editorStatus').textContent = rawEdition.curatedBy === 'ollama' ? 'Curadoria por IA local' : 'Curadoria por relevância';
   el('lead').innerHTML = renderLead(edition.lead);
 
   const highlights = editionHighlights(edition);
   el('highlights').innerHTML = highlights.length
     ? highlights.map(renderHighlight).join('')
-    : '<p class="rail-empty">Os próximos destaques aparecem aqui conforme a edição ganha matérias.</p>';
+    : '<p class="rail-empty">Sem outros destaques nesta visualização.</p>';
 
-  const visibleSections = edition.sections.filter(section => section.articles.length);
-  el('sections').innerHTML = visibleSections.map(renderSection).join('');
+  const visibleSections = edition.sections.filter(section => (section.articles || []).some(article => article.id !== edition.lead?.id));
+  el('sections').innerHTML = visibleSections.map(section => renderSection(section, edition.lead?.id)).join('');
 
   const articleCount = Number(edition.stats?.articles || 0);
   const sourceCount = Number(edition.stats?.sources || 0);
-  el('editionCount').textContent = articleCount ? `${articleCount} selecionadas` : '';
+  el('editionCount').textContent = articleCount ? `${articleCount} matérias` : '';
   el('statArticles').textContent = articleCount;
   el('statSources').textContent = sourceCount;
-  el('statMode').textContent = edition.curatedBy === 'ollama' ? 'Editor IA' : 'Ranking';
+  el('statMode').textContent = rawEdition.curatedBy === 'ollama' ? 'IA local' : 'Ranking';
   if (state.health?.ollama?.model) el('statModel').textContent = state.health.ollama.model;
 
   const hasContent = Boolean(edition.lead) || visibleSections.length > 0;
   el('edition').classList.toggle('hidden', !hasContent);
   el('welcome').classList.toggle('hidden', hasContent);
+
+  requestAnimationFrame(() => hydrateImages(el('edition')));
 }
 
 async function loadEdition() {
@@ -220,18 +323,17 @@ async function loadEdition() {
   el('errorBox').classList.add('hidden');
 
   try {
-    const query = encodeURIComponent([...state.selected].join(','));
-    const edition = await api(`/api/edition?categories=${query}`);
+    const edition = await api('/api/edition');
     renderEdition(edition);
 
     const hasContent = Boolean(edition.lead) || edition.sections.some(section => section.articles.length);
     if (!hasContent) {
       el('welcome').classList.remove('hidden');
       const running = Boolean(state.health?.refresh?.running);
-      el('welcome').querySelector('h2').textContent = running ? 'Estamos preparando sua edição.' : 'Sua edição ainda está vazia.';
-      el('welcome').querySelector('p').innerHTML = running
-        ? 'Os feeds já foram coletados e o Ollama está processando as matérias. O progresso aparece no topo da página.'
-        : 'Clique em <strong>Atualizar agora</strong> para buscar, classificar e resumir os feeds cadastrados.';
+      el('welcomeTitle').textContent = running ? 'Sua edição está sendo preparada.' : 'Sua edição ainda está vazia.';
+      el('welcomeCopy').innerHTML = running
+        ? 'O Ollama está classificando e resumindo as notícias. Você pode continuar nesta tela; ela atualiza quando o processamento terminar.'
+        : 'Clique em <strong>Atualizar</strong> para coletar e analisar as fontes cadastradas.';
     }
   } catch (error) {
     el('errorBox').textContent = error.message;
@@ -272,24 +374,29 @@ function renderSettings() {
   el('feedsList').innerHTML = state.feeds.length
     ? state.feeds.map(feed => `
       <div class="settings-item">
-        <div class="settings-item-copy"><strong>${escapeHtml(feed.name)}</strong><small>${escapeHtml(feed.url)}</small>${feed.lastError ? `<small class="item-error">${escapeHtml(feed.lastError)}</small>` : ''}</div>
+        <div class="settings-item-copy">
+          <strong>${escapeHtml(feed.name)}</strong>
+          <small>${escapeHtml(feed.url)}</small>
+          ${feed.lastError ? `<small class="item-error">${escapeHtml(feed.lastError)}</small>` : ''}
+        </div>
         <button class="text-button danger" data-delete-feed="${feed.id}">Remover</button>
-      </div>
-    `).join('')
+      </div>`).join('')
     : '<p class="muted">Nenhum feed adicionado.</p>';
 
   el('categoriesList').innerHTML = state.categories.map(category => `
     <div class="settings-item ${category.enabled ? '' : 'disabled-item'}" data-slug="${escapeHtml(category.slug)}">
       <div class="settings-item-copy">
-        <div class="item-title-row"><strong>${escapeHtml(category.name)}</strong>${category.enabled ? '' : '<span class="mini-badge">pausada</span>'}</div>
+        <div class="item-title-row">
+          <strong>${escapeHtml(category.name)}</strong>
+          ${category.enabled ? '' : '<span class="mini-badge">pausada</span>'}
+        </div>
         <small>${escapeHtml(category.description || 'Sem descrição')}</small>
       </div>
       <div class="item-actions">
         <button class="text-button" data-edit-category="${category.id}">Editar</button>
         <button class="text-button danger" data-delete-category="${category.id}">Remover</button>
       </div>
-    </div>
-  `).join('');
+    </div>`).join('');
 
   document.querySelectorAll('[data-delete-feed]').forEach(button => button.addEventListener('click', async () => {
     if (!confirm('Remover esta fonte?')) return;
@@ -306,9 +413,8 @@ function renderSettings() {
     const item = button.closest('.settings-item');
     const name = item?.querySelector('strong')?.textContent || 'esta categoria';
     if (!confirm(`Remover ${name}? As matérias dessa seção precisarão ser reprocessadas.`)) return;
-    state.selected.delete(item?.dataset?.slug);
-    saveSelection();
     await api(`/api/categories/${button.dataset.deleteCategory}`, { method: 'DELETE' });
+    if (state.activeFilter === item?.dataset?.slug) state.activeFilter = 'all';
     resetCategoryForm();
     await loadBootstrap();
   }));
@@ -318,25 +424,24 @@ function refreshPresentation(refresh) {
   const running = Boolean(refresh?.running);
   const p = refresh?.progress || {};
   const stage = p.stage || 'idle';
-  const panel = el('refreshPanel');
-  panel.classList.toggle('hidden', !running);
+  el('refreshPanel').classList.toggle('hidden', !running);
 
-  let label = 'Atualizando…';
+  let label = 'Atualizando';
   let detail = '';
   let percent = 6;
 
   if (stage === 'collecting') {
-    label = 'Lendo as fontes';
-    detail = `${p.feedsDone || 0}/${p.feedsTotal || 0} feeds · ${p.discovered || 0} novas matérias`;
+    label = 'Coletando fontes';
+    detail = `${p.feedsDone || 0}/${p.feedsTotal || 0} feeds · ${p.discovered || 0} novas`;
     percent = p.feedsTotal ? 8 + ((p.feedsDone || 0) / p.feedsTotal) * 22 : 10;
   } else if (stage === 'analyzing') {
     const completed = Number(p.processed || 0) + Number(p.failed || 0);
-    label = 'Ollama analisando as notícias';
+    label = 'Analisando notícias';
     detail = `${completed}/${p.queueTotal || 0}${p.currentSource ? ` · ${p.currentSource}` : ''}`;
     percent = p.queueTotal ? 30 + (completed / p.queueTotal) * 58 : 84;
   } else if (stage === 'curating') {
-    label = 'Editor-chefe montando a edição';
-    detail = 'Escolhendo manchete, destaques e ordem das seções';
+    label = 'Montando a edição';
+    detail = 'Escolhendo manchete e destaques';
     percent = 94;
   }
 
@@ -346,14 +451,11 @@ function refreshPresentation(refresh) {
 
   const button = el('refreshBtn');
   button.disabled = running;
-  if (running && stage === 'analyzing') {
-    const completed = Number(p.processed || 0) + Number(p.failed || 0);
-    button.textContent = `Analisando ${completed}/${p.queueTotal || 0}`;
-  } else if (running) {
-    button.textContent = 'Atualizando…';
+  if (running) {
+    button.innerHTML = '<span class="button-spinner" aria-hidden="true"></span> Atualizando';
   } else {
     const backlog = Number(refresh?.lastRun?.backlog || 0);
-    button.textContent = backlog > 0 ? `Continuar (${backlog})` : 'Atualizar agora';
+    button.textContent = backlog > 0 ? `Continuar · ${backlog}` : 'Atualizar';
   }
 }
 
@@ -361,11 +463,12 @@ async function loadHealth() {
   try {
     const health = await api('/api/health');
     state.health = health;
+
     const status = el('ollamaStatus');
     status.classList.toggle('ok', health.ollama.ok);
     status.classList.toggle('bad', !health.ollama.ok);
     status.textContent = health.ollama.ok
-      ? `Ollama · ${health.ollama.model}${health.ollama.modelAvailable ? '' : ' · modelo ausente'}`
+      ? `${health.ollama.model}${health.ollama.modelAvailable ? '' : ' · ausente'}`
       : 'Ollama offline';
 
     if (health.ollama.model) el('statModel').textContent = health.ollama.model;
@@ -373,8 +476,8 @@ async function loadHealth() {
 
     const run = health.refresh?.lastRun;
     if (run) {
-      const extra = run.backlog > 0 ? ` · ${run.backlog} aguardando` : '';
-      el('lastRun').textContent = `${timeFmt.format(new Date(run.finishedAt))} · ${run.processed} analisadas${extra}`;
+      const backlog = Number(run.backlog || 0);
+      el('lastRun').textContent = `${timeFmt.format(new Date(run.finishedAt))} · ${run.processed} analisadas${backlog ? ` · ${backlog} na fila` : ''}`;
     } else {
       el('lastRun').textContent = 'Ainda sem atualização';
     }
@@ -386,9 +489,7 @@ async function loadHealth() {
 
 async function loadBootstrap() {
   [state.categories, state.feeds] = await Promise.all([api('/api/categories'), api('/api/feeds')]);
-  const valid = new Set(enabledCategories().map(category => category.slug));
-  state.selected = new Set([...state.selected].filter(slug => valid.has(slug)));
-  if (state.selected.size === 0) selectAllCategories();
+  normalizeFilter();
   renderCategories();
   renderSettings();
   await loadHealth();
@@ -397,7 +498,7 @@ async function loadBootstrap() {
 
 async function pollRefresh() {
   for (let i = 0; i < 1800; i += 1) {
-    await new Promise(resolve => setTimeout(resolve, 1000));
+    await new Promise(resolve => setTimeout(resolve, 900));
     const status = await api('/api/refresh/status');
     refreshPresentation(status);
     if (!status.running) {
@@ -458,9 +559,7 @@ el('categoryForm').addEventListener('submit', async event => {
       })
     });
     resetCategoryForm();
-    const valid = new Set(enabledCategories().map(category => category.slug));
-    state.selected = new Set([...state.selected].filter(slug => valid.has(slug)));
-    if (state.selected.size === 0) selectAllCategories();
+    normalizeFilter();
     renderCategories();
     renderSettings();
     await loadEdition();
@@ -474,6 +573,4 @@ loadBootstrap().catch(error => {
   el('errorBox').classList.remove('hidden');
 });
 
-setInterval(() => {
-  if (!state.health?.refresh?.running) loadHealth().catch(() => {});
-}, 10000);
+setInterval(loadHealth, 10000);
