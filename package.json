@@ -1,9 +1,9 @@
 {
   "name": "highlords-post",
-  "version": "0.7.0",
+  "version": "0.8.0",
   "private": true,
   "type": "module",
-  "description": "Jornal pessoal com RSS + Ollama, local, leve e rápido.",
+  "description": "Reader pessoal de tecnologia, IA, desenvolvimento e games com RSS + Ollama.",
   "scripts": {
     "dev": "node --watch src/server.mjs",
     "start": "node src/server.mjs",
