@@ -97,6 +97,19 @@ function categoryName(article) {
   return state.categories.find(category => category.slug === article?.category)?.name || article?.category || 'Destaque';
 }
 
+function categoryColor(article) {
+  const palette = {
+    brasil: '#ff3b30',
+    mundo: '#ff7a45',
+    tecnologia: '#4d8dff',
+    ia: '#a675ff',
+    games: '#ff4f87',
+    ciencia: '#33c39b',
+    'qa-dev': '#49b96f'
+  };
+  return palette[article?.category] || '#ff3b30';
+}
+
 function storyTitle(article) {
   return escapeHtml(article?.headline || article?.originalTitle || 'Sem título');
 }
@@ -105,20 +118,26 @@ function storyLink(article) {
   return escapeHtml(safeUrl(article?.link));
 }
 
+function kickerMarkup(article, suffix = '') {
+  return `<span class="story-kicker"><i class="category-dot" style="--category-color:${categoryColor(article)}"></i>${escapeHtml(categoryName(article))}${suffix ? ` · ${escapeHtml(suffix)}` : ''}</span>`;
+}
+
 function articleMeta(article) {
   const score = Number(article?.score || 0).toFixed(1);
   return `<div class="story-meta">
     <span class="source-name">${escapeHtml(article?.source || '')}</span>
     <span>${escapeHtml(relativeDate(article?.publishedAt))}</span>
-    <span class="relevance" title="Relevância editorial">${score}</span>
+    <span class="meta-score" title="Relevância editorial">${score}</span>
   </div>`;
 }
 
 function imageMarkup(article, className) {
   const src = proxiedImage(article?.imageUrl);
   if (!src) return '';
-  return `<div class="${className}" data-media>
+  const score = Number(article?.score || 0).toFixed(1);
+  return `<div class="${className} story-media-frame" data-media>
     <img src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async" data-story-image />
+    <span class="score-chip" title="Relevância editorial">${score}</span>
   </div>`;
 }
 
@@ -127,7 +146,7 @@ function hydrateImages(root = document) {
     if (img.dataset.hydrated) return;
     img.dataset.hydrated = '1';
     const container = img.closest('[data-media]');
-    const card = img.closest('.hero-card, .story-card, .latest-card, .rail-item, .collection-card');
+    const card = img.closest('.hero-card, .hero-mini, .story-card, .collection-card');
     const reject = () => {
       container?.remove();
       card?.classList.add('no-media');
@@ -202,9 +221,7 @@ function matchesSearch(article) {
 
 function filteredArticles() {
   let items = baseArticlesForView();
-  if (state.activeFilter !== 'all') {
-    items = items.filter(article => article.category === state.activeFilter);
-  }
+  if (state.activeFilter !== 'all') items = items.filter(article => article.category === state.activeFilter);
   return uniqueArticles(items.filter(matchesSearch));
 }
 
@@ -220,11 +237,24 @@ function selectHero(items) {
 function actionButtons(article, { compact = false } = {}) {
   const itemState = stateFor(article);
   const saved = Boolean(itemState.savedAt);
+  const read = Boolean(itemState.readAt);
   const dismissed = Boolean(itemState.dismissedAt);
+  const labels = compact
+    ? {
+        save: saved ? 'Salva' : 'Salvar',
+        read: read ? 'Não lida' : 'Lida',
+        dismiss: dismissed ? 'Restaurar' : 'Ocultar'
+      }
+    : {
+        save: saved ? 'Remover de Ler depois' : 'Ler depois',
+        read: read ? 'Marcar como não lida' : 'Marcar como lida',
+        dismiss: dismissed ? 'Restaurar na edição' : 'Ocultar'
+      };
+
   return `<div class="story-actions ${compact ? 'compact' : ''}">
-    <button class="story-action ${saved ? 'active' : ''}" data-action="save" data-id="${article.id}" type="button" title="${saved ? 'Remover de Ler depois' : 'Ler depois'}" aria-label="${saved ? 'Remover de Ler depois' : 'Ler depois'}">${saved ? '★' : '☆'}</button>
-    <button class="story-action" data-action="read" data-id="${article.id}" type="button" title="Marcar como lida" aria-label="Marcar como lida">✓</button>
-    <button class="story-action ${dismissed ? 'active danger' : ''}" data-action="dismiss" data-id="${article.id}" type="button" title="${dismissed ? 'Restaurar na edição' : 'Ocultar da edição'}" aria-label="${dismissed ? 'Restaurar na edição' : 'Ocultar da edição'}">${dismissed ? '↺' : '×'}</button>
+    <button class="story-action ${saved ? 'active' : ''}" data-action="save" data-id="${article.id}" type="button" title="${labels.save}">${labels.save}</button>
+    <button class="story-action ${read ? 'active' : ''}" data-action="read" data-id="${article.id}" type="button" title="${labels.read}">${labels.read}</button>
+    <button class="story-action danger ${dismissed ? 'active' : ''}" data-action="dismiss" data-id="${article.id}" type="button" title="${labels.dismiss}">${labels.dismiss}</button>
   </div>`;
 }
 
@@ -240,34 +270,29 @@ function renderHero(article) {
   hero.innerHTML = `
     ${media ? `<a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
     <div class="hero-body">
-      <div class="story-topline">
-        <span class="story-kicker">${escapeHtml(categoryName(article))} · MANCHETE</span>
-        ${actionButtons(article, { compact: true })}
-      </div>
+      ${kickerMarkup(article, 'MANCHETE')}
       <a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
         <h2 class="hero-title">${storyTitle(article)}</h2>
       </a>
       <p class="hero-summary">${escapeHtml(article.summary || article.excerpt || '')}</p>
       <div class="hero-footer">
         ${articleMeta(article)}
-        <a class="read-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">Ler matéria <span>↗</span></a>
+        ${actionButtons(article, { compact: true })}
       </div>
     </div>`;
 }
 
-function renderLatestCard(article) {
-  const media = imageMarkup(article, 'latest-media');
-  return `<article class="latest-card ${media ? '' : 'no-media'}">
+function renderHeroMini(article) {
+  const media = imageMarkup(article, 'mini-media');
+  return `<article class="hero-mini ${media ? '' : 'no-media'}">
     ${media ? `<a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
-    <div class="latest-body">
-      <div class="story-topline">
-        <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
-        ${actionButtons(article, { compact: true })}
-      </div>
+    <div class="mini-copy">
+      ${kickerMarkup(article)}
       <a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
-        <h3 class="latest-title">${storyTitle(article)}</h3>
+        <h3>${storyTitle(article)}</h3>
       </a>
       ${articleMeta(article)}
+      ${actionButtons(article, { compact: true })}
     </div>
   </article>`;
 }
@@ -277,30 +302,27 @@ function renderStoryCard(article) {
   return `<article class="story-card ${media ? '' : 'no-media'}">
     ${media ? `<a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
     <div class="story-body">
-      <div class="story-topline">
-        <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
-        ${actionButtons(article, { compact: true })}
-      </div>
+      ${kickerMarkup(article)}
       <a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
         <h3 class="story-title">${storyTitle(article)}</h3>
       </a>
       <p class="story-summary">${escapeHtml(article.summary || article.excerpt || '')}</p>
-      ${articleMeta(article)}
+      <div class="story-card-foot">
+        ${articleMeta(article)}
+        ${actionButtons(article, { compact: true })}
+      </div>
     </div>
   </article>`;
 }
 
 function renderRailItem(article) {
-  const media = imageMarkup(article, 'rail-thumb');
-  return `<article class="rail-item ${media ? '' : 'no-media'}">
-    <div class="rail-copy">
-      <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
-      <a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
-        <h3>${storyTitle(article)}</h3>
-      </a>
-      ${articleMeta(article)}
-    </div>
-    ${media ? `<a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
+  return `<article class="rail-item">
+    ${kickerMarkup(article)}
+    <a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
+      <h3>${storyTitle(article)}</h3>
+    </a>
+    ${articleMeta(article)}
+    ${actionButtons(article, { compact: true })}
   </article>`;
 }
 
@@ -311,10 +333,7 @@ function renderCollectionCard(article) {
   return `<article class="collection-card ${media ? '' : 'no-media'}">
     ${media ? `<a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
     <div class="collection-body">
-      <div class="story-topline">
-        <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
-        ${actionButtons(article, { compact: true })}
-      </div>
+      ${kickerMarkup(article)}
       <a class="story-link" data-story-id="${article.id}" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
         <h3>${storyTitle(article)}</h3>
       </a>
@@ -323,6 +342,7 @@ function renderCollectionCard(article) {
         ${articleMeta(article)}
         <span class="state-label">${historyLabel}</span>
       </div>
+      ${actionButtons(article, { compact: true })}
     </div>
   </article>`;
 }
@@ -330,16 +350,17 @@ function renderCollectionCard(article) {
 function renderHome() {
   const items = filteredArticles();
   const hero = selectHero(items);
-  const recent = [...items].sort(byRecent).filter(article => article.id !== hero?.id);
-  const latest = recent.slice(0, 4);
-  const used = new Set([hero?.id, ...latest.map(article => article.id)].filter(Boolean));
-  const featured = [...items].sort(byScore).filter(article => !used.has(article.id)).slice(0, 6);
-  featured.forEach(article => used.add(article.id));
-  const earlier = recent.filter(article => !used.has(article.id)).slice(0, 12);
+  const ranked = [...items].sort(byScore).filter(article => article.id !== hero?.id);
+  const heroSide = ranked.slice(0, 3);
+  const used = new Set([hero?.id, ...heroSide.map(article => article.id)].filter(Boolean));
+  const recent = [...items].sort(byRecent).filter(article => !used.has(article.id));
+  const latest = recent.slice(0, 9);
+  latest.forEach(article => used.add(article.id));
+  const earlier = [...items].sort(byRecent).filter(article => !used.has(article.id)).slice(0, 14);
 
   renderHero(hero);
-  el('latestGrid').innerHTML = latest.map(renderLatestCard).join('');
-  el('storyGrid').innerHTML = featured.map(renderStoryCard).join('');
+  el('heroSide').innerHTML = heroSide.map(renderHeroMini).join('');
+  el('storyGrid').innerHTML = latest.map(renderStoryCard).join('');
   el('earlierList').innerHTML = earlier.map(renderRailItem).join('');
   el('earlierSection').classList.toggle('hidden', !earlier.length);
 
@@ -374,7 +395,7 @@ function toggleWelcome(show) {
     el('welcomeCopy').textContent = `Nenhuma notícia corresponde a “${state.query}”.`;
   } else if (state.activeView === 'saved') {
     el('welcomeTitle').textContent = 'Sua lista está vazia.';
-    el('welcomeCopy').textContent = 'Use a estrela nos cards para guardar matérias e ler depois.';
+    el('welcomeCopy').textContent = 'Use “Salvar” nos cards para guardar matérias e ler depois.';
   } else if (state.activeView === 'history') {
     el('welcomeTitle').textContent = 'Seu histórico está vazio.';
     el('welcomeCopy').textContent = 'As matérias que você abrir ou ocultar aparecem aqui.';
@@ -423,7 +444,7 @@ function renderCategories() {
   const categories = enabledCategories().filter(category => (counts.get(category.slug) || 0) > 0);
   el('categoryBar').innerHTML = `
     <button class="category-chip ${state.activeFilter === 'all' ? 'active' : ''}" data-filter="all">Todos <span>${baseArticlesForView().length}</span></button>
-    ${categories.map(category => `<button class="category-chip ${state.activeFilter === category.slug ? 'active' : ''}" data-filter="${escapeHtml(category.slug)}">${escapeHtml(category.name)} <span>${counts.get(category.slug)}</span></button>`).join('')}`;
+    ${categories.map(category => `<button class="category-chip ${state.activeFilter === category.slug ? 'active' : ''}" data-filter="${escapeHtml(category.slug)}"><i class="category-dot" style="--category-color:${categoryColor({ category: category.slug })}"></i>${escapeHtml(category.name)} <span>${counts.get(category.slug)}</span></button>`).join('')}`;
 
   el('categoryBar').querySelectorAll('[data-filter]').forEach(button => {
     button.addEventListener('click', () => {
