@@ -5,7 +5,26 @@ import { analyzeArticle, curateEdition } from './ollama.mjs';
 
 let refreshPromise = null;
 let lastRun = null;
+let progress = idleProgress();
 const editionCache = new Map();
+
+function idleProgress() {
+  return {
+    stage: 'idle',
+    feedsDone: 0,
+    feedsTotal: 0,
+    discovered: 0,
+    processed: 0,
+    failed: 0,
+    queueTotal: 0,
+    currentSource: null,
+    startedAt: null
+  };
+}
+
+function setProgress(patch) {
+  progress = { ...progress, ...patch };
+}
 
 function clearEditionCache() {
   editionCache.clear();
@@ -22,8 +41,8 @@ function setFeedStatus(id, error = null) {
 function insertRaw(feedId, article) {
   const result = db.prepare(`
     INSERT OR IGNORE INTO articles (
-      feed_id, external_id, source, original_title, link, published_at, excerpt
-    ) VALUES (?, ?, ?, ?, ?, ?, ?)
+      feed_id, external_id, source, original_title, link, published_at, excerpt, image_url
+    ) VALUES (?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     feedId,
     article.externalId || null,
@@ -31,12 +50,19 @@ function insertRaw(feedId, article) {
     article.originalTitle,
     article.link,
     article.publishedAt,
-    article.excerpt || ''
+    article.excerpt || '',
+    article.imageUrl || null
   );
-  return Number(result.lastInsertRowid || 0);
+
+  if (!result.changes && article.imageUrl) {
+    db.prepare(`UPDATE articles SET image_url = COALESCE(image_url, ?) WHERE link = ?`)
+      .run(article.imageUrl, article.link);
+  }
+
+  return result.changes ? Number(result.lastInsertRowid || 0) : 0;
 }
 
-function getUnprocessed(limit = 200) {
+function getUnprocessed(limit = config.maxProcessPerRun) {
   return db.prepare(`
     SELECT id, source, original_title AS originalTitle, link,
            published_at AS publishedAt, excerpt
@@ -44,7 +70,11 @@ function getUnprocessed(limit = 200) {
     WHERE processed = 0
     ORDER BY published_at DESC, id DESC
     LIMIT ?
-  `).all(limit);
+  `).all(Math.max(1, limit));
+}
+
+function countUnprocessed() {
+  return Number(db.prepare('SELECT COUNT(*) AS value FROM articles WHERE processed = 0').get().value || 0);
 }
 
 function markProcessed(id, analysis) {
@@ -64,15 +94,56 @@ function markProcessed(id, analysis) {
   );
 }
 
+async function analyzeQueue(queue, categories, errors) {
+  if (!queue.length) return { processed: 0, failed: 0 };
+
+  let cursor = 0;
+  let processed = 0;
+  let failed = 0;
+  const workers = Math.min(config.analysisConcurrency, queue.length);
+
+  async function worker() {
+    while (true) {
+      const index = cursor;
+      cursor += 1;
+      if (index >= queue.length) return;
+
+      const article = queue[index];
+      setProgress({ currentSource: article.source });
+      try {
+        const analysis = await analyzeArticle(article, categories);
+        markProcessed(article.id, analysis);
+        processed += 1;
+      } catch (error) {
+        failed += 1;
+        errors.push(`Artigo ${article.id}: ${error.message || String(error)}`);
+      } finally {
+        setProgress({ processed, failed });
+      }
+    }
+  }
+
+  await Promise.all(Array.from({ length: workers }, () => worker()));
+  return { processed, failed };
+}
+
 async function runRefresh() {
   const startedAt = new Date().toISOString();
   const categories = listCategories().filter(category => category.enabled);
   const feeds = listFeeds().filter(feed => feed.enabled);
-  let discovered = 0;
-  let processed = 0;
   const errors = [];
+  let discovered = 0;
 
-  for (const feed of feeds) {
+  progress = {
+    ...idleProgress(),
+    stage: 'collecting',
+    feedsTotal: feeds.length,
+    startedAt
+  };
+
+  for (let index = 0; index < feeds.length; index += 1) {
+    const feed = feeds[index];
+    setProgress({ currentSource: feed.name });
     try {
       const articles = await fetchFeed(feed);
       for (const article of articles) {
@@ -85,28 +156,46 @@ async function runRefresh() {
       setFeedStatus(feed.id, message.slice(0, 500));
       errors.push(`${feed.name}: ${message}`);
     }
+    setProgress({ feedsDone: index + 1, discovered });
   }
 
-  for (const article of getUnprocessed()) {
-    try {
-      const analysis = await analyzeArticle(article, categories);
-      markProcessed(article.id, analysis);
-      processed += 1;
-    } catch (error) {
-      errors.push(`Artigo ${article.id}: ${error.message || String(error)}`);
-      break;
-    }
-  }
+  const queue = getUnprocessed();
+  setProgress({
+    stage: 'analyzing',
+    queueTotal: queue.length,
+    processed: 0,
+    failed: 0,
+    currentSource: null
+  });
 
+  const analysis = await analyzeQueue(queue, categories, errors);
   clearEditionCache();
+
+  setProgress({ stage: 'curating', currentSource: null });
+  try {
+    await buildEdition([]);
+  } catch (error) {
+    errors.push(`Editor-chefe: ${error.message || String(error)}`);
+  }
+
+  const backlog = countUnprocessed();
   lastRun = {
     startedAt,
     finishedAt: new Date().toISOString(),
     feeds: feeds.length,
     discovered,
-    processed,
+    processed: analysis.processed,
+    failed: analysis.failed,
+    backlog,
     errors: errors.slice(0, 20)
   };
+
+  setProgress({
+    stage: 'done',
+    processed: analysis.processed,
+    failed: analysis.failed,
+    currentSource: null
+  });
   return lastRun;
 }
 
@@ -120,7 +209,11 @@ export function refreshNews() {
 }
 
 export function refreshStatus() {
-  return { running: Boolean(refreshPromise), lastRun };
+  return {
+    running: Boolean(refreshPromise),
+    progress: { ...progress },
+    lastRun
+  };
 }
 
 export function invalidateEditions() {
@@ -132,23 +225,22 @@ export function listArticles({ categories = [], limit = 80 } = {}) {
   const enabledCategories = categories.filter(Boolean);
   let rows;
 
+  const projection = `
+    SELECT id, source, original_title AS originalTitle, headline, link,
+           published_at AS publishedAt, excerpt, summary, image_url AS imageUrl,
+           category_slug AS category, score, tags_json AS tagsJson
+    FROM articles
+  `;
+
   if (enabledCategories.length) {
     const placeholders = enabledCategories.map(() => '?').join(',');
-    rows = db.prepare(`
-      SELECT id, source, original_title AS originalTitle, headline, link,
-             published_at AS publishedAt, excerpt, summary,
-             category_slug AS category, score, tags_json AS tagsJson
-      FROM articles
+    rows = db.prepare(`${projection}
       WHERE processed = 1 AND score >= ? AND category_slug IN (${placeholders})
       ORDER BY score DESC, published_at DESC
       LIMIT ?
     `).all(config.minScore, ...enabledCategories, cappedLimit);
   } else {
-    rows = db.prepare(`
-      SELECT id, source, original_title AS originalTitle, headline, link,
-             published_at AS publishedAt, excerpt, summary,
-             category_slug AS category, score, tags_json AS tagsJson
-      FROM articles
+    rows = db.prepare(`${projection}
       WHERE processed = 1 AND score >= ? AND category_slug IS NOT NULL
       ORDER BY score DESC, published_at DESC
       LIMIT ?
@@ -253,6 +345,10 @@ export async function buildEdition(categorySlugs = []) {
   const value = {
     generatedAt: new Date().toISOString(),
     curatedBy,
+    stats: {
+      articles: articles.length,
+      sources: new Set(articles.map(article => article.source)).size
+    },
     lead: arranged.lead,
     sections: arranged.sections
   };
