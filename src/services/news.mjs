@@ -234,8 +234,13 @@ export function invalidateEditions() {
 
 export function listArticles({ categories = [], limit = 80 } = {}) {
   const cappedLimit = Math.min(Math.max(Number(limit) || 80, 1), 200);
-  const enabledCategories = categories.filter(Boolean);
-  let rows;
+  const editorialSlugs = listCategories().filter(category => category.enabled).map(category => category.slug);
+  const requested = categories.filter(Boolean);
+  const enabledCategories = requested.length
+    ? requested.filter(slug => editorialSlugs.includes(slug))
+    : editorialSlugs;
+
+  if (!enabledCategories.length) return [];
 
   const projection = `
     SELECT id, source, original_title AS originalTitle, headline, link,
@@ -243,21 +248,12 @@ export function listArticles({ categories = [], limit = 80 } = {}) {
            category_slug AS category, score, tags_json AS tagsJson
     FROM articles
   `;
-
-  if (enabledCategories.length) {
-    const placeholders = enabledCategories.map(() => '?').join(',');
-    rows = db.prepare(`${projection}
-      WHERE processed = 1 AND score >= ? AND category_slug IN (${placeholders})
-      ORDER BY score DESC, published_at DESC
-      LIMIT ?
-    `).all(config.minScore, ...enabledCategories, cappedLimit);
-  } else {
-    rows = db.prepare(`${projection}
-      WHERE processed = 1 AND score >= ? AND category_slug IS NOT NULL
-      ORDER BY score DESC, published_at DESC
-      LIMIT ?
-    `).all(config.minScore, cappedLimit);
-  }
+  const placeholders = enabledCategories.map(() => '?').join(',');
+  const rows = db.prepare(`${projection}
+    WHERE processed = 1 AND score >= ? AND category_slug IN (${placeholders})
+    ORDER BY score DESC, published_at DESC
+    LIMIT ?
+  `).all(config.minScore, ...enabledCategories, cappedLimit);
 
   return rows.map(row => ({
     ...row,
