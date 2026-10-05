@@ -1,6 +1,6 @@
 {
   "name": "highlords-post",
-  "version": "0.6.0",
+  "version": "0.7.0",
   "private": true,
   "type": "module",
   "description": "Jornal pessoal com RSS + Ollama, local, leve e rápido.",
