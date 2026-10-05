@@ -3,21 +3,16 @@ const state = {
   activeFilter: localStorage.getItem('highlords:filter') || 'all',
   feeds: [],
   edition: null,
+  articles: [],
   health: null
 };
 
 const el = id => document.getElementById(id);
 const dateFmt = new Intl.DateTimeFormat('pt-BR', {
-  weekday: 'long',
-  day: '2-digit',
-  month: 'long',
-  year: 'numeric'
+  weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
 });
 const timeFmt = new Intl.DateTimeFormat('pt-BR', {
-  day: '2-digit',
-  month: '2-digit',
-  hour: '2-digit',
-  minute: '2-digit'
+  day: '2-digit', month: '2-digit', hour: '2-digit', minute: '2-digit'
 });
 
 el('dateLabel').textContent = dateFmt.format(new Date()).toUpperCase();
@@ -27,7 +22,6 @@ async function api(url, options = {}) {
   if (options.body != null && !headers['content-type'] && !headers['Content-Type']) {
     headers['content-type'] = 'application/json';
   }
-
   const response = await fetch(url, { ...options, headers });
   const body = await response.json().catch(() => ({}));
   if (!response.ok) throw new Error(body.message || body.error || `HTTP ${response.status}`);
@@ -36,11 +30,7 @@ async function api(url, options = {}) {
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;',
-    '<': '&lt;',
-    '>': '&gt;',
-    "'": '&#39;',
-    '"': '&quot;'
+    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
   })[char]);
 }
 
@@ -51,6 +41,12 @@ function safeUrl(value) {
   } catch {
     return '#';
   }
+}
+
+function proxiedImage(value) {
+  if (!value) return '';
+  const safe = safeUrl(value);
+  return safe === '#' ? '' : `/api/image?url=${encodeURIComponent(safe)}`;
 }
 
 function relativeDate(value) {
@@ -70,63 +66,6 @@ function categoryName(article) {
   return state.categories.find(category => category.slug === article?.category)?.name || article?.category || 'Destaque';
 }
 
-function articleMeta(article, compact = false) {
-  const score = Number(article?.score || 0).toFixed(1);
-  return `<div class="story-meta ${compact ? 'compact' : ''}">
-    <span class="source-name">${escapeHtml(article?.source || '')}</span>
-    <span>${escapeHtml(relativeDate(article?.publishedAt))}</span>
-    <span class="relevance" title="Relevância editorial">${score}</span>
-  </div>`;
-}
-
-function media(article, className = '', minWidth = 260) {
-  const image = article?.imageUrl ? safeUrl(article.imageUrl) : null;
-  return `<div class="story-media ${className}">
-    ${image && image !== '#' ? `<img
-      src="${escapeHtml(image)}"
-      alt=""
-      loading="lazy"
-      decoding="async"
-      referrerpolicy="no-referrer"
-      data-remote-image
-      data-min-width="${minWidth}"
-    />` : ''}
-    <div class="media-fallback">
-      <img src="/assets/highlords-logo.svg" alt="" />
-      <span>${escapeHtml(categoryName(article))}</span>
-    </div>
-  </div>`;
-}
-
-function hydrateImages(root = document) {
-  root.querySelectorAll('img[data-remote-image]').forEach(img => {
-    if (img.dataset.hydrated === 'true') return;
-    img.dataset.hydrated = 'true';
-    const wrapper = img.closest('.story-media');
-    const minWidth = Number(img.dataset.minWidth || 240);
-
-    const reject = () => {
-      wrapper?.classList.remove('has-image');
-      img.remove();
-    };
-
-    const accept = () => {
-      const width = img.naturalWidth || 0;
-      const height = img.naturalHeight || 0;
-      const ratio = height ? width / height : 0;
-      if (width < minWidth || height < 120 || ratio < 0.75 || ratio > 3.2) {
-        reject();
-        return;
-      }
-      wrapper?.classList.add('has-image');
-    };
-
-    img.addEventListener('load', accept, { once: true });
-    img.addEventListener('error', reject, { once: true });
-    if (img.complete) queueMicrotask(() => (img.naturalWidth ? accept() : reject()));
-  });
-}
-
 function storyTitle(article) {
   return escapeHtml(article?.headline || article?.originalTitle || 'Sem título');
 }
@@ -135,81 +74,180 @@ function storyLink(article) {
   return escapeHtml(safeUrl(article?.link));
 }
 
-function renderLead(article) {
-  if (!article) return '';
-  return `
-    <a class="lead-media-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
-      ${media(article, 'lead-media', 440)}
-    </a>
-    <div class="lead-copy">
-      <div class="story-kicker">${escapeHtml(categoryName(article))}<span>Manchete</span></div>
+function articleMeta(article) {
+  const score = Number(article?.score || 0).toFixed(1);
+  return `<div class="story-meta">
+    <span class="source-name">${escapeHtml(article?.source || '')}</span>
+    <span>${escapeHtml(relativeDate(article?.publishedAt))}</span>
+    <span class="relevance" title="Relevância editorial">${score}</span>
+  </div>`;
+}
+
+function imageMarkup(article, className) {
+  const src = proxiedImage(article?.imageUrl);
+  if (!src) return '';
+  return `<div class="${className}" data-media>
+    <img src="${escapeHtml(src)}" alt="" loading="lazy" decoding="async" data-story-image />
+  </div>`;
+}
+
+function hydrateImages(root = document) {
+  root.querySelectorAll('img[data-story-image]').forEach(img => {
+    if (img.dataset.hydrated) return;
+    img.dataset.hydrated = '1';
+    const container = img.closest('[data-media]');
+    const card = img.closest('.hero-card, .story-card, .earlier-item');
+
+    const reject = () => {
+      container?.remove();
+      card?.classList.add('no-media');
+    };
+
+    img.addEventListener('error', reject, { once: true });
+    if (img.complete && !img.naturalWidth) queueMicrotask(reject);
+  });
+}
+
+function byScore(a, b) {
+  const scoreDiff = Number(b.score || 0) - Number(a.score || 0);
+  if (scoreDiff) return scoreDiff;
+  return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+}
+
+function byRecent(a, b) {
+  return new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+}
+
+function uniqueArticles(items) {
+  const seen = new Set();
+  return items.filter(article => {
+    if (!article || seen.has(article.id)) return false;
+    seen.add(article.id);
+    return true;
+  });
+}
+
+function filteredArticles() {
+  const items = state.activeFilter === 'all'
+    ? state.articles
+    : state.articles.filter(article => article.category === state.activeFilter);
+  return uniqueArticles(items);
+}
+
+function selectHero(items) {
+  if (!items.length) return null;
+  if (state.activeFilter === 'all' && state.edition?.lead) {
+    const curated = items.find(article => article.id === state.edition.lead.id);
+    if (curated) return curated;
+  }
+  return [...items].sort(byScore)[0] || items[0];
+}
+
+function renderHero(article) {
+  const hero = el('hero');
+  if (!article) {
+    hero.innerHTML = '';
+    hero.classList.add('no-media');
+    return;
+  }
+
+  const media = imageMarkup(article, 'hero-media-wrap');
+  hero.classList.toggle('no-media', !media);
+  hero.innerHTML = `
+    ${media ? `<a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
+    <div class="hero-body">
+      <span class="hero-kicker">${escapeHtml(categoryName(article))} · MANCHETE</span>
       <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
-        <h1>${storyTitle(article)}</h1>
+        <h2 class="hero-title">${storyTitle(article)}</h2>
       </a>
-      <p class="lead-summary">${escapeHtml(article.summary || article.excerpt || '')}</p>
-      <div class="lead-footer">
+      <p class="hero-summary">${escapeHtml(article.summary || article.excerpt || '')}</p>
+      <div class="hero-footer">
         ${articleMeta(article)}
         <a class="read-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">Ler matéria <span>↗</span></a>
       </div>
     </div>`;
 }
 
-function renderHighlight(article, index) {
-  return `<article class="highlight-item">
-    <span class="highlight-index">${String(index + 1).padStart(2, '0')}</span>
-    <div class="highlight-copy">
-      <span class="story-kicker compact-kicker">${escapeHtml(categoryName(article))}</span>
+function renderLatest(article, index) {
+  return `<article class="latest-item">
+    <div class="latest-item-head">
+      <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
+      <span class="latest-index">${String(index + 1).padStart(2, '0')}</span>
+    </div>
+    <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
+      <h3 class="latest-title">${storyTitle(article)}</h3>
+    </a>
+    ${articleMeta(article)}
+  </article>`;
+}
+
+function renderCard(article) {
+  const media = imageMarkup(article, 'story-media');
+  return `<article class="story-card ${media ? '' : 'no-media'}">
+    ${media ? `<a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
+    <div class="story-body">
+      <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
       <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
-        <h3>${storyTitle(article)}</h3>
+        <h3 class="story-title">${storyTitle(article)}</h3>
       </a>
-      ${articleMeta(article, true)}
+      <p class="story-summary">${escapeHtml(article.summary || article.excerpt || '')}</p>
+      ${articleMeta(article)}
     </div>
   </article>`;
 }
 
-function renderCompactStory(article) {
-  return `<article class="list-story">
-    <div class="list-story-copy">
-      <span class="story-kicker compact-kicker">${escapeHtml(categoryName(article))}</span>
+function renderEarlier(article) {
+  const media = imageMarkup(article, 'earlier-thumb');
+  return `<article class="earlier-item ${media ? '' : 'no-media'}">
+    <div>
+      <span class="story-kicker">${escapeHtml(categoryName(article))}</span>
       <a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">
-        <h3>${storyTitle(article)}</h3>
+        <h3 class="earlier-title">${storyTitle(article)}</h3>
       </a>
-      ${articleMeta(article, true)}
+      ${articleMeta(article)}
     </div>
-    ${article.imageUrl ? `<div class="mini-thumb">${media(article, 'mini-media', 120)}</div>` : ''}
+    ${media ? `<a class="story-link" href="${storyLink(article)}" target="_blank" rel="noopener noreferrer">${media}</a>` : ''}
   </article>`;
 }
 
-function renderSection(section, leadId) {
-  const articles = (section.articles || []).filter(article => article.id !== leadId);
-  const [featured, ...rest] = articles;
-  if (!featured) return '';
+function renderDashboard() {
+  const items = filteredArticles();
+  const hero = selectHero(items);
+  const recent = [...items].sort(byRecent).filter(article => article.id !== hero?.id);
+  const latest = recent.slice(0, 4);
+  const used = new Set([hero?.id, ...latest.map(article => article.id)].filter(Boolean));
+  const featured = [...items].sort(byScore).filter(article => !used.has(article.id)).slice(0, 6);
+  featured.forEach(article => used.add(article.id));
+  const earlier = recent.filter(article => !used.has(article.id)).slice(0, 12);
 
-  return `<section class="news-section" id="section-${escapeHtml(section.slug)}">
-    <header class="section-header">
-      <div>
-        <span class="section-eyebrow">${escapeHtml(section.name)}</span>
-        <h2>${escapeHtml(section.name)}</h2>
-      </div>
-      <span class="section-count">${articles.length} matéria${articles.length === 1 ? '' : 's'}</span>
-    </header>
+  renderHero(hero);
+  el('latestList').innerHTML = latest.length
+    ? latest.map(renderLatest).join('')
+    : '<p class="last-run">Sem outras matérias nesta categoria.</p>';
+  el('storyGrid').innerHTML = featured.map(renderCard).join('');
+  el('earlierList').innerHTML = earlier.map(renderEarlier).join('');
+  el('earlierSection').classList.toggle('hidden', !earlier.length);
 
-    <div class="section-grid">
-      <article class="section-feature">
-        <a href="${storyLink(featured)}" target="_blank" rel="noopener noreferrer" class="section-media-link">
-          ${media(featured, 'section-media', 320)}
-        </a>
-        <div class="section-feature-copy">
-          <a class="story-link" href="${storyLink(featured)}" target="_blank" rel="noopener noreferrer">
-            <h3>${storyTitle(featured)}</h3>
-          </a>
-          <p>${escapeHtml(featured.summary || featured.excerpt || '')}</p>
-          ${articleMeta(featured)}
-        </div>
-      </article>
-      <div class="section-list">${rest.slice(0, 5).map(renderCompactStory).join('')}</div>
-    </div>
-  </section>`;
+  const sourceCount = new Set(items.map(article => article.source)).size;
+  el('editionCount').textContent = `${items.length} matéria${items.length === 1 ? '' : 's'}`;
+  el('statArticles').textContent = items.length;
+  el('statSources').textContent = sourceCount;
+  el('statMode').textContent = state.edition?.curatedBy === 'ollama' ? 'Curadoria IA local' : 'Ranking local';
+  el('editorStatus').textContent = state.edition?.curatedBy === 'ollama' ? 'Curadoria por IA local' : 'Curadoria por relevância';
+
+  const hasContent = Boolean(items.length);
+  el('edition').classList.toggle('hidden', !hasContent);
+  el('welcome').classList.toggle('hidden', hasContent);
+
+  if (!hasContent) {
+    const running = Boolean(state.health?.refresh?.running);
+    el('welcomeTitle').textContent = running ? 'Sua edição está sendo preparada.' : 'Nenhuma matéria nesta visualização.';
+    el('welcomeCopy').innerHTML = running
+      ? 'O Ollama está classificando e resumindo as notícias. Esta tela atualiza quando o processamento terminar.'
+      : 'Troque de categoria ou clique em <strong>Atualizar</strong> para buscar novas notícias.';
+  }
+
+  requestAnimationFrame(() => hydrateImages(el('edition')));
 }
 
 function enabledCategories() {
@@ -223,118 +261,32 @@ function normalizeFilter() {
 }
 
 function renderCategories() {
-  const bar = el('categoryBar');
-  const categories = enabledCategories();
   normalizeFilter();
+  el('categoryBar').innerHTML = `
+    <button class="category-chip ${state.activeFilter === 'all' ? 'active' : ''}" data-filter="all">Todos</button>
+    ${enabledCategories().map(category => `<button class="category-chip ${state.activeFilter === category.slug ? 'active' : ''}" data-filter="${escapeHtml(category.slug)}">${escapeHtml(category.name)}</button>`).join('')}`;
 
-  bar.innerHTML = `
-    <button class="category-chip ${state.activeFilter === 'all' ? 'active' : ''}" data-filter="all" aria-pressed="${state.activeFilter === 'all'}">Todos</button>
-    ${categories.map(category => `<button
-      class="category-chip ${state.activeFilter === category.slug ? 'active' : ''}"
-      data-filter="${escapeHtml(category.slug)}"
-      aria-pressed="${state.activeFilter === category.slug}"
-    >${escapeHtml(category.name)}</button>`).join('')}`;
-
-  bar.querySelectorAll('[data-filter]').forEach(button => {
+  el('categoryBar').querySelectorAll('[data-filter]').forEach(button => {
     button.addEventListener('click', () => {
       state.activeFilter = button.dataset.filter || 'all';
       localStorage.setItem('highlords:filter', state.activeFilter);
       renderCategories();
-      if (state.edition) renderEdition(state.edition);
+      renderDashboard();
     });
   });
 }
 
-function uniqueArticles(articles) {
-  const seen = new Set();
-  return articles.filter(article => {
-    if (!article || seen.has(article.id)) return false;
-    seen.add(article.id);
-    return true;
-  });
-}
-
-function viewEdition(edition) {
-  if (!edition || state.activeFilter === 'all') return edition;
-
-  const section = edition.sections.find(item => item.slug === state.activeFilter);
-  const candidates = uniqueArticles([
-    edition.lead?.category === state.activeFilter ? edition.lead : null,
-    ...(section?.articles || [])
-  ].filter(Boolean));
-
-  const lead = candidates[0] || null;
-  const category = enabledCategories().find(item => item.slug === state.activeFilter);
-
-  return {
-    ...edition,
-    lead,
-    stats: {
-      articles: candidates.length,
-      sources: new Set(candidates.map(article => article.source)).size
-    },
-    sections: category ? [{ ...category, articles: candidates.slice(1) }] : []
-  };
-}
-
-function editionHighlights(edition) {
-  if (!edition) return [];
-  return uniqueArticles([
-    ...edition.sections.flatMap(section => section.articles || [])
-  ])
-    .filter(article => article.id !== edition.lead?.id)
-    .sort((a, b) => Number(b.score || 0) - Number(a.score || 0))
-    .slice(0, 4);
-}
-
-function renderEdition(rawEdition) {
-  state.edition = rawEdition;
-  const edition = viewEdition(rawEdition);
-  if (!edition) return;
-
-  el('editorStatus').textContent = rawEdition.curatedBy === 'ollama' ? 'Curadoria por IA local' : 'Curadoria por relevância';
-  el('lead').innerHTML = renderLead(edition.lead);
-
-  const highlights = editionHighlights(edition);
-  el('highlights').innerHTML = highlights.length
-    ? highlights.map(renderHighlight).join('')
-    : '<p class="rail-empty">Sem outros destaques nesta visualização.</p>';
-
-  const visibleSections = edition.sections.filter(section => (section.articles || []).some(article => article.id !== edition.lead?.id));
-  el('sections').innerHTML = visibleSections.map(section => renderSection(section, edition.lead?.id)).join('');
-
-  const articleCount = Number(edition.stats?.articles || 0);
-  const sourceCount = Number(edition.stats?.sources || 0);
-  el('editionCount').textContent = articleCount ? `${articleCount} matérias` : '';
-  el('statArticles').textContent = articleCount;
-  el('statSources').textContent = sourceCount;
-  el('statMode').textContent = rawEdition.curatedBy === 'ollama' ? 'IA local' : 'Ranking';
-  if (state.health?.ollama?.model) el('statModel').textContent = state.health.ollama.model;
-
-  const hasContent = Boolean(edition.lead) || visibleSections.length > 0;
-  el('edition').classList.toggle('hidden', !hasContent);
-  el('welcome').classList.toggle('hidden', hasContent);
-
-  requestAnimationFrame(() => hydrateImages(el('edition')));
-}
-
-async function loadEdition() {
+async function loadContent() {
   el('loading').classList.remove('hidden');
   el('errorBox').classList.add('hidden');
-
   try {
-    const edition = await api('/api/edition');
-    renderEdition(edition);
-
-    const hasContent = Boolean(edition.lead) || edition.sections.some(section => section.articles.length);
-    if (!hasContent) {
-      el('welcome').classList.remove('hidden');
-      const running = Boolean(state.health?.refresh?.running);
-      el('welcomeTitle').textContent = running ? 'Sua edição está sendo preparada.' : 'Sua edição ainda está vazia.';
-      el('welcomeCopy').innerHTML = running
-        ? 'O Ollama está classificando e resumindo as notícias. Você pode continuar nesta tela; ela atualiza quando o processamento terminar.'
-        : 'Clique em <strong>Atualizar</strong> para coletar e analisar as fontes cadastradas.';
-    }
+    const [edition, articles] = await Promise.all([
+      api('/api/edition'),
+      api('/api/articles?limit=120')
+    ]);
+    state.edition = edition;
+    state.articles = Array.isArray(articles) ? articles : [];
+    renderDashboard();
   } catch (error) {
     el('errorBox').textContent = error.message;
     el('errorBox').classList.remove('hidden');
@@ -372,8 +324,7 @@ function renderSettings() {
   el('categoryCount').textContent = `${enabledCategories().length} ativas`;
 
   el('feedsList').innerHTML = state.feeds.length
-    ? state.feeds.map(feed => `
-      <div class="settings-item">
+    ? state.feeds.map(feed => `<div class="settings-item">
         <div class="settings-item-copy">
           <strong>${escapeHtml(feed.name)}</strong>
           <small>${escapeHtml(feed.url)}</small>
@@ -381,15 +332,11 @@ function renderSettings() {
         </div>
         <button class="text-button danger" data-delete-feed="${feed.id}">Remover</button>
       </div>`).join('')
-    : '<p class="muted">Nenhum feed adicionado.</p>';
+    : '<p class="last-run">Nenhuma fonte adicionada.</p>';
 
-  el('categoriesList').innerHTML = state.categories.map(category => `
-    <div class="settings-item ${category.enabled ? '' : 'disabled-item'}" data-slug="${escapeHtml(category.slug)}">
+  el('categoriesList').innerHTML = state.categories.map(category => `<div class="settings-item ${category.enabled ? '' : 'disabled-item'}" data-slug="${escapeHtml(category.slug)}">
       <div class="settings-item-copy">
-        <div class="item-title-row">
-          <strong>${escapeHtml(category.name)}</strong>
-          ${category.enabled ? '' : '<span class="mini-badge">pausada</span>'}
-        </div>
+        <div class="item-title-row"><strong>${escapeHtml(category.name)}</strong>${category.enabled ? '' : '<span class="mini-badge">pausada</span>'}</div>
         <small>${escapeHtml(category.description || 'Sem descrição')}</small>
       </div>
       <div class="item-actions">
@@ -463,15 +410,12 @@ async function loadHealth() {
   try {
     const health = await api('/api/health');
     state.health = health;
-
     const status = el('ollamaStatus');
     status.classList.toggle('ok', health.ollama.ok);
     status.classList.toggle('bad', !health.ollama.ok);
     status.textContent = health.ollama.ok
       ? `${health.ollama.model}${health.ollama.modelAvailable ? '' : ' · ausente'}`
       : 'Ollama offline';
-
-    if (health.ollama.model) el('statModel').textContent = health.ollama.model;
     refreshPresentation(health.refresh);
 
     const run = health.refresh?.lastRun;
@@ -493,7 +437,7 @@ async function loadBootstrap() {
   renderCategories();
   renderSettings();
   await loadHealth();
-  await loadEdition();
+  await loadContent();
 }
 
 async function pollRefresh() {
@@ -525,10 +469,7 @@ el('settingsBtn').addEventListener('click', () => dialog.showModal());
 document.querySelectorAll('[data-open-settings]').forEach(button => button.addEventListener('click', () => dialog.showModal()));
 el('closeSettings').addEventListener('click', () => dialog.close());
 el('cancelCategoryEdit').addEventListener('click', resetCategoryForm);
-
-dialog.addEventListener('click', event => {
-  if (event.target === dialog) dialog.close();
-});
+dialog.addEventListener('click', event => { if (event.target === dialog) dialog.close(); });
 
 el('feedForm').addEventListener('submit', async event => {
   event.preventDefault();
@@ -562,7 +503,7 @@ el('categoryForm').addEventListener('submit', async event => {
     normalizeFilter();
     renderCategories();
     renderSettings();
-    await loadEdition();
+    renderDashboard();
   } catch (error) {
     alert(error.message);
   }
