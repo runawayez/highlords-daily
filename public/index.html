@@ -3,148 +3,103 @@
 <head>
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
-  <meta name="theme-color" content="#090a0c" />
-  <meta name="description" content="Highlords Post — tecnologia, IA, desenvolvimento, mobile, hardware, software, games e futuro com curadoria local." />
-  <title>Highlords Post</title>
+  <meta name="theme-color" content="#0b0b0d" />
+  <meta name="description" content="Highlords Daily — uma newsletter diária de tecnologia, IA, desenvolvimento, gadgets, hardware, software, games e futuro." />
+  <title>Highlords Daily</title>
   <link rel="icon" href="/assets/highlords-logo.svg" />
   <link rel="stylesheet" href="/styles.css" />
 </head>
 <body>
   <header class="site-header">
-    <div class="shell masthead-row">
-      <a class="brand" href="/" aria-label="Highlords Post">
+    <div class="shell header-inner">
+      <a class="brand" href="/" aria-label="Highlords Daily">
         <img src="/assets/highlords-logo.svg" alt="" class="brand-logo" />
         <div class="brand-copy">
-          <strong>Highlords Post</strong>
+          <strong>Highlords Daily</strong>
           <span>TECNOLOGIA SEM RUÍDO</span>
         </div>
       </a>
 
       <div class="header-actions">
+        <select id="archiveSelect" class="archive-select" aria-label="Edições anteriores">
+          <option value="">Edições anteriores</option>
+        </select>
         <span id="ollamaStatus" class="status-pill">Ollama</span>
-        <button id="settingsBtn" class="icon-button" type="button" aria-label="Configurar" title="Configurar">⚙</button>
-        <button id="refreshBtn" class="button primary" type="button">Atualizar</button>
+        <button id="settingsBtn" class="icon-button" type="button" aria-label="Configurar fontes" title="Configurar fontes">⚙</button>
+        <a id="downloadPdfBtn" class="button ghost hidden" href="#">Baixar PDF</a>
+        <button id="generateBtn" class="button primary" type="button">Gerar Daily</button>
       </div>
-    </div>
-
-    <div class="shell navigation-row">
-      <nav class="primary-nav" aria-label="Navegação principal">
-        <button class="nav-button active" data-view="home" type="button">Hoje</button>
-        <button class="nav-button" data-view="saved" type="button">Ler depois <span id="savedCount" class="nav-count hidden">0</span></button>
-        <button class="nav-button" data-view="history" type="button">Histórico</button>
-      </nav>
-
-      <label class="search-box" aria-label="Pesquisar notícias">
-        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
-        <input id="searchInput" type="search" placeholder="Pesquisar na edição" autocomplete="off" />
-        <kbd>/</kbd>
-      </label>
     </div>
   </header>
 
-  <div id="refreshPanel" class="refresh-panel hidden" aria-live="polite">
-    <div class="shell refresh-panel-inner">
-      <div class="refresh-copy">
-        <strong id="refreshStage">Atualizando</strong>
-        <span id="refreshDetail"></span>
+  <div id="progressPanel" class="progress-panel hidden" aria-live="polite">
+    <div class="shell progress-inner">
+      <div>
+        <strong id="progressTitle">Preparando edição</strong>
+        <span id="progressDetail"></span>
       </div>
-      <div class="refresh-track"><span id="refreshBar"></span></div>
+      <div class="progress-track"><span id="progressBar"></span></div>
     </div>
   </div>
 
   <main class="shell main-shell">
-    <section class="page-head">
-      <div>
-        <p id="dateLabel" class="date-label"></p>
-        <h1 id="viewTitle">Sua edição</h1>
-        <p id="viewDescription" class="page-description">IA, desenvolvimento, mobile & gadgets, hardware, software & internet, games e futuro — sem política, sem ruído.</p>
-      </div>
-      <div class="run-meta">
-        <span id="editorStatus" class="editor-status"></span>
-        <span id="lastRun" class="last-run"></span>
-      </div>
-    </section>
-
-    <nav id="categoryBar" class="category-bar" aria-label="Filtrar notícias por categoria"></nav>
-
     <div id="errorBox" class="error-box hidden"></div>
-    <div id="loading" class="loading-state hidden">
-      <span class="loading-dot"></span>
-      <span>Carregando sua edição…</span>
-    </div>
 
-    <section id="homeView" class="view-section hidden">
-      <section class="hero-band">
-        <article id="hero" class="hero-card"></article>
-        <div id="heroSide" class="hero-side"></div>
-      </section>
-
-      <section class="feed-layout">
-        <section class="content-section">
-          <div class="section-heading">
-            <div>
-              <span class="eyebrow">SEU RADAR</span>
-              <h2>Mais recentes</h2>
-            </div>
-            <div class="compact-stats" aria-label="Resumo da edição">
-              <span><strong id="statArticles">0</strong> não lidas</span>
-              <span><strong id="statSources">0</strong> fontes</span>
-              <span id="statMode">Ranking</span>
-            </div>
-          </div>
-          <div id="storyGrid" class="story-grid"></div>
-        </section>
-
-        <aside id="earlierSection" class="earlier-rail">
-          <div class="section-heading rail-heading">
-            <div>
-              <span class="eyebrow">AINDA RELEVANTE</span>
-              <h2>Mais cedo</h2>
-            </div>
-            <span id="editionCount" class="panel-count"></span>
-          </div>
-          <div id="earlierList" class="earlier-list"></div>
-        </aside>
-      </section>
-    </section>
-
-    <section id="collectionView" class="view-section hidden">
-      <div class="collection-toolbar">
-        <span id="collectionCount" class="collection-count"></span>
-        <button id="clearHistoryBtn" class="button subtle hidden" type="button">Limpar histórico</button>
-      </div>
-      <div id="collectionGrid" class="collection-grid"></div>
-    </section>
-
-    <section id="welcome" class="welcome hidden">
+    <section id="emptyState" class="empty-state hidden">
       <img src="/assets/highlords-logo.svg" alt="" />
       <div>
-        <span class="eyebrow">HIGH LORDS POST</span>
-        <h2 id="welcomeTitle">Sua edição ainda está vazia.</h2>
-        <p id="welcomeCopy">Os feeds iniciais já estão configurados. Clique em <strong>Atualizar</strong> para começar.</p>
-        <button class="button ghost" data-open-settings type="button">Revisar fontes</button>
+        <span class="eyebrow">HIGH LORDS DAILY</span>
+        <h1>Sua primeira edição está pronta para ser criada.</h1>
+        <p>O Daily coleta as fontes, filtra política e ruído, escolhe as melhores notícias de tecnologia e monta uma newsletter fixa em sete seções.</p>
+        <button class="button primary" data-generate type="button">Gerar edição de hoje</button>
       </div>
     </section>
+
+    <article id="newsletter" class="newsletter hidden">
+      <header class="newsletter-head">
+        <div class="edition-brandline">
+          <span class="eyebrow">DAILY BRIEFING</span>
+          <span id="editionDate" class="edition-date"></span>
+        </div>
+        <h1 id="editionTitle"></h1>
+        <p id="editionIntro" class="edition-intro"></p>
+        <div class="edition-meta">
+          <span><strong id="storyCount">0</strong> matérias</span>
+          <span><strong id="sourceCount">0</strong> fontes</span>
+          <span id="curationMode">Curadoria local</span>
+          <span id="generatedAt"></span>
+        </div>
+      </header>
+
+      <section id="leadSection" class="lead-section"></section>
+
+      <nav id="sectionNav" class="section-nav" aria-label="Seções da newsletter"></nav>
+
+      <div id="sections" class="newsletter-sections"></div>
+
+      <footer class="newsletter-signoff">
+        <img src="/assets/highlords-logo.svg" alt="" />
+        <div>
+          <strong>Highlords Daily</strong>
+          <p>Uma leitura diária sobre tecnologia, feita para informar sem transformar seu tempo livre em mais ruído.</p>
+        </div>
+      </footer>
+    </article>
   </main>
 
   <footer class="site-footer">
     <div class="shell footer-inner">
-      <div class="footer-brand">
-        <img src="/assets/highlords-logo.svg" alt="" />
-        <strong>Highlords Post</strong>
-      </div>
-      <p>RSS + Ollama · tecnologia sem ruído</p>
+      <span>RSS + Ollama + SQLite</span>
+      <span>Processamento local · PDF sob demanda</span>
     </div>
   </footer>
-
-  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <dialog id="settingsDialog" class="settings-dialog">
     <div class="dialog-head">
       <div>
         <span class="eyebrow">CONFIGURAÇÕES</span>
-        <h2>Personalize seu jornal</h2>
-        <p>Escolha fontes e diga à IA o que cada categoria deve priorizar.</p>
+        <h2>Fontes do Highlords Daily</h2>
+        <p>As sete categorias são fixas. Você controla apenas quais fontes alimentam a newsletter.</p>
       </div>
       <button id="closeSettings" class="icon-button" aria-label="Fechar" type="button">×</button>
     </div>
@@ -152,13 +107,9 @@
     <div class="settings-grid">
       <section class="settings-section">
         <div class="settings-title-row">
-          <div>
-            <span class="settings-number">01</span>
-            <h3>Fontes RSS / Atom</h3>
-          </div>
+          <h3>RSS / Atom</h3>
           <span id="feedCount" class="mini-badge"></span>
         </div>
-        <p class="settings-help">Só as fontes desta lista entram na coleta.</p>
         <form id="feedForm" class="stack-form">
           <input name="name" placeholder="Nome da fonte" maxlength="100" required />
           <input name="url" placeholder="https://exemplo.com/rss" type="url" required />
@@ -167,33 +118,18 @@
         <div id="feedsList" class="settings-list"></div>
       </section>
 
-      <section class="settings-section">
-        <div class="settings-section-head">
-          <div class="settings-title-row">
-            <div>
-              <span class="settings-number">02</span>
-              <h3 id="categoryFormTitle">Categorias</h3>
-            </div>
-            <span id="categoryCount" class="mini-badge"></span>
-          </div>
-          <button id="cancelCategoryEdit" class="button text compact hidden" type="button">Cancelar</button>
+      <section class="settings-section fixed-taxonomy">
+        <div class="settings-title-row">
+          <h3>Seções fixas</h3>
+          <span class="mini-badge">7</span>
         </div>
-        <p class="settings-help">A descrição é usada pelo Ollama para classificar e pontuar as notícias.</p>
-        <form id="categoryForm" class="stack-form">
-          <input type="hidden" name="id" />
-          <input name="name" placeholder="Nome da categoria" maxlength="80" required />
-          <textarea name="description" placeholder="Ex.: hardware, Linux e open source; evitar rumores e publieditoriais." rows="4"></textarea>
-          <label class="checkbox-row hidden" id="categoryEnabledRow">
-            <input name="enabled" type="checkbox" checked />
-            <span>Categoria ativa</span>
-          </label>
-          <button id="categorySubmit" class="button primary" type="submit">Criar categoria</button>
-        </form>
-        <div id="categoriesList" class="settings-list"></div>
+        <p class="settings-help">Toda edição preserva estas seções. Se não houver uma notícia boa o bastante, a seção aparece sem destaque em vez de receber conteúdo fraco.</p>
+        <div id="fixedCategories" class="fixed-category-list"></div>
       </section>
     </div>
   </dialog>
 
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
   <script type="module" src="/app.js"></script>
 </body>
 </html>
