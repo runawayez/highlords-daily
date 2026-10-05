@@ -1,10 +1,15 @@
 import { db, listCategories, listFeeds } from '../db.mjs';
 import { config } from '../config.mjs';
 import { fetchFeed } from './rss.mjs';
-import { analyzeArticle } from './ollama.mjs';
+import { analyzeArticle, curateEdition } from './ollama.mjs';
 
 let refreshPromise = null;
 let lastRun = null;
+const editionCache = new Map();
+
+function clearEditionCache() {
+  editionCache.clear();
+}
 
 function setFeedStatus(id, error = null) {
   db.prepare(`
@@ -93,6 +98,7 @@ async function runRefresh() {
     }
   }
 
+  clearEditionCache();
   lastRun = {
     startedAt,
     finishedAt: new Date().toISOString(),
@@ -115,6 +121,10 @@ export function refreshNews() {
 
 export function refreshStatus() {
   return { running: Boolean(refreshPromise), lastRun };
+}
+
+export function invalidateEditions() {
+  clearEditionCache();
 }
 
 export function listArticles({ categories = [], limit = 80 } = {}) {
@@ -152,25 +162,100 @@ export function listArticles({ categories = [], limit = 80 } = {}) {
   }));
 }
 
-export function buildEdition(categorySlugs = []) {
-  const categories = listCategories().filter(category => category.enabled);
-  const selected = categorySlugs.length ? categorySlugs : categories.map(category => category.slug);
-  const articles = listArticles({ categories: selected, limit: 120 });
+function fallbackEdition(articles, categories) {
   const lead = articles[0] || null;
-  const byCategory = {};
+  return {
+    lead,
+    sections: categories.map(category => ({
+      ...category,
+      articles: articles
+        .filter(article => article.category === category.slug && article.id !== lead?.id)
+        .slice(0, 6)
+    }))
+  };
+}
 
-  for (const category of categories) {
-    if (!selected.includes(category.slug)) continue;
-    byCategory[category.slug] = articles
-      .filter(article => article.category === category.slug && article.id !== lead?.id)
-      .slice(0, 8);
+function normalizeCuratedEdition(curated, articles, categories) {
+  const byId = new Map(articles.map(article => [Number(article.id), article]));
+  const bySlug = new Map(categories.map(category => [category.slug, category]));
+  const used = new Set();
+
+  const leadId = Number(curated?.leadId);
+  const lead = byId.get(leadId) || articles[0] || null;
+  if (lead) used.add(lead.id);
+
+  const requestedOrder = Array.isArray(curated?.sectionOrder) ? curated.sectionOrder : [];
+  const order = [
+    ...requestedOrder.filter(slug => bySlug.has(slug)),
+    ...categories.map(category => category.slug).filter(slug => !requestedOrder.includes(slug))
+  ];
+
+  const sections = [];
+  for (const slug of order) {
+    const category = bySlug.get(slug);
+    if (!category) continue;
+    const requestedIds = Array.isArray(curated?.sections?.[slug]) ? curated.sections[slug] : [];
+    const selected = [];
+
+    for (const rawId of requestedIds) {
+      const id = Number(rawId);
+      const article = byId.get(id);
+      if (!article || article.category !== slug || used.has(id)) continue;
+      used.add(id);
+      selected.push(article);
+      if (selected.length >= 6) break;
+    }
+
+    if (selected.length < 3) {
+      for (const article of articles) {
+        if (article.category !== slug || used.has(article.id)) continue;
+        used.add(article.id);
+        selected.push(article);
+        if (selected.length >= 6) break;
+      }
+    }
+
+    sections.push({ ...category, articles: selected });
   }
 
-  return {
+  return { lead, sections };
+}
+
+export async function buildEdition(categorySlugs = []) {
+  const allCategories = listCategories().filter(category => category.enabled);
+  const selectedSlugs = categorySlugs.length
+    ? categorySlugs.filter(slug => allCategories.some(category => category.slug === slug))
+    : allCategories.map(category => category.slug);
+  const categories = allCategories.filter(category => selectedSlugs.includes(category.slug));
+  const articles = listArticles({ categories: selectedSlugs, limit: 120 });
+  const cacheKey = [...selectedSlugs].sort().join(',') || 'all';
+  const newest = articles.reduce((latest, article) => {
+    const stamp = article.publishedAt || '';
+    return stamp > latest ? stamp : latest;
+  }, '');
+  const signature = `${cacheKey}|${articles.length}|${newest}|${articles[0]?.id || 0}`;
+  const cached = editionCache.get(signature);
+  if (cached && Date.now() - cached.createdAt < 10 * 60 * 1000) return cached.value;
+
+  let arranged = fallbackEdition(articles, categories);
+  let curatedBy = 'ranking';
+
+  if (articles.length >= 2) {
+    try {
+      const curated = await curateEdition(articles, categories);
+      arranged = normalizeCuratedEdition(curated, articles, categories);
+      curatedBy = 'ollama';
+    } catch {
+      curatedBy = 'ranking';
+    }
+  }
+
+  const value = {
     generatedAt: new Date().toISOString(),
-    lead,
-    sections: categories
-      .filter(category => selected.includes(category.slug))
-      .map(category => ({ ...category, articles: byCategory[category.slug] || [] }))
+    curatedBy,
+    lead: arranged.lead,
+    sections: arranged.sections
   };
+  editionCache.set(signature, { createdAt: Date.now(), value });
+  return value;
 }
