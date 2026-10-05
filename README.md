@@ -10,17 +10,26 @@ Highlords Post coleta feeds RSS/Atom, usa uma LLM local via **Ollama** para clas
 
 O projeto nasce com três princípios: **local-first**, **interface leve** e **controle do usuário sobre as categorias**.
 
-## MVP 0.1
+## MVP 0.2
 
 - RSS/Atom configurável pela interface.
+- Feeds iniciais adicionados automaticamente na primeira execução.
 - Categorias personalizadas com descrição de interesse.
+- Categorias editáveis, pausáveis e removíveis.
+- Botão **Todos** e seleção livre das seções exibidas.
 - Ollama local para headline, resumo, categoria, score e tags.
+- **Editor-chefe local**: uma segunda etapa do Ollama escolhe a manchete, a ordem das seções e a seleção de matérias da edição.
+- Fallback automático para ranking se a etapa editorial falhar.
+- Cache curto da edição para evitar chamadas repetidas ao modelo.
 - Saída sempre em português brasileiro.
-- Seleção de categorias diretamente no jornal.
 - SQLite local.
 - Interface sem framework de frontend: HTML + CSS + JS puro.
 - Atualização manual e agendada.
 - Docker opcional.
+
+### Feeds iniciais
+
+Na primeira execução o banco recebe um conjunto pequeno de fontes para você testar imediatamente: G1, Tecnoblog, The Verge, Ars Technica, BBC World, The Guardian World e Hacker News. Elas podem ser removidas normalmente pela interface e não são recriadas depois.
 
 ## Stack
 
@@ -44,6 +53,7 @@ ollama pull qwen3:4b
 ```bash
 cp .env.example .env
 npm install
+npm run check
 npm run dev
 ```
 
@@ -54,6 +64,8 @@ http://localhost:8090
 ```
 
 O banco será criado automaticamente em `./data/highlords-post.db`.
+
+Na primeira execução, abra o site e clique em **Atualizar agora**. O primeiro processamento pode levar alguns minutos porque cada matéria nova passa pelo Ollama antes de entrar no jornal.
 
 ## Docker
 
@@ -86,7 +98,7 @@ coletor
    ↓
 normalização + deduplicação por URL
    ↓
-Ollama
+Ollama / editor de matéria
    ├─ headline em PT-BR
    ├─ resumo em PT-BR
    ├─ categoria
@@ -94,6 +106,11 @@ Ollama
    └─ tags
    ↓
 SQLite
+   ↓
+Ollama / editor-chefe
+   ├─ manchete principal
+   ├─ ordem das seções
+   └─ seleção das matérias
    ↓
 edição Highlords Post
 ```
@@ -106,7 +123,6 @@ O Ollama nunca gera o HTML. Ele devolve dados estruturados; a interface é respo
 - Feedback `quero mais / quero menos`.
 - Página de leitura posterior.
 - Extração opcional do texto integral das matérias.
-- Editor-chefe local para escolher manchete e destaques da edição.
 - Importação/exportação de OPML.
 - Fontes além de RSS: APIs, Reddit, GitHub Releases e YouTube.
 - PWA / modo offline.
