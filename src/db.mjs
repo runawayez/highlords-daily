@@ -61,6 +61,11 @@ db.exec(`
   CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_slug, score DESC);
 `);
 
+const articleColumns = new Set(db.prepare('PRAGMA table_info(articles)').all().map(column => column.name));
+if (!articleColumns.has('image_url')) {
+  db.exec('ALTER TABLE articles ADD COLUMN image_url TEXT');
+}
+
 const seedCategories = [
   ['brasil', 'Brasil', 'Política pública, economia, sociedade, infraestrutura e acontecimentos relevantes no Brasil. Evite fofoca e celebridades.', 10],
   ['mundo', 'Mundo', 'Geopolítica, acontecimentos internacionais, economia global e fatos relevantes fora do Brasil.', 20],
