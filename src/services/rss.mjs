@@ -1,10 +1,10 @@
 import Parser from 'rss-parser';
-import { config } from '../config.mjs';
+import { config, feeds } from '../config.mjs';
 
 const parser = new Parser({
   timeout: 15000,
   headers: {
-    'User-Agent': 'HighlordsPost/0.4 (+https://github.com/runawayez/highlords-post)'
+    'User-Agent': 'HighlordsDaily/2.0 (+https://github.com/runawayez/highlords-daily)'
   },
   customFields: {
     item: [
@@ -50,42 +50,29 @@ function imageCandidate(value, baseUrl) {
     if (!['http:', 'https:'].includes(url.protocol)) return null;
     const width = Number(data?.width || attrs?.width || 0);
     const height = Number(data?.height || attrs?.height || 0);
-    const type = String(data?.type || attrs?.type || '').toLowerCase();
-    return { url: url.toString(), width, height, type };
+    return { url: url.toString(), area: width > 0 && height > 0 ? width * height : 0 };
   } catch {
     return null;
   }
 }
 
-function imageScore(candidate) {
-  if (!candidate) return -1;
-  const area = candidate.width > 0 && candidate.height > 0 ? candidate.width * candidate.height : 0;
-  const imageTypeBonus = candidate.type.startsWith('image/') ? 1_000_000 : 0;
-  return imageTypeBonus + area;
-}
-
 function htmlImages(html = '', baseUrl) {
-  const matches = [...String(html).matchAll(/<img[^>]+src=["']([^"']+)["']/gi)];
-  return matches.map(match => imageCandidate(match[1], baseUrl)).filter(Boolean);
+  return [...String(html).matchAll(/<img[^>]+src=["']([^"']+)["']/gi)]
+    .map(match => imageCandidate(match[1], baseUrl))
+    .filter(Boolean);
 }
 
 function extractImage(item, baseUrl) {
-  const enclosureCandidates = asArray(item.enclosure)
-    .map(value => imageCandidate(value, baseUrl))
-    .filter(candidate => candidate && (!candidate.type || candidate.type.startsWith('image/')));
-
-  const mediaCandidates = [
+  const candidates = [
+    ...asArray(item.enclosure),
     ...asArray(item.mediaContent),
     ...asArray(item.mediaThumbnail),
     ...asArray(item.image),
     ...asArray(item.thumbnail)
   ].map(value => imageCandidate(value, baseUrl)).filter(Boolean);
 
-  const embeddedCandidates = htmlImages(item.content || item.description || item.summary || '', baseUrl);
-  const candidates = [...enclosureCandidates, ...mediaCandidates, ...embeddedCandidates];
-  if (!candidates.length) return null;
-
-  candidates.sort((a, b) => imageScore(b) - imageScore(a));
+  candidates.push(...htmlImages(item.content || item.description || item.summary || '', baseUrl));
+  candidates.sort((a, b) => b.area - a.area);
   return candidates[0]?.url || null;
 }
 
@@ -108,16 +95,15 @@ async function fetchPageImage(link) {
     const response = await fetch(link, {
       redirect: 'follow',
       headers: {
-        'user-agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 HighlordsPost/0.4',
+        'user-agent': 'Mozilla/5.0 HighlordsDaily/2.0',
         accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'
       },
-      signal: AbortSignal.timeout(7000)
+      signal: AbortSignal.timeout(6000)
     });
     if (!response.ok) return null;
-    const contentType = String(response.headers.get('content-type') || '').toLowerCase();
-    if (!contentType.includes('text/html') && !contentType.includes('application/xhtml+xml')) return null;
-
-    const html = (await response.text()).slice(0, 400_000);
+    const type = String(response.headers.get('content-type') || '').toLowerCase();
+    if (!type.includes('text/html') && !type.includes('application/xhtml+xml')) return null;
+    const html = (await response.text()).slice(0, 350_000);
     const raw = metaContent(html, 'og:image:secure_url')
       || metaContent(html, 'og:image')
       || metaContent(html, 'twitter:image')
@@ -128,46 +114,73 @@ async function fetchPageImage(link) {
   }
 }
 
-async function enrichMissingImages(articles, concurrency = 4) {
+async function enrichImages(articles) {
   let cursor = 0;
-  const workers = Math.min(concurrency, articles.length);
-
+  const workers = Math.min(4, articles.length);
   async function worker() {
-    while (true) {
-      const index = cursor;
-      cursor += 1;
-      if (index >= articles.length) return;
-      const article = articles[index];
-      if (article.imageUrl) continue;
-      article.imageUrl = await fetchPageImage(article.link);
+    while (cursor < articles.length) {
+      const index = cursor++;
+      if (!articles[index].imageUrl) articles[index].imageUrl = await fetchPageImage(articles[index].link);
     }
   }
-
-  await Promise.all(Array.from({ length: workers }, () => worker()));
+  await Promise.all(Array.from({ length: workers }, worker));
   return articles;
 }
 
-export async function fetchFeed(feed) {
+async function fetchFeed(feed) {
   const parsed = await parser.parseURL(feed.url);
   const cutoff = Date.now() - config.lookbackHours * 60 * 60 * 1000;
-
   const articles = (parsed.items || [])
-    .slice(0, Math.max(1, config.maxItemsPerFeed))
-    .map(item => {
+    .slice(0, config.maxItemsPerFeed)
+    .map((item, index) => {
       const published = itemDate(item);
       const link = item.link || item.guid;
       const excerpt = stripHtml(item.contentSnippet || item.content || item.summary || item.description || '');
       return {
-        externalId: item.guid || item.id || link,
+        id: `${feed.name}:${item.guid || item.id || link || index}`,
         source: feed.name || parsed.title || new URL(feed.url).hostname,
         originalTitle: stripHtml(item.title || 'Sem título'),
         link,
         publishedAt: published.toISOString(),
-        excerpt: excerpt.slice(0, 1800),
+        excerpt: excerpt.slice(0, 1200),
         imageUrl: extractImage(item, link || feed.url)
       };
     })
-    .filter(item => item.link && new Date(item.publishedAt).getTime() >= cutoff);
+    .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff);
 
-  return enrichMissingImages(articles);
+  return enrichImages(articles);
+}
+
+function dedupe(articles) {
+  const seenLinks = new Set();
+  const seenTitles = new Set();
+  return articles.filter(article => {
+    const titleKey = article.originalTitle.toLocaleLowerCase('pt-BR').replace(/\W+/g, ' ').trim();
+    if (seenLinks.has(article.link) || (titleKey && seenTitles.has(titleKey))) return false;
+    seenLinks.add(article.link);
+    if (titleKey) seenTitles.add(titleKey);
+    return true;
+  });
+}
+
+export async function fetchAllFeeds(onProgress = () => {}) {
+  const articles = [];
+  const errors = [];
+
+  for (let index = 0; index < feeds.length; index += 1) {
+    const feed = feeds[index];
+    onProgress({ index: index + 1, total: feeds.length, feed: feed.name });
+    try {
+      articles.push(...await fetchFeed(feed));
+    } catch (error) {
+      errors.push(`${feed.name}: ${error.message || String(error)}`);
+    }
+  }
+
+  const unique = dedupe(articles)
+    .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+    .slice(0, config.maxCandidates);
+
+  unique.forEach((article, index) => { article.id = index + 1; });
+  return { articles: unique, errors };
 }
