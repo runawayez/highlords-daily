@@ -70,7 +70,11 @@ app.delete('/api/categories/:id', async (request, reply) => {
   if (!Number.isInteger(id)) return reply.code(400).send({ error: 'Categoria inválida.' });
   const category = db.prepare('SELECT slug FROM categories WHERE id = ?').get(id);
   if (!category) return reply.code(404).send({ error: 'Categoria não encontrada.' });
-  db.prepare('UPDATE articles SET category_slug = NULL WHERE category_slug = ?').run(category.slug);
+  db.prepare(`
+    UPDATE articles
+    SET category_slug = NULL, processed = 0, updated_at = ?
+    WHERE category_slug = ?
+  `).run(new Date().toISOString(), category.slug);
   db.prepare('DELETE FROM categories WHERE id = ?').run(id);
   invalidateEditions();
   return { ok: true };
