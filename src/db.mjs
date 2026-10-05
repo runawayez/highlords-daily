@@ -66,12 +66,17 @@ if (!articleColumns.has('image_url')) {
   db.exec('ALTER TABLE articles ADD COLUMN image_url TEXT');
 }
 
+// A navegação não possui uma categoria genérica "Tecnologia". "Todos" já cumpre
+// esse papel. Cada notícia deve cair na seção mais específica possível e usar
+// tags para representar assuntos secundários, marcas e tecnologias relacionadas.
 const seedCategories = [
-  ['tecnologia', 'Tecnologia', 'Hardware, software e produtos de tecnologia de uso geral: dispositivos, PCs, smartphones, chips, sistemas operacionais, browsers, internet, segurança e open source. Use como categoria guarda-chuva apenas quando IA, Desenvolvimento, Games ou Inovação não forem mais específicas.', 10],
-  ['ia', 'IA', 'Inteligência artificial, modelos de linguagem, agentes, machine learning, OpenAI, Anthropic, Gemini, pesquisa aplicada, ferramentas, chips para IA, produtos e usos práticos cujo assunto central seja IA.', 20],
-  ['qa-dev', 'Desenvolvimento', 'Engenharia de software, programação, QA, automação de testes, Playwright, frameworks, linguagens, APIs, bancos de dados, DevOps, cloud, GitHub, CI/CD, IDEs e ferramentas para desenvolvedores.', 30],
-  ['games', 'Games', 'Jogos de PC e console, Steam, indies, RPGs, lançamentos, plataformas, engines, estúdios, hardware gamer e desenvolvimento de jogos. Evite esports e celebridades.', 40],
-  ['inovacao', 'Inovação', 'Robótica, computação quântica, realidade virtual e aumentada, interfaces emergentes, protótipos, wearables, computação espacial e tecnologias experimentais com potencial prático.', 50]
+  ['ia', 'IA', 'Inteligência artificial como assunto principal: OpenAI, Anthropic, Gemini, LLMs, modelos multimodais, agentes, machine learning, geração de imagem ou vídeo, ferramentas e produtos de IA. Chips entram aqui apenas quando a história é principalmente sobre IA; caso contrário use Hardware.', 10],
+  ['desenvolvimento', 'Desenvolvimento', 'Programação e engenharia de software: linguagens, frameworks, bibliotecas, APIs, bancos de dados, GitHub, GitLab, IDEs, SDKs, open source, QA, testes, automação, DevOps, cloud, containers, CI/CD e ferramentas para desenvolvedores.', 20],
+  ['mobile-gadgets', 'Mobile & Gadgets', 'Smartphones, tablets, smartwatches, wearables, fones, smart home, acessórios e gadgets de consumo. Priorize lançamentos, updates relevantes, comparativos técnicos e novos recursos de dispositivos.', 30],
+  ['hardware', 'Hardware', 'CPUs, GPUs, PCs, notebooks, monitores, periféricos, armazenamento, memória, placas, semicondutores e componentes. Hardware gamer continua aqui quando o foco é o componente; use Games quando o foco principal é jogar ou uma plataforma de jogos.', 40],
+  ['software-internet', 'Software & Internet', 'Sistemas operacionais, Windows, Linux, macOS, Android e iOS quando o foco é software; browsers, aplicativos, serviços digitais, segurança, privacidade, web, redes, plataformas e mudanças relevantes da internet.', 50],
+  ['games', 'Games', 'Jogos de PC e console, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, lançamentos, updates de jogos, estúdios, engines e desenvolvimento de games. Evite esports, celebridades e drama sem relevância para jogos.', 60],
+  ['futuro', 'Futuro', 'Tecnologias emergentes e pesquisa aplicada: robótica, computação quântica, realidade virtual ou aumentada, computação espacial, novas interfaces, protótipos e tecnologias experimentais com potencial prático.', 70]
 ];
 
 const insertCategory = db.prepare(`
@@ -100,7 +105,7 @@ if (!alreadySeeded) {
   db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(seedKey, new Date().toISOString());
 }
 
-// v0.8 changes the editorial scope from general news to a calm technology reader.
+// v0.8: remove fontes de notícias gerais e política de instalações antigas.
 const focusMigrationKey = 'tech-focus-v1';
 const focusMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(focusMigrationKey);
 if (!focusMigrated) {
@@ -118,10 +123,6 @@ if (!focusMigrated) {
 
     DELETE FROM categories WHERE slug IN ('brasil', 'mundo', 'ciencia');
 
-    UPDATE categories
-    SET enabled = 0
-    WHERE slug NOT IN ('tecnologia', 'ia', 'qa-dev', 'games', 'inovacao');
-
     UPDATE articles
     SET headline = NULL,
         summary = NULL,
@@ -132,28 +133,22 @@ if (!focusMigrated) {
         updated_at = CURRENT_TIMESTAMP;
   `);
 
-  const upsertCategory = db.prepare(`
-    INSERT INTO categories (slug, name, description, position, enabled)
-    VALUES (?, ?, ?, ?, 1)
-    ON CONFLICT(slug) DO UPDATE SET
-      name = excluded.name,
-      description = excluded.description,
-      position = excluded.position,
-      enabled = 1
-  `);
-  for (const row of seedCategories) upsertCategory.run(...row);
-
   const insertFeed = db.prepare('INSERT OR IGNORE INTO feeds (name, url) VALUES (?, ?)');
   for (const feed of defaultFeeds) insertFeed.run(...feed);
 
   db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(focusMigrationKey, new Date().toISOString());
 }
 
-// v0.8.1 makes Tecnologia a fallback instead of swallowing AI/Dev/Games/Innovation.
-// Reclassify existing tech-focused stories once with the stricter classifier.
-const categorySpecificityKey = 'category-specificity-v1';
-const categorySpecificityMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(categorySpecificityKey);
-if (!categorySpecificityMigrated) {
+// v0.9: troca o guarda-chuva "Tecnologia" por sete seções específicas.
+// A migração roda uma única vez e reclassifica o acervo com a nova taxonomia.
+const taxonomyMigrationKey = 'editorial-taxonomy-v2';
+const taxonomyMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(taxonomyMigrationKey);
+if (!taxonomyMigrated) {
+  db.exec(`
+    DELETE FROM categories WHERE slug IN ('tecnologia', 'qa-dev', 'inovacao');
+    UPDATE categories SET enabled = 0;
+  `);
+
   const upsertCategory = db.prepare(`
     INSERT INTO categories (slug, name, description, position, enabled)
     VALUES (?, ?, ?, ?, 1)
@@ -175,7 +170,8 @@ if (!categorySpecificityMigrated) {
         processed = 0,
         updated_at = CURRENT_TIMESTAMP;
   `);
-  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(categorySpecificityKey, new Date().toISOString());
+
+  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(taxonomyMigrationKey, new Date().toISOString());
 }
 
 export function slugify(input) {
