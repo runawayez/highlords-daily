@@ -5,6 +5,7 @@ import fastifyStatic from '@fastify/static';
 import { config } from './config.mjs';
 import { db, listCategories, listFeeds, slugify } from './db.mjs';
 import { checkOllama } from './services/ollama.mjs';
+import { fetchRemoteImage } from './services/image.mjs';
 import { buildEdition, invalidateEditions, listArticles, refreshNews, refreshStatus } from './services/news.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
@@ -17,7 +18,7 @@ await app.register(fastifyStatic, {
 
 app.get('/api/health', async () => ({
   app: 'Highlords Post',
-  version: '0.3.0',
+  version: '0.4.1',
   ollama: await checkOllama(),
   refresh: refreshStatus()
 }));
@@ -124,6 +125,22 @@ app.get('/api/edition', async request => {
     .map(value => value.trim())
     .filter(Boolean);
   return buildEdition(categories);
+});
+
+app.get('/api/image', async (request, reply) => {
+  const url = String(request.query?.url || '').trim();
+  if (!url) return reply.code(400).send({ error: 'URL de imagem ausente.' });
+
+  try {
+    const image = await fetchRemoteImage(url);
+    return reply
+      .header('Cache-Control', 'public, max-age=3600, stale-while-revalidate=86400')
+      .type(image.contentType)
+      .send(image.body);
+  } catch (error) {
+    request.log.debug({ err: error, url }, 'Falha ao carregar imagem remota');
+    return reply.code(404).send({ error: 'Imagem indisponível.' });
+  }
 });
 
 app.get('/api/refresh/status', async () => refreshStatus());
