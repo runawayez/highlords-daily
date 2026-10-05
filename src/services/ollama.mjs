@@ -20,6 +20,33 @@ function safeJson(content) {
   return JSON.parse(cleaned);
 }
 
+async function chatJson(system, user, timeout = 120000) {
+  const response = await fetch(`${config.ollamaHost}/api/chat`, {
+    method: 'POST',
+    headers: { 'content-type': 'application/json' },
+    body: JSON.stringify({
+      model: config.ollamaModel,
+      stream: false,
+      think: false,
+      format: 'json',
+      messages: [
+        { role: 'system', content: system },
+        { role: 'user', content: user }
+      ],
+      options: { temperature: 0.15 }
+    }),
+    signal: AbortSignal.timeout(timeout)
+  });
+
+  if (!response.ok) {
+    const body = await response.text();
+    throw new Error(`Ollama HTTP ${response.status}: ${body.slice(0, 180)}`);
+  }
+
+  const payload = await response.json();
+  return safeJson(payload?.message?.content);
+}
+
 export async function analyzeArticle(article, categories) {
   const categoryText = categories
     .filter(category => category.enabled)
@@ -42,30 +69,7 @@ Retorne SOMENTE JSON válido com este formato:
     excerpt: article.excerpt
   })}`;
 
-  const response = await fetch(`${config.ollamaHost}/api/chat`, {
-    method: 'POST',
-    headers: { 'content-type': 'application/json' },
-    body: JSON.stringify({
-      model: config.ollamaModel,
-      stream: false,
-      think: false,
-      format: 'json',
-      messages: [
-        { role: 'system', content: system },
-        { role: 'user', content: user }
-      ],
-      options: { temperature: 0.15 }
-    }),
-    signal: AbortSignal.timeout(120000)
-  });
-
-  if (!response.ok) {
-    const body = await response.text();
-    throw new Error(`Ollama HTTP ${response.status}: ${body.slice(0, 180)}`);
-  }
-
-  const payload = await response.json();
-  const parsed = safeJson(payload?.message?.content);
+  const parsed = await chatJson(system, user);
   const validSlugs = new Set(categories.filter(c => c.enabled).map(c => c.slug));
   const category = typeof parsed.category === 'string' && validSlugs.has(parsed.category)
     ? parsed.category
@@ -80,4 +84,37 @@ Retorne SOMENTE JSON válido com este formato:
       ? parsed.tags.map(tag => String(tag).trim()).filter(Boolean).slice(0, 8)
       : []
   };
+}
+
+export async function curateEdition(articles, categories) {
+  const compactArticles = articles.slice(0, 48).map(article => ({
+    id: article.id,
+    category: article.category,
+    score: article.score,
+    source: article.source,
+    publishedAt: article.publishedAt,
+    headline: article.headline || article.originalTitle,
+    summary: article.summary
+  }));
+
+  const categoryText = categories.map(category => ({
+    slug: category.slug,
+    name: category.name,
+    description: category.description
+  }));
+
+  const system = `Você é o editor-chefe do Highlords Post.
+Monte uma edição curta, equilibrada e útil usando SOMENTE os IDs de matérias fornecidos.
+Escolha uma manchete principal que seja importante, recente e relevante — não apenas a de maior score.
+Evite concentrar toda a edição numa única fonte ou assunto quando houver boas alternativas.
+Não invente nem reescreva fatos nesta etapa: você só organiza matérias já processadas.
+Retorne SOMENTE JSON válido no formato:
+{"leadId":123,"sectionOrder":["slug"],"sections":{"slug":[123,456]}}
+Use no máximo 6 matérias por seção. Cada ID deve aparecer no máximo uma vez. A leadId não deve reaparecer nas seções.`;
+
+  return chatJson(
+    system,
+    `Categorias selecionadas:\n${JSON.stringify(categoryText)}\n\nMatérias candidatas:\n${JSON.stringify(compactArticles)}`,
+    90000
+  );
 }
