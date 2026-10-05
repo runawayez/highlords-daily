@@ -4,7 +4,7 @@
   <meta charset="utf-8" />
   <meta name="viewport" content="width=device-width,initial-scale=1" />
   <meta name="theme-color" content="#090a0c" />
-  <meta name="description" content="Highlords Post — seu jornal pessoal com RSS e IA local." />
+  <meta name="description" content="Highlords Post — seu reader pessoal com RSS e IA local." />
   <title>Highlords Post</title>
   <link rel="icon" href="/assets/highlords-logo.svg" />
   <link rel="stylesheet" href="/styles.css" />
@@ -16,14 +16,25 @@
         <img src="/assets/highlords-logo.svg" alt="" class="brand-logo" />
         <div class="brand-copy">
           <strong>Highlords Post</strong>
-          <span>SEU JORNAL PESSOAL</span>
+          <span>LOCAL NEWS READER</span>
         </div>
       </a>
 
+      <nav class="primary-nav" aria-label="Navegação principal">
+        <button class="nav-button active" data-view="home" type="button">Hoje</button>
+        <button class="nav-button" data-view="saved" type="button">Ler depois <span id="savedCount" class="nav-count">0</span></button>
+        <button class="nav-button" data-view="history" type="button">Histórico</button>
+      </nav>
+
       <div class="header-actions">
+        <label class="search-box" aria-label="Pesquisar notícias">
+          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+          <input id="searchInput" type="search" placeholder="Pesquisar" autocomplete="off" />
+          <kbd>/</kbd>
+        </label>
         <span id="ollamaStatus" class="status-pill">Ollama</span>
-        <button id="settingsBtn" class="button ghost">Configurar</button>
-        <button id="refreshBtn" class="button primary">Atualizar</button>
+        <button id="settingsBtn" class="icon-button" type="button" aria-label="Configurar" title="Configurar">⚙</button>
+        <button id="refreshBtn" class="button primary" type="button">Atualizar</button>
       </div>
     </div>
   </header>
@@ -39,11 +50,11 @@
   </div>
 
   <main class="shell main-shell">
-    <section class="intro-row">
+    <section class="page-head">
       <div>
         <p id="dateLabel" class="date-label"></p>
-        <h1>Seu briefing, sem o ruído.</h1>
-        <p class="intro-copy">RSS, ranking e resumos processados localmente pelo Ollama.</p>
+        <h1 id="viewTitle">Sua edição</h1>
+        <p id="viewDescription" class="page-description">As notícias que importam, organizadas localmente.</p>
       </div>
       <div class="run-meta">
         <span id="editorStatus" class="editor-status"></span>
@@ -59,46 +70,56 @@
       <span>Carregando sua edição…</span>
     </div>
 
-    <section id="edition" class="edition hidden">
-      <section class="top-grid">
+    <section id="homeView" class="view-section hidden">
+      <section class="top-layout">
         <article id="hero" class="hero-card"></article>
 
-        <aside class="latest-panel">
-          <div class="panel-head">
+        <section class="latest-zone">
+          <div class="section-heading compact-heading">
             <div>
-              <span class="eyebrow">MAIS RECENTES</span>
-              <h2>Agora</h2>
+              <span class="eyebrow">AGORA</span>
+              <h2>Mais recentes</h2>
             </div>
             <span id="editionCount" class="panel-count"></span>
           </div>
-          <div id="latestList" class="latest-list"></div>
+          <div id="latestGrid" class="latest-grid"></div>
+        </section>
+      </section>
+
+      <section class="feed-layout">
+        <section class="content-section">
+          <div class="section-heading">
+            <div>
+              <span class="eyebrow">SELECIONADAS PARA VOCÊ</span>
+              <h2>Em destaque</h2>
+            </div>
+            <div class="compact-stats" aria-label="Resumo da edição">
+              <span><strong id="statArticles">0</strong> não lidas</span>
+              <span><strong id="statSources">0</strong> fontes</span>
+              <span id="statMode">Ranking</span>
+            </div>
+          </div>
+          <div id="storyGrid" class="story-grid"></div>
+        </section>
+
+        <aside id="earlierSection" class="earlier-rail">
+          <div class="section-heading rail-heading">
+            <div>
+              <span class="eyebrow">AINDA RELEVANTE</span>
+              <h2>Mais cedo</h2>
+            </div>
+          </div>
+          <div id="earlierList" class="earlier-list"></div>
         </aside>
       </section>
+    </section>
 
-      <section class="content-section">
-        <div class="section-title-row">
-          <div>
-            <span class="eyebrow">SELECIONADAS PARA VOCÊ</span>
-            <h2>Em destaque</h2>
-          </div>
-          <div class="compact-stats" aria-label="Resumo da edição">
-            <span><strong id="statArticles">0</strong> matérias</span>
-            <span><strong id="statSources">0</strong> fontes</span>
-            <span id="statMode">Ranking</span>
-          </div>
-        </div>
-        <div id="storyGrid" class="story-grid"></div>
-      </section>
-
-      <section id="earlierSection" class="content-section earlier-section">
-        <div class="section-title-row">
-          <div>
-            <span class="eyebrow">AINDA RELEVANTE</span>
-            <h2>Mais cedo</h2>
-          </div>
-        </div>
-        <div id="earlierList" class="earlier-list"></div>
-      </section>
+    <section id="collectionView" class="view-section hidden">
+      <div class="collection-toolbar">
+        <span id="collectionCount" class="collection-count"></span>
+        <button id="clearHistoryBtn" class="button subtle hidden" type="button">Limpar histórico</button>
+      </div>
+      <div id="collectionGrid" class="collection-grid"></div>
     </section>
 
     <section id="welcome" class="welcome hidden">
@@ -107,7 +128,7 @@
         <span class="eyebrow">HIGH LORDS POST</span>
         <h2 id="welcomeTitle">Sua edição ainda está vazia.</h2>
         <p id="welcomeCopy">Os feeds iniciais já estão configurados. Clique em <strong>Atualizar</strong> para começar.</p>
-        <button class="button ghost" data-open-settings>Revisar fontes</button>
+        <button class="button ghost" data-open-settings type="button">Revisar fontes</button>
       </div>
     </section>
   </main>
@@ -118,9 +139,11 @@
         <img src="/assets/highlords-logo.svg" alt="" />
         <strong>Highlords Post</strong>
       </div>
-      <p>RSS + Ollama · processamento local · v0.5</p>
+      <p>RSS + Ollama · processamento local · v0.6</p>
     </div>
   </footer>
+
+  <div id="toast" class="toast hidden" role="status" aria-live="polite"></div>
 
   <dialog id="settingsDialog" class="settings-dialog">
     <div class="dialog-head">
@@ -129,7 +152,7 @@
         <h2>Personalize seu jornal</h2>
         <p>Escolha fontes e diga à IA o que cada categoria deve priorizar.</p>
       </div>
-      <button id="closeSettings" class="icon-button" aria-label="Fechar">×</button>
+      <button id="closeSettings" class="icon-button" aria-label="Fechar" type="button">×</button>
     </div>
 
     <div class="settings-grid">
@@ -178,6 +201,5 @@
   </dialog>
 
   <script type="module" src="/app.js"></script>
-  <script type="module" src="/category-visibility.js"></script>
 </body>
 </html>
