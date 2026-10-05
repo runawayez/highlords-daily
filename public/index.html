@@ -28,14 +28,17 @@
     <section class="edition-head">
       <div>
         <p id="dateLabel" class="edition-date"></p>
-        <p class="edition-subtitle">Notícias filtradas e resumidas localmente com Ollama.</p>
+        <p class="edition-subtitle">Notícias filtradas, resumidas e organizadas localmente com Ollama.</p>
       </div>
-      <p id="lastRun" class="muted"></p>
+      <div class="run-meta">
+        <span id="editorStatus" class="editor-status"></span>
+        <p id="lastRun" class="muted"></p>
+      </div>
     </section>
 
     <nav id="categoryBar" class="category-bar" aria-label="Categorias"></nav>
 
-    <div id="loading" class="empty-state hidden">Montando sua edição…</div>
+    <div id="loading" class="empty-state hidden">O editor-chefe está montando sua edição…</div>
     <div id="errorBox" class="error-box hidden"></div>
 
     <section id="edition" class="hidden">
@@ -46,8 +49,8 @@
     <section id="welcome" class="welcome hidden">
       <img src="/assets/highlords-logo.svg" alt="" />
       <p class="eyebrow">HIGH LORDS POST</p>
-      <h2>Sua primeira edição começa pelas fontes.</h2>
-      <p>Adicione alguns feeds RSS/Atom, confira suas categorias e clique em <strong>Atualizar agora</strong>. O Ollama classifica e resume tudo em português.</p>
+      <h2>Sua primeira edição está pronta para nascer.</h2>
+      <p>O projeto já vem com alguns feeds iniciais. Confira as fontes, ajuste suas categorias e clique em <strong>Atualizar agora</strong> para o Ollama montar a edição.</p>
       <button class="button primary" data-open-settings>Configurar fontes</button>
     </section>
   </main>
@@ -64,6 +67,7 @@
     <div class="settings-grid">
       <section>
         <h3>Feeds RSS / Atom</h3>
+        <p class="settings-help">Algumas fontes são adicionadas na primeira execução. Você pode remover ou acrescentar outras quando quiser.</p>
         <form id="feedForm" class="stack-form">
           <input name="name" placeholder="Nome da fonte" maxlength="100" required />
           <input name="url" placeholder="https://exemplo.com/rss" type="url" required />
@@ -73,11 +77,22 @@
       </section>
 
       <section>
-        <h3>Categorias</h3>
+        <div class="settings-section-head">
+          <div>
+            <h3 id="categoryFormTitle">Categorias</h3>
+            <p class="settings-help">A descrição explica para a LLM o que deve entrar em cada seção.</p>
+          </div>
+          <button id="cancelCategoryEdit" class="button ghost compact hidden" type="button">Cancelar edição</button>
+        </div>
         <form id="categoryForm" class="stack-form">
+          <input type="hidden" name="id" />
           <input name="name" placeholder="Nome da categoria" maxlength="80" required />
           <textarea name="description" placeholder="O que deve entrar nesta categoria?" rows="4"></textarea>
-          <button class="button primary" type="submit">Criar categoria</button>
+          <label class="checkbox-row edit-only hidden" id="categoryEnabledRow">
+            <input name="enabled" type="checkbox" checked />
+            <span>Categoria ativa</span>
+          </label>
+          <button id="categorySubmit" class="button primary" type="submit">Criar categoria</button>
         </form>
         <div id="categoriesList" class="settings-list"></div>
       </section>
