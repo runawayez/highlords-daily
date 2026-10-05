@@ -11,31 +11,34 @@
 </head>
 <body>
   <header class="site-header">
-    <div class="shell header-inner">
+    <div class="shell masthead-row">
       <a class="brand" href="/" aria-label="Highlords Post">
         <img src="/assets/highlords-logo.svg" alt="" class="brand-logo" />
         <div class="brand-copy">
           <strong>Highlords Post</strong>
-          <span>LOCAL NEWS READER</span>
+          <span>SEU JORNAL PESSOAL</span>
         </div>
       </a>
 
-      <nav class="primary-nav" aria-label="Navegação principal">
-        <button class="nav-button active" data-view="home" type="button">Hoje</button>
-        <button class="nav-button" data-view="saved" type="button">Ler depois <span id="savedCount" class="nav-count">0</span></button>
-        <button class="nav-button" data-view="history" type="button">Histórico</button>
-      </nav>
-
       <div class="header-actions">
-        <label class="search-box" aria-label="Pesquisar notícias">
-          <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
-          <input id="searchInput" type="search" placeholder="Pesquisar" autocomplete="off" />
-          <kbd>/</kbd>
-        </label>
         <span id="ollamaStatus" class="status-pill">Ollama</span>
         <button id="settingsBtn" class="icon-button" type="button" aria-label="Configurar" title="Configurar">⚙</button>
         <button id="refreshBtn" class="button primary" type="button">Atualizar</button>
       </div>
+    </div>
+
+    <div class="shell navigation-row">
+      <nav class="primary-nav" aria-label="Navegação principal">
+        <button class="nav-button active" data-view="home" type="button">Hoje</button>
+        <button class="nav-button" data-view="saved" type="button">Ler depois <span id="savedCount" class="nav-count hidden">0</span></button>
+        <button class="nav-button" data-view="history" type="button">Histórico</button>
+      </nav>
+
+      <label class="search-box" aria-label="Pesquisar notícias">
+        <svg viewBox="0 0 24 24" aria-hidden="true"><path d="m21 21-4.35-4.35m2.35-5.65a8 8 0 1 1-16 0 8 8 0 0 1 16 0Z"/></svg>
+        <input id="searchInput" type="search" placeholder="Pesquisar na edição" autocomplete="off" />
+        <kbd>/</kbd>
+      </label>
     </div>
   </header>
 
@@ -71,27 +74,17 @@
     </div>
 
     <section id="homeView" class="view-section hidden">
-      <section class="top-layout">
+      <section class="hero-band">
         <article id="hero" class="hero-card"></article>
-
-        <section class="latest-zone">
-          <div class="section-heading compact-heading">
-            <div>
-              <span class="eyebrow">AGORA</span>
-              <h2>Mais recentes</h2>
-            </div>
-            <span id="editionCount" class="panel-count"></span>
-          </div>
-          <div id="latestGrid" class="latest-grid"></div>
-        </section>
+        <div id="heroSide" class="hero-side"></div>
       </section>
 
       <section class="feed-layout">
         <section class="content-section">
           <div class="section-heading">
             <div>
-              <span class="eyebrow">SELECIONADAS PARA VOCÊ</span>
-              <h2>Em destaque</h2>
+              <span class="eyebrow">SEU RADAR</span>
+              <h2>Mais recentes</h2>
             </div>
             <div class="compact-stats" aria-label="Resumo da edição">
               <span><strong id="statArticles">0</strong> não lidas</span>
@@ -108,6 +101,7 @@
               <span class="eyebrow">AINDA RELEVANTE</span>
               <h2>Mais cedo</h2>
             </div>
+            <span id="editionCount" class="panel-count"></span>
           </div>
           <div id="earlierList" class="earlier-list"></div>
         </aside>
@@ -139,7 +133,7 @@
         <img src="/assets/highlords-logo.svg" alt="" />
         <strong>Highlords Post</strong>
       </div>
-      <p>RSS + Ollama · processamento local · v0.6</p>
+      <p>RSS + Ollama · processamento local · v0.7</p>
     </div>
   </footer>
 
