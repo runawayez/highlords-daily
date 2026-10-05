@@ -3,10 +3,18 @@ import { fileURLToPath } from 'node:url';
 import Fastify from 'fastify';
 import fastifyStatic from '@fastify/static';
 import { config } from './config.mjs';
-import { db, listCategories, listFeeds, slugify } from './db.mjs';
+import { db, listCategories, listFeeds } from './db.mjs';
 import { checkOllama } from './services/ollama.mjs';
 import { fetchRemoteImage } from './services/image.mjs';
-import { buildEdition, invalidateEditions, listArticles, refreshNews, refreshStatus } from './services/news.mjs';
+import { listArticles, refreshNews, refreshStatus } from './services/news.mjs';
+import {
+  dailyDateKey,
+  generateDailyEdition,
+  getDailyEdition,
+  getLatestDailyEdition,
+  listDailyArchive
+} from './services/daily.mjs';
+import { renderDailyPdf } from './services/pdf.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = Fastify({ logger: true });
@@ -16,70 +24,23 @@ await app.register(fastifyStatic, {
   prefix: '/'
 });
 
-app.get('/api/health', async () => ({
-  app: 'Highlords Post',
-  version: '0.8.0',
-  ollama: await checkOllama(),
-  refresh: refreshStatus()
-}));
+app.get('/api/health', async () => {
+  const latestEdition = getLatestDailyEdition();
+  return {
+    app: 'Highlords Daily',
+    version: '1.0.0',
+    ollama: await checkOllama(),
+    refresh: refreshStatus(),
+    daily: {
+      latestEdition: latestEdition?.editionDate || null,
+      autoGenerate: config.dailyAutoGenerate,
+      generateHour: config.dailyGenerateHour,
+      timeZone: config.timeZone
+    }
+  };
+});
 
 app.get('/api/categories', async () => listCategories());
-
-app.post('/api/categories', async (request, reply) => {
-  const name = String(request.body?.name || '').trim();
-  const description = String(request.body?.description || '').trim();
-  const slug = slugify(request.body?.slug || name);
-
-  if (!name || !slug) return reply.code(400).send({ error: 'Nome da categoria é obrigatório.' });
-
-  const max = db.prepare('SELECT COALESCE(MAX(position), 0) AS value FROM categories').get().value;
-  try {
-    db.prepare(`
-      INSERT INTO categories (slug, name, description, position)
-      VALUES (?, ?, ?, ?)
-    `).run(slug, name.slice(0, 80), description.slice(0, 700), Number(max) + 10);
-  } catch {
-    return reply.code(409).send({ error: 'Já existe uma categoria com esse identificador.' });
-  }
-  invalidateEditions();
-  return reply.code(201).send(listCategories());
-});
-
-app.put('/api/categories/:id', async (request, reply) => {
-  const id = Number(request.params.id);
-  if (!Number.isInteger(id)) return reply.code(400).send({ error: 'Categoria inválida.' });
-  const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
-  if (!existing) return reply.code(404).send({ error: 'Categoria não encontrada.' });
-
-  const name = String(request.body?.name ?? existing.name).trim().slice(0, 80);
-  const description = String(request.body?.description ?? existing.description).trim().slice(0, 700);
-  const position = Number.isFinite(Number(request.body?.position)) ? Number(request.body.position) : existing.position;
-  const enabled = request.body?.enabled == null ? existing.enabled : (request.body.enabled ? 1 : 0);
-  if (!name) return reply.code(400).send({ error: 'Nome da categoria é obrigatório.' });
-
-  db.prepare(`
-    UPDATE categories
-    SET name = ?, description = ?, position = ?, enabled = ?
-    WHERE id = ?
-  `).run(name, description, position, enabled, id);
-  invalidateEditions();
-  return listCategories();
-});
-
-app.delete('/api/categories/:id', async (request, reply) => {
-  const id = Number(request.params.id);
-  if (!Number.isInteger(id)) return reply.code(400).send({ error: 'Categoria inválida.' });
-  const category = db.prepare('SELECT slug FROM categories WHERE id = ?').get(id);
-  if (!category) return reply.code(404).send({ error: 'Categoria não encontrada.' });
-  db.prepare(`
-    UPDATE articles
-    SET category_slug = NULL, processed = 0, updated_at = ?
-    WHERE category_slug = ?
-  `).run(new Date().toISOString(), category.slug);
-  db.prepare('DELETE FROM categories WHERE id = ?').run(id);
-  invalidateEditions();
-  return { ok: true };
-});
 
 app.get('/api/feeds', async () => listFeeds());
 
@@ -119,12 +80,54 @@ app.get('/api/articles', async request => {
   return listArticles({ categories, limit: request.query?.limit });
 });
 
-app.get('/api/edition', async request => {
-  const categories = String(request.query?.categories || '')
-    .split(',')
-    .map(value => value.trim())
-    .filter(Boolean);
-  return buildEdition(categories);
+app.get('/api/daily/current', async () => ({
+  edition: getDailyEdition(dailyDateKey())
+}));
+
+app.get('/api/daily/latest', async () => ({
+  edition: getLatestDailyEdition()
+}));
+
+app.get('/api/daily/archive', async request => ({
+  editions: listDailyArchive(request.query?.limit)
+}));
+
+app.get('/api/daily/:date/pdf', async (request, reply) => {
+  const edition = getDailyEdition(String(request.params.date || ''));
+  if (!edition) return reply.code(404).send({ error: 'Edição não encontrada.' });
+
+  const pdf = await renderDailyPdf(edition);
+  return reply
+    .header('Content-Type', 'application/pdf')
+    .header('Content-Disposition', `attachment; filename="highlords-daily-${edition.editionDate}.pdf"`)
+    .header('Cache-Control', 'private, no-cache')
+    .send(pdf);
+});
+
+app.get('/api/daily/:date', async (request, reply) => {
+  const edition = getDailyEdition(String(request.params.date || ''));
+  if (!edition) return reply.code(404).send({ error: 'Edição não encontrada.' });
+  return { edition };
+});
+
+app.post('/api/daily/generate', async (request, reply) => {
+  if (refreshStatus().running) {
+    return reply.code(409).send({ error: 'A coleta ainda está em andamento. Aguarde a análise terminar.' });
+  }
+
+  try {
+    const edition = await generateDailyEdition({
+      date: String(request.body?.date || dailyDateKey()),
+      force: Boolean(request.body?.force)
+    });
+    return { edition };
+  } catch (error) {
+    if (error?.code === 'NO_DAILY_CANDIDATES') {
+      return reply.code(409).send({ error: error.message });
+    }
+    request.log.error(error);
+    return reply.code(500).send({ error: 'Não foi possível gerar a edição.' });
+  }
 });
 
 app.get('/api/image', async (request, reply) => {
@@ -153,12 +156,14 @@ app.post('/api/refresh', async (request, reply) => {
 });
 
 app.setNotFoundHandler((request, reply) => {
-  if (request.url.startsWith('/api/')) return reply.code(404).send({ error: 'Endpoint não encontrado.' });
+  if (request.url.startsWith('/api/')) {
+    return reply.code(404).send({ error: 'Endpoint não encontrado.' });
+  }
   return reply.sendFile('index.html');
 });
 
 await app.listen({ port: config.port, host: config.host });
-app.log.info(`Highlords Post disponível em http://${config.host}:${config.port}`);
+app.log.info(`Highlords Daily disponível em http://${config.host}:${config.port}`);
 
 if (config.refreshOnStart) {
   refreshNews().catch(error => app.log.error(error));
@@ -169,4 +174,37 @@ if (config.refreshIntervalMinutes > 0) {
   setInterval(() => {
     refreshNews().catch(error => app.log.error(error));
   }, interval).unref();
+}
+
+let scheduledDailyRunning = false;
+if (config.dailyAutoGenerate) {
+  setInterval(async () => {
+    if (scheduledDailyRunning || refreshStatus().running) return;
+
+    const parts = new Intl.DateTimeFormat('en-US', {
+      timeZone: config.timeZone,
+      hour: '2-digit',
+      hourCycle: 'h23'
+    }).formatToParts(new Date());
+    const hour = Number(parts.find(part => part.type === 'hour')?.value);
+    const today = dailyDateKey();
+
+    if (hour !== config.dailyGenerateHour || getDailyEdition(today)) return;
+
+    scheduledDailyRunning = true;
+    try {
+      let passes = 0;
+      do {
+        await refreshNews();
+        passes += 1;
+      } while ((refreshStatus().lastRun?.backlog || 0) > 0 && passes < 12);
+
+      await generateDailyEdition({ date: today, force: true });
+      app.log.info({ editionDate: today }, 'Edição diária gerada automaticamente');
+    } catch (error) {
+      app.log.error(error, 'Falha ao gerar edição diária automaticamente');
+    } finally {
+      scheduledDailyRunning = false;
+    }
+  }, 60_000).unref();
 }
