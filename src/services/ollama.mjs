@@ -47,9 +47,60 @@ async function chatJson(system, user, timeout = 120000) {
   return safeJson(payload?.message?.content);
 }
 
+function normalizeText(value) {
+  return String(value || '')
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase();
+}
+
+function hasAny(text, terms) {
+  return terms.some(term => text.includes(term));
+}
+
+// Tecnologia é a categoria guarda-chuva. Quando o modelo cai nela, usamos
+// sinais fortes do próprio texto para promover a matéria a uma seção mais
+// específica. Isso evita uma home inteira classificada simplesmente como Tech.
+function preferSpecificCategory(article, category, validSlugs) {
+  if (category !== 'tecnologia') return category;
+
+  const text = normalizeText(`${article.originalTitle || ''} ${article.excerpt || ''}`);
+  const candidates = [
+    ['games', [
+      ' videogame', ' video game', ' game ', ' games ', ' gaming', 'steam',
+      'playstation', 'xbox', 'nintendo', 'switch 2', 'epic games', 'gog',
+      'unreal engine', 'unity ', 'rpg', 'indie game', 'game pass'
+    ]],
+    ['ia', [
+      'inteligencia artificial', 'artificial intelligence', 'generative ai',
+      'machine learning', 'openai', 'chatgpt', 'anthropic', 'claude', 'gemini',
+      'llm', 'large language model', 'modelo de linguagem', 'ai model',
+      'ai agent', 'agente de ia', 'inference', 'inferencia', 'deep learning'
+    ]],
+    ['qa-dev', [
+      'github', 'gitlab', 'developer', 'desenvolvedor', 'programacao', 'programming',
+      'javascript', 'typescript', 'python', 'rust ', 'golang', 'java ', '.net',
+      'framework', 'api ', 'database', 'banco de dados', 'kubernetes', 'docker',
+      'devops', 'ci/cd', 'playwright', 'selenium', 'testing', 'teste automatizado',
+      'vscode', 'visual studio code', 'ide ', 'sdk ', 'npm ', 'open source project'
+    ]],
+    ['inovacao', [
+      'robotica', 'robotics', 'humanoid', 'robo humanoide', 'quantum computing',
+      'computacao quantica', 'virtual reality', 'realidade virtual',
+      'augmented reality', 'realidade aumentada', 'mixed reality', 'spatial computing',
+      'brain-computer', 'neural interface', 'prototype', 'prototipo', 'wearable'
+    ]]
+  ];
+
+  for (const [slug, terms] of candidates) {
+    if (validSlugs.has(slug) && hasAny(text, terms)) return slug;
+  }
+  return category;
+}
+
 export async function analyzeArticle(article, categories) {
-  const categoryText = categories
-    .filter(category => category.enabled)
+  const enabledCategories = categories.filter(category => category.enabled);
+  const categoryText = enabledCategories
     .map(category => `- ${category.slug}: ${category.name} — ${category.description}`)
     .join('\n');
 
@@ -61,8 +112,22 @@ ESCOPO OBRIGATÓRIO:
 - rejeite política partidária, eleições, governos, geopolítica, guerras, crime, tragédias, celebridades, esportes, fofoca, sociedade em geral e economia sem relação direta com tecnologia;
 - se política, governo, eleição ou conflito forem o assunto central, use category como null e score 0, mesmo que a matéria mencione uma empresa de tecnologia;
 - regulações ou decisões públicas só podem entrar quando o núcleo da matéria for uma mudança técnica ou de produto claramente útil para quem acompanha tecnologia; evite enquadramento político;
-- notícias de games devem ser sobre jogos, plataformas, hardware, engines, estúdios, lançamentos ou desenvolvimento; evite esports e celebridades;
 - ciência só entra quando houver aplicação ou impacto tecnológico claro.
+
+REGRA DE CATEGORIZAÇÃO — MUITO IMPORTANTE:
+Escolha SEMPRE a categoria mais específica. "tecnologia" é apenas a categoria guarda-chuva e deve ser usada somente quando nenhuma das categorias especializadas abaixo representar melhor o assunto principal.
+- ia: IA generativa, LLMs, modelos, agentes, machine learning, OpenAI, Anthropic, Gemini, pesquisa e produtos cujo núcleo seja IA;
+- qa-dev: programação, engenharia de software, QA, testes, linguagens, frameworks, APIs, bancos de dados, GitHub, DevOps, cloud, CI/CD e ferramentas de desenvolvimento;
+- games: jogos, consoles, Steam, estúdios, engines, lançamentos, indies, RPGs, hardware especificamente gamer e desenvolvimento de jogos;
+- inovacao: robótica, computação quântica, VR/AR, interfaces emergentes, protótipos, wearables e tecnologias experimentais;
+- tecnologia: hardware e software de uso geral, smartphones, PCs, chips, sistemas operacionais, browsers, segurança, internet e produtos tech que não pertençam claramente às quatro categorias acima.
+
+Exemplos obrigatórios:
+- "OpenAI lança novo modelo" => ia, nunca tecnologia.
+- "GitHub adiciona recurso ao Actions" => qa-dev, nunca tecnologia.
+- "Novo RPG chega ao Steam" => games, nunca tecnologia.
+- "Robô humanoide ganha nova mão" => inovacao, nunca tecnologia.
+- "AMD lança nova GPU de uso geral" => tecnologia, salvo se o foco explícito for gaming.
 
 TOM EDITORIAL:
 - priorize novidade útil, curiosidade, ferramentas, lançamentos, atualizações, engenharia, produtos e descobertas interessantes;
@@ -85,10 +150,12 @@ Retorne SOMENTE JSON válido com este formato:
   })}`;
 
   const parsed = await chatJson(system, user);
-  const validSlugs = new Set(categories.filter(c => c.enabled).map(c => c.slug));
-  const category = typeof parsed.category === 'string' && validSlugs.has(parsed.category)
+  const validSlugs = new Set(enabledCategories.map(category => category.slug));
+  let category = typeof parsed.category === 'string' && validSlugs.has(parsed.category)
     ? parsed.category
     : null;
+  category = preferSpecificCategory(article, category, validSlugs);
+
   const rawScore = Math.max(0, Math.min(10, Number(parsed.score) || 0));
 
   return {
@@ -125,6 +192,7 @@ O foco editorial é tecnologia, IA, desenvolvimento, games e inovação.
 Priorize lançamentos, ferramentas, atualizações, engenharia, produtos, descobertas e histórias interessantes.
 Evite sensação de feed ansioso: não concentre a edição em polêmica, demissões, conflito ou drama corporativo quando houver alternativas úteis.
 Escolha uma manchete principal importante, recente e interessante — não apenas a de maior score.
+Quando houver boas matérias em diferentes categorias, preserve variedade entre Tecnologia, IA, Desenvolvimento, Games e Inovação.
 Equilibre fontes e assuntos quando houver boas alternativas.
 Não invente nem reescreva fatos nesta etapa: você só organiza matérias já processadas.
 Retorne SOMENTE JSON válido no formato:
