@@ -4,7 +4,7 @@ import { config } from '../config.mjs';
 const parser = new Parser({
   timeout: 15000,
   headers: {
-    'User-Agent': 'HighlordsPost/0.3 (+https://github.com/runawayez/highlords-post)'
+    'User-Agent': 'HighlordsPost/0.4 (+https://github.com/runawayez/highlords-post)'
   },
   customFields: {
     item: [
@@ -33,32 +33,60 @@ function itemDate(item) {
   return Number.isNaN(date.getTime()) ? new Date() : date;
 }
 
-function normalizeImage(value) {
-  const candidate = typeof value === 'string'
-    ? value
-    : value?.url || value?.$?.url || value?.href || value?.$?.href;
-  if (!candidate) return null;
+function asArray(value) {
+  if (!value) return [];
+  return Array.isArray(value) ? value : [value];
+}
+
+function imageCandidate(value) {
+  if (!value) return null;
+  const data = typeof value === 'string' ? { url: value } : value;
+  const attrs = data?.$ || data;
+  const rawUrl = data?.url || attrs?.url || data?.href || attrs?.href;
+  if (!rawUrl) return null;
+
   try {
-    const url = new URL(candidate);
-    return ['http:', 'https:'].includes(url.protocol) ? url.toString() : null;
+    const url = new URL(String(rawUrl));
+    if (!['http:', 'https:'].includes(url.protocol)) return null;
+    const width = Number(data?.width || attrs?.width || 0);
+    const height = Number(data?.height || attrs?.height || 0);
+    const type = String(data?.type || attrs?.type || '').toLowerCase();
+    return { url: url.toString(), width, height, type };
   } catch {
     return null;
   }
 }
 
-function extractImage(item) {
-  const direct = [
-    item.enclosure,
-    item.mediaContent,
-    item.mediaThumbnail,
-    item.image,
-    item.thumbnail
-  ].map(normalizeImage).find(Boolean);
-  if (direct) return direct;
+function imageScore(candidate) {
+  if (!candidate) return -1;
+  const area = candidate.width > 0 && candidate.height > 0 ? candidate.width * candidate.height : 0;
+  const imageTypeBonus = candidate.type.startsWith('image/') ? 1_000_000 : 0;
+  return imageTypeBonus + area;
+}
 
-  const html = String(item.content || item.description || item.summary || '');
-  const match = html.match(/<img[^>]+src=["']([^"']+)["']/i);
-  return normalizeImage(match?.[1]);
+function htmlImages(html = '') {
+  const matches = [...String(html).matchAll(/<img[^>]+src=["']([^"']+)["']/gi)];
+  return matches.map(match => imageCandidate(match[1])).filter(Boolean);
+}
+
+function extractImage(item) {
+  const enclosureCandidates = asArray(item.enclosure)
+    .map(imageCandidate)
+    .filter(candidate => candidate && (!candidate.type || candidate.type.startsWith('image/')));
+
+  const mediaCandidates = [
+    ...asArray(item.mediaContent),
+    ...asArray(item.mediaThumbnail),
+    ...asArray(item.image),
+    ...asArray(item.thumbnail)
+  ].map(imageCandidate).filter(Boolean);
+
+  const embeddedCandidates = htmlImages(item.content || item.description || item.summary || '');
+  const candidates = [...enclosureCandidates, ...mediaCandidates, ...embeddedCandidates];
+  if (!candidates.length) return null;
+
+  candidates.sort((a, b) => imageScore(b) - imageScore(a));
+  return candidates[0]?.url || null;
 }
 
 export async function fetchFeed(feed) {
