@@ -67,11 +67,11 @@ if (!articleColumns.has('image_url')) {
 }
 
 const seedCategories = [
-  ['tecnologia', 'Tecnologia', 'Hardware, software, dispositivos, sistemas operacionais, internet, segurança, open source, semicondutores, produtos e mudanças relevantes na indústria de tecnologia.', 10],
-  ['ia', 'IA', 'Inteligência artificial, modelos de linguagem, agentes, pesquisa aplicada, ferramentas, chips para IA, produtos e usos práticos de IA.', 20],
-  ['qa-dev', 'Desenvolvimento', 'Engenharia de software, programação, QA, automação de testes, Playwright, frameworks, linguagens, APIs, bancos de dados, DevOps, cloud, GitHub, CI/CD e ferramentas para desenvolvedores.', 30],
-  ['games', 'Games', 'Jogos de PC e console, Steam, indies, RPGs, lançamentos, engines, hardware gamer, desenvolvimento de jogos e movimentos relevantes da indústria. Evite esports e celebridades.', 40],
-  ['inovacao', 'Inovação', 'Novas tecnologias, protótipos, computação emergente, robótica, realidade virtual e aumentada, interfaces, pesquisa aplicada e descobertas com impacto direto em tecnologia.', 50]
+  ['tecnologia', 'Tecnologia', 'Hardware, software e produtos de tecnologia de uso geral: dispositivos, PCs, smartphones, chips, sistemas operacionais, browsers, internet, segurança e open source. Use como categoria guarda-chuva apenas quando IA, Desenvolvimento, Games ou Inovação não forem mais específicas.', 10],
+  ['ia', 'IA', 'Inteligência artificial, modelos de linguagem, agentes, machine learning, OpenAI, Anthropic, Gemini, pesquisa aplicada, ferramentas, chips para IA, produtos e usos práticos cujo assunto central seja IA.', 20],
+  ['qa-dev', 'Desenvolvimento', 'Engenharia de software, programação, QA, automação de testes, Playwright, frameworks, linguagens, APIs, bancos de dados, DevOps, cloud, GitHub, CI/CD, IDEs e ferramentas para desenvolvedores.', 30],
+  ['games', 'Games', 'Jogos de PC e console, Steam, indies, RPGs, lançamentos, plataformas, engines, estúdios, hardware gamer e desenvolvimento de jogos. Evite esports e celebridades.', 40],
+  ['inovacao', 'Inovação', 'Robótica, computação quântica, realidade virtual e aumentada, interfaces emergentes, protótipos, wearables, computação espacial e tecnologias experimentais com potencial prático.', 50]
 ];
 
 const insertCategory = db.prepare(`
@@ -101,8 +101,6 @@ if (!alreadySeeded) {
 }
 
 // v0.8 changes the editorial scope from general news to a calm technology reader.
-// Existing installations are migrated once so old political/general-news content
-// does not keep leaking into the new edition.
 const focusMigrationKey = 'tech-focus-v1';
 const focusMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(focusMigrationKey);
 if (!focusMigrated) {
@@ -119,34 +117,6 @@ if (!focusMigrated) {
     );
 
     DELETE FROM categories WHERE slug IN ('brasil', 'mundo', 'ciencia');
-
-    UPDATE categories
-    SET name = 'Tecnologia',
-        description = 'Hardware, software, dispositivos, sistemas operacionais, internet, segurança, open source, semicondutores, produtos e mudanças relevantes na indústria de tecnologia.',
-        position = 10,
-        enabled = 1
-    WHERE slug = 'tecnologia';
-
-    UPDATE categories
-    SET name = 'IA',
-        description = 'Inteligência artificial, modelos de linguagem, agentes, pesquisa aplicada, ferramentas, chips para IA, produtos e usos práticos de IA.',
-        position = 20,
-        enabled = 1
-    WHERE slug = 'ia';
-
-    UPDATE categories
-    SET name = 'Desenvolvimento',
-        description = 'Engenharia de software, programação, QA, automação de testes, Playwright, frameworks, linguagens, APIs, bancos de dados, DevOps, cloud, GitHub, CI/CD e ferramentas para desenvolvedores.',
-        position = 30,
-        enabled = 1
-    WHERE slug = 'qa-dev';
-
-    UPDATE categories
-    SET name = 'Games',
-        description = 'Jogos de PC e console, Steam, indies, RPGs, lançamentos, engines, hardware gamer, desenvolvimento de jogos e movimentos relevantes da indústria. Evite esports e celebridades.',
-        position = 40,
-        enabled = 1
-    WHERE slug = 'games';
 
     UPDATE categories
     SET enabled = 0
@@ -177,6 +147,35 @@ if (!focusMigrated) {
   for (const feed of defaultFeeds) insertFeed.run(...feed);
 
   db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(focusMigrationKey, new Date().toISOString());
+}
+
+// v0.8.1 makes Tecnologia a fallback instead of swallowing AI/Dev/Games/Innovation.
+// Reclassify existing tech-focused stories once with the stricter classifier.
+const categorySpecificityKey = 'category-specificity-v1';
+const categorySpecificityMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(categorySpecificityKey);
+if (!categorySpecificityMigrated) {
+  const upsertCategory = db.prepare(`
+    INSERT INTO categories (slug, name, description, position, enabled)
+    VALUES (?, ?, ?, ?, 1)
+    ON CONFLICT(slug) DO UPDATE SET
+      name = excluded.name,
+      description = excluded.description,
+      position = excluded.position,
+      enabled = 1
+  `);
+  for (const row of seedCategories) upsertCategory.run(...row);
+
+  db.exec(`
+    UPDATE articles
+    SET headline = NULL,
+        summary = NULL,
+        category_slug = NULL,
+        score = 0,
+        tags_json = '[]',
+        processed = 0,
+        updated_at = CURRENT_TIMESTAMP;
+  `);
+  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(categorySpecificityKey, new Date().toISOString());
 }
 
 export function slugify(input) {
