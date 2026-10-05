@@ -1,7 +1,7 @@
 services:
-  highlords-post:
+  highlords-daily:
     build: .
-    container_name: highlords-post
+    container_name: highlords-daily
     ports:
       - "${PORT:-8090}:8090"
     environment:
@@ -10,10 +10,17 @@ services:
       DATA_DIR: /app/data
       OLLAMA_HOST: ${OLLAMA_HOST:-http://host.docker.internal:11434}
       OLLAMA_MODEL: ${OLLAMA_MODEL:-qwen3:4b}
+      TIME_ZONE: ${TIME_ZONE:-America/Sao_Paulo}
       LOOKBACK_HOURS: ${LOOKBACK_HOURS:-48}
+      DAILY_LOOKBACK_HOURS: ${DAILY_LOOKBACK_HOURS:-48}
+      DAILY_ITEMS_PER_CATEGORY: ${DAILY_ITEMS_PER_CATEGORY:-2}
+      DAILY_AUTO_GENERATE: ${DAILY_AUTO_GENERATE:-false}
+      DAILY_GENERATE_HOUR: ${DAILY_GENERATE_HOUR:-8}
       REFRESH_INTERVAL_MINUTES: ${REFRESH_INTERVAL_MINUTES:-120}
       REFRESH_ON_START: ${REFRESH_ON_START:-false}
-      MAX_ITEMS_PER_FEED: ${MAX_ITEMS_PER_FEED:-20}
+      MAX_ITEMS_PER_FEED: ${MAX_ITEMS_PER_FEED:-12}
+      MAX_PROCESS_PER_RUN: ${MAX_PROCESS_PER_RUN:-36}
+      ANALYSIS_CONCURRENCY: ${ANALYSIS_CONCURRENCY:-2}
       MIN_SCORE: ${MIN_SCORE:-5}
     volumes:
       - ./data:/app/data
