@@ -261,6 +261,7 @@ export function listArticles({ categories = [], limit = 80 } = {}) {
 
   return rows.map(row => ({
     ...row,
+    imageUrl: row.imageUrl ? `/api/image?url=${encodeURIComponent(row.imageUrl)}` : null,
     tags: JSON.parse(row.tagsJson || '[]'),
     tagsJson: undefined
   }));
