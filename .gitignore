@@ -1,6 +1,6 @@
 node_modules/
 .env
-data/*.db
-data/*.db-*
+output/
+data/
 npm-debug.log*
 .DS_Store
