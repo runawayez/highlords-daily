@@ -5,8 +5,30 @@ import { config } from './config.mjs';
 
 fs.mkdirSync(config.dataDir, { recursive: true });
 
-const dbPath = path.join(config.dataDir, 'highlords-post.db');
+const legacyDbPath = path.join(config.dataDir, 'highlords-post.db');
+const dbPath = path.join(config.dataDir, 'highlords-daily.db');
+
+if (!fs.existsSync(dbPath) && fs.existsSync(legacyDbPath)) {
+  for (const suffix of ['', '-wal', '-shm']) {
+    const from = `${legacyDbPath}${suffix}`;
+    const to = `${dbPath}${suffix}`;
+    if (fs.existsSync(from)) fs.renameSync(from, to);
+  }
+}
+
 export const db = new DatabaseSync(dbPath);
+
+export const FIXED_CATEGORIES = [
+  ['ia', 'IA', 'Inteligência artificial como assunto principal: OpenAI, Anthropic, Gemini, LLMs, modelos multimodais, agentes, machine learning, geração de imagem ou vídeo, ferramentas e produtos de IA.', 10],
+  ['desenvolvimento', 'Desenvolvimento', 'Programação e engenharia de software: linguagens, frameworks, bibliotecas, APIs, bancos de dados, GitHub, GitLab, IDEs, SDKs, open source, QA, testes, automação, DevOps, cloud, containers e CI/CD.', 20],
+  ['mobile-gadgets', 'Mobile & Gadgets', 'Smartphones, tablets, smartwatches, wearables, fones, smart home, acessórios e gadgets de consumo. Priorize lançamentos, updates relevantes e novos recursos de dispositivos.', 30],
+  ['hardware', 'Hardware', 'CPUs, GPUs, PCs, notebooks, monitores, periféricos, armazenamento, memória, placas, chips, semicondutores e componentes.', 40],
+  ['software-internet', 'Software & Internet', 'Sistemas operacionais, Windows, Linux, macOS, Android e iOS quando o foco é software; browsers, aplicativos, serviços digitais, segurança, privacidade, web, redes e plataformas.', 50],
+  ['games', 'Games', 'Jogos de PC e console, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, lançamentos, updates de jogos, estúdios, engines e desenvolvimento de games.', 60],
+  ['futuro', 'Futuro', 'Tecnologias emergentes e pesquisa aplicada: robótica, computação quântica, realidade virtual ou aumentada, computação espacial, novas interfaces, protótipos e tecnologias experimentais.', 70]
+];
+
+export const FIXED_CATEGORY_SLUGS = FIXED_CATEGORIES.map(([slug]) => slug);
 
 db.exec(`
   PRAGMA journal_mode = WAL;
@@ -54,36 +76,37 @@ db.exec(`
     processed INTEGER NOT NULL DEFAULT 0,
     created_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
     updated_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+    image_url TEXT,
     FOREIGN KEY (feed_id) REFERENCES feeds(id) ON DELETE SET NULL
+  );
+
+  CREATE TABLE IF NOT EXISTS daily_editions (
+    id INTEGER PRIMARY KEY AUTOINCREMENT,
+    edition_date TEXT NOT NULL UNIQUE,
+    generated_at TEXT NOT NULL,
+    curated_by TEXT NOT NULL,
+    story_count INTEGER NOT NULL DEFAULT 0,
+    payload_json TEXT NOT NULL
   );
 
   CREATE INDEX IF NOT EXISTS idx_articles_published ON articles(published_at DESC);
   CREATE INDEX IF NOT EXISTS idx_articles_category ON articles(category_slug, score DESC);
+  CREATE INDEX IF NOT EXISTS idx_daily_editions_date ON daily_editions(edition_date DESC);
 `);
 
 const articleColumns = new Set(db.prepare('PRAGMA table_info(articles)').all().map(column => column.name));
-if (!articleColumns.has('image_url')) {
-  db.exec('ALTER TABLE articles ADD COLUMN image_url TEXT');
-}
+if (!articleColumns.has('image_url')) db.exec('ALTER TABLE articles ADD COLUMN image_url TEXT');
 
-// A navegação não possui uma categoria genérica "Tecnologia". "Todos" já cumpre
-// esse papel. Cada notícia deve cair na seção mais específica possível e usar
-// tags para representar assuntos secundários, marcas e tecnologias relacionadas.
-const seedCategories = [
-  ['ia', 'IA', 'Inteligência artificial como assunto principal: OpenAI, Anthropic, Gemini, LLMs, modelos multimodais, agentes, machine learning, geração de imagem ou vídeo, ferramentas e produtos de IA. Chips entram aqui apenas quando a história é principalmente sobre IA; caso contrário use Hardware.', 10],
-  ['desenvolvimento', 'Desenvolvimento', 'Programação e engenharia de software: linguagens, frameworks, bibliotecas, APIs, bancos de dados, GitHub, GitLab, IDEs, SDKs, open source, QA, testes, automação, DevOps, cloud, containers, CI/CD e ferramentas para desenvolvedores.', 20],
-  ['mobile-gadgets', 'Mobile & Gadgets', 'Smartphones, tablets, smartwatches, wearables, fones, smart home, acessórios e gadgets de consumo. Priorize lançamentos, updates relevantes, comparativos técnicos e novos recursos de dispositivos.', 30],
-  ['hardware', 'Hardware', 'CPUs, GPUs, PCs, notebooks, monitores, periféricos, armazenamento, memória, placas, semicondutores e componentes. Hardware gamer continua aqui quando o foco é o componente; use Games quando o foco principal é jogar ou uma plataforma de jogos.', 40],
-  ['software-internet', 'Software & Internet', 'Sistemas operacionais, Windows, Linux, macOS, Android e iOS quando o foco é software; browsers, aplicativos, serviços digitais, segurança, privacidade, web, redes, plataformas e mudanças relevantes da internet.', 50],
-  ['games', 'Games', 'Jogos de PC e console, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, lançamentos, updates de jogos, estúdios, engines e desenvolvimento de games. Evite esports, celebridades e drama sem relevância para jogos.', 60],
-  ['futuro', 'Futuro', 'Tecnologias emergentes e pesquisa aplicada: robótica, computação quântica, realidade virtual ou aumentada, computação espacial, novas interfaces, protótipos e tecnologias experimentais com potencial prático.', 70]
-];
-
-const insertCategory = db.prepare(`
-  INSERT OR IGNORE INTO categories (slug, name, description, position)
-  VALUES (?, ?, ?, ?)
+const upsertCategory = db.prepare(`
+  INSERT INTO categories (slug, name, description, position, enabled)
+  VALUES (?, ?, ?, ?, 1)
+  ON CONFLICT(slug) DO UPDATE SET
+    name = excluded.name,
+    description = excluded.description,
+    position = excluded.position,
+    enabled = 1
 `);
-for (const row of seedCategories) insertCategory.run(...row);
+for (const row of FIXED_CATEGORIES) upsertCategory.run(...row);
 
 const defaultFeeds = [
   ['Tecnoblog', 'https://tecnoblog.net/feed/'],
@@ -98,31 +121,17 @@ const defaultFeeds = [
 ];
 
 const seedKey = 'default-feeds-v2';
-const alreadySeeded = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(seedKey);
-if (!alreadySeeded) {
+if (!db.prepare('SELECT value FROM app_meta WHERE key = ?').get(seedKey)) {
   const insertFeed = db.prepare('INSERT OR IGNORE INTO feeds (name, url) VALUES (?, ?)');
   for (const feed of defaultFeeds) insertFeed.run(...feed);
   db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(seedKey, new Date().toISOString());
 }
 
-// v0.8: remove fontes de notícias gerais e política de instalações antigas.
-const focusMigrationKey = 'tech-focus-v1';
-const focusMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(focusMigrationKey);
-if (!focusMigrated) {
-  db.exec(`
-    DELETE FROM articles
-    WHERE source IN ('Agência Brasil', 'BBC World', 'The Guardian World')
-       OR category_slug IN ('brasil', 'mundo', 'ciencia');
+const dailyMigrationKey = 'highlords-daily-v1';
+if (!db.prepare('SELECT value FROM app_meta WHERE key = ?').get(dailyMigrationKey)) {
+  const placeholders = FIXED_CATEGORY_SLUGS.map(() => '?').join(',');
 
-    DELETE FROM feeds
-    WHERE url IN (
-      'https://agenciabrasil.ebc.com.br/rss/ultimasnoticias/feed.xml',
-      'https://feeds.bbci.co.uk/news/world/rss.xml',
-      'https://www.theguardian.com/world/rss'
-    );
-
-    DELETE FROM categories WHERE slug IN ('brasil', 'mundo', 'ciencia');
-
+  db.prepare(`
     UPDATE articles
     SET headline = NULL,
         summary = NULL,
@@ -130,65 +139,21 @@ if (!focusMigrated) {
         score = 0,
         tags_json = '[]',
         processed = 0,
-        updated_at = CURRENT_TIMESTAMP;
-  `);
+        updated_at = CURRENT_TIMESTAMP
+    WHERE category_slug IS NOT NULL AND category_slug NOT IN (${placeholders})
+  `).run(...FIXED_CATEGORY_SLUGS);
 
-  const insertFeed = db.prepare('INSERT OR IGNORE INTO feeds (name, url) VALUES (?, ?)');
-  for (const feed of defaultFeeds) insertFeed.run(...feed);
+  db.prepare(`DELETE FROM categories WHERE slug NOT IN (${placeholders})`).run(...FIXED_CATEGORY_SLUGS);
+  for (const row of FIXED_CATEGORIES) upsertCategory.run(...row);
 
-  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(focusMigrationKey, new Date().toISOString());
-}
-
-// v0.9: troca o guarda-chuva "Tecnologia" por sete seções específicas.
-// A migração roda uma única vez e reclassifica o acervo com a nova taxonomia.
-const taxonomyMigrationKey = 'editorial-taxonomy-v2';
-const taxonomyMigrated = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(taxonomyMigrationKey);
-if (!taxonomyMigrated) {
-  db.exec(`
-    DELETE FROM categories WHERE slug IN ('tecnologia', 'qa-dev', 'inovacao');
-    UPDATE categories SET enabled = 0;
-  `);
-
-  const upsertCategory = db.prepare(`
-    INSERT INTO categories (slug, name, description, position, enabled)
-    VALUES (?, ?, ?, ?, 1)
-    ON CONFLICT(slug) DO UPDATE SET
-      name = excluded.name,
-      description = excluded.description,
-      position = excluded.position,
-      enabled = 1
-  `);
-  for (const row of seedCategories) upsertCategory.run(...row);
-
-  db.exec(`
-    UPDATE articles
-    SET headline = NULL,
-        summary = NULL,
-        category_slug = NULL,
-        score = 0,
-        tags_json = '[]',
-        processed = 0,
-        updated_at = CURRENT_TIMESTAMP;
-  `);
-
-  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(taxonomyMigrationKey, new Date().toISOString());
-}
-
-export function slugify(input) {
-  return String(input || '')
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .toLowerCase()
-    .trim()
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '')
-    .slice(0, 48);
+  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(dailyMigrationKey, new Date().toISOString());
 }
 
 export function listCategories() {
   return db.prepare(`
     SELECT id, slug, name, description, position, enabled
     FROM categories
+    WHERE enabled = 1
     ORDER BY position ASC, id ASC
   `).all().map(row => ({ ...row, enabled: Boolean(row.enabled) }));
 }
