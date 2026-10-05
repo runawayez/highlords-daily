@@ -67,7 +67,7 @@ function writeStory(doc, article, { lead = false } = {}) {
     .text(meta, { width, characterSpacing: 0.5 });
 
   doc.moveDown(0.45)
-    .font(lead ? 'Helvetica-Bold' : 'Helvetica-Bold')
+    .font('Helvetica-Bold')
     .fontSize(lead ? 21 : 13.5)
     .fillColor(COLORS.ink)
     .text(clean(article.headline || article.originalTitle || 'Sem título'), {
@@ -129,14 +129,14 @@ function writeSection(doc, section) {
   for (const article of section.articles) writeStory(doc, article);
 }
 
-function addPageNumber(doc, pageIndex) {
+function addPageNumber(doc, pageIndex, pageCount) {
   const oldX = doc.x;
   const oldY = doc.y;
   doc.font('Helvetica')
     .fontSize(7.5)
     .fillColor('#8a8a8a')
     .text(
-      `Highlords Daily  |  ${pageIndex}`,
+      `Highlords Daily  |  ${pageIndex}/${pageCount}`,
       doc.page.margins.left,
       doc.page.height - 35,
       { width: doc.page.width - doc.page.margins.left - doc.page.margins.right, align: 'center' }
@@ -151,6 +151,7 @@ export async function renderDailyPdf(edition) {
   return new Promise((resolve, reject) => {
     const doc = new PDFDocument({
       size: 'A4',
+      bufferPages: true,
       margins: { top: 48, right: 48, bottom: 58, left: 48 },
       info: {
         Title: `Highlords Daily - ${edition.editionDate}`,
@@ -163,13 +164,6 @@ export async function renderDailyPdf(edition) {
     doc.on('data', chunk => chunks.push(chunk));
     doc.on('error', reject);
     doc.on('end', () => resolve(Buffer.concat(chunks)));
-
-    let pageIndex = 1;
-    doc.on('pageAdded', () => {
-      addPageNumber(doc, pageIndex);
-      pageIndex += 1;
-      doc.y = doc.page.margins.top;
-    });
 
     doc.rect(0, 0, doc.page.width, doc.page.height).fill(COLORS.paper);
     doc.font('Helvetica-Bold')
@@ -224,7 +218,12 @@ export async function renderDailyPdf(edition) {
 
     for (const section of edition.sections || []) writeSection(doc, section);
 
-    addPageNumber(doc, pageIndex);
+    const range = doc.bufferedPageRange();
+    for (let index = range.start; index < range.start + range.count; index += 1) {
+      doc.switchToPage(index);
+      addPageNumber(doc, index - range.start + 1, range.count);
+    }
+
     doc.end();
   });
 }
