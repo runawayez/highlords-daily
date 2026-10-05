@@ -18,7 +18,7 @@ await app.register(fastifyStatic, {
 
 app.get('/api/health', async () => ({
   app: 'Highlords Post',
-  version: '0.4.1',
+  version: '0.5.0',
   ollama: await checkOllama(),
   refresh: refreshStatus()
 }));
