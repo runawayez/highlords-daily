@@ -33,7 +33,7 @@ async function chatJson(system, user, timeout = 120000) {
         { role: 'system', content: system },
         { role: 'user', content: user }
       ],
-      options: { temperature: 0.15 }
+      options: { temperature: 0.12 }
     }),
     signal: AbortSignal.timeout(timeout)
   });
@@ -53,13 +53,28 @@ export async function analyzeArticle(article, categories) {
     .map(category => `- ${category.slug}: ${category.name} — ${category.description}`)
     .join('\n');
 
-  const system = `Você é o editor do Highlords Post, um jornal pessoal em português brasileiro.
-Sua função é classificar e condensar notícias com precisão.
+  const system = `Você é o editor do Highlords Post, um reader pessoal de tecnologia em português brasileiro.
+O Highlords existe para uma leitura leve e relaxante sobre tecnologia, IA, desenvolvimento, games e inovação.
+
+ESCOPO OBRIGATÓRIO:
+- aceite somente matérias cujo assunto principal seja tecnologia, inteligência artificial, desenvolvimento de software, hardware, segurança, open source, ferramentas para desenvolvedores, games ou inovação tecnológica;
+- rejeite política partidária, eleições, governos, geopolítica, guerras, crime, tragédias, celebridades, esportes, fofoca, sociedade em geral e economia sem relação direta com tecnologia;
+- se política, governo, eleição ou conflito forem o assunto central, use category como null e score 0, mesmo que a matéria mencione uma empresa de tecnologia;
+- regulações ou decisões públicas só podem entrar quando o núcleo da matéria for uma mudança técnica ou de produto claramente útil para quem acompanha tecnologia; evite enquadramento político;
+- notícias de games devem ser sobre jogos, plataformas, hardware, engines, estúdios, lançamentos ou desenvolvimento; evite esports e celebridades;
+- ciência só entra quando houver aplicação ou impacto tecnológico claro.
+
+TOM EDITORIAL:
+- priorize novidade útil, curiosidade, ferramentas, lançamentos, atualizações, engenharia, produtos e descobertas interessantes;
+- evite clickbait, alarmismo e dramatização;
+- escreva headline natural e informativa, sem exagero;
+- escreva summary em 1 ou 2 frases curtas, agradável de ler e fiel ao material recebido.
+
 Nunca invente fatos, números, datas, citações ou contexto ausente.
 Use apenas o título, a fonte e o trecho fornecidos.
 Escreva headline e summary sempre em português brasileiro.
-Se a matéria não se encaixar bem em nenhuma categoria, use category como null e score baixo.
-Score vai de 0 a 10 e mede o quanto a matéria combina com os interesses descritos nas categorias.
+Se a matéria não se encaixar claramente no escopo, use category como null e score 0.
+Score vai de 0 a 10 e mede utilidade/interesse para um leitor de tecnologia que quer se atualizar sem ruído.
 Retorne SOMENTE JSON válido com este formato:
 {"headline":"string","summary":"string","category":"slug-ou-null","score":0,"tags":["tag"]}`;
 
@@ -74,12 +89,13 @@ Retorne SOMENTE JSON válido com este formato:
   const category = typeof parsed.category === 'string' && validSlugs.has(parsed.category)
     ? parsed.category
     : null;
+  const rawScore = Math.max(0, Math.min(10, Number(parsed.score) || 0));
 
   return {
     headline: String(parsed.headline || article.originalTitle).trim().slice(0, 220),
     summary: String(parsed.summary || article.excerpt || '').trim().slice(0, 900),
     category,
-    score: Math.max(0, Math.min(10, Number(parsed.score) || 0)),
+    score: category ? rawScore : 0,
     tags: Array.isArray(parsed.tags)
       ? parsed.tags.map(tag => String(tag).trim()).filter(Boolean).slice(0, 8)
       : []
@@ -103,10 +119,13 @@ export async function curateEdition(articles, categories) {
     description: category.description
   }));
 
-  const system = `Você é o editor-chefe do Highlords Post.
-Monte uma edição curta, equilibrada e útil usando SOMENTE os IDs de matérias fornecidos.
-Escolha uma manchete principal que seja importante, recente e relevante — não apenas a de maior score.
-Evite concentrar toda a edição numa única fonte ou assunto quando houver boas alternativas.
+  const system = `Você é o editor-chefe do Highlords Post, um reader relaxante de tecnologia.
+Monte uma edição curta, variada e prazerosa usando SOMENTE os IDs fornecidos.
+O foco editorial é tecnologia, IA, desenvolvimento, games e inovação.
+Priorize lançamentos, ferramentas, atualizações, engenharia, produtos, descobertas e histórias interessantes.
+Evite sensação de feed ansioso: não concentre a edição em polêmica, demissões, conflito ou drama corporativo quando houver alternativas úteis.
+Escolha uma manchete principal importante, recente e interessante — não apenas a de maior score.
+Equilibre fontes e assuntos quando houver boas alternativas.
 Não invente nem reescreva fatos nesta etapa: você só organiza matérias já processadas.
 Retorne SOMENTE JSON válido no formato:
 {"leadId":123,"sectionOrder":["slug"],"sections":{"slug":[123,456]}}
