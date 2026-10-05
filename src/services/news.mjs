@@ -54,9 +54,21 @@ function insertRaw(feedId, article) {
     article.imageUrl || null
   );
 
-  if (!result.changes && article.imageUrl) {
-    db.prepare(`UPDATE articles SET image_url = COALESCE(image_url, ?) WHERE link = ?`)
-      .run(article.imageUrl, article.link);
+  if (!result.changes) {
+    db.prepare(`
+      UPDATE articles
+      SET image_url = CASE WHEN ? IS NOT NULL THEN ? ELSE image_url END,
+          excerpt = CASE WHEN length(?) > length(COALESCE(excerpt, '')) THEN ? ELSE excerpt END,
+          published_at = COALESCE(?, published_at)
+      WHERE link = ?
+    `).run(
+      article.imageUrl || null,
+      article.imageUrl || null,
+      article.excerpt || '',
+      article.excerpt || '',
+      article.publishedAt || null,
+      article.link
+    );
   }
 
   return result.changes ? Number(result.lastInsertRowid || 0) : 0;
