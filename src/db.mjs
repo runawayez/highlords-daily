@@ -12,6 +12,11 @@ db.exec(`
   PRAGMA journal_mode = WAL;
   PRAGMA foreign_keys = ON;
 
+  CREATE TABLE IF NOT EXISTS app_meta (
+    key TEXT PRIMARY KEY,
+    value TEXT NOT NULL
+  );
+
   CREATE TABLE IF NOT EXISTS categories (
     id INTEGER PRIMARY KEY AUTOINCREMENT,
     slug TEXT NOT NULL UNIQUE,
@@ -70,11 +75,28 @@ const insertCategory = db.prepare(`
   INSERT OR IGNORE INTO categories (slug, name, description, position)
   VALUES (?, ?, ?, ?)
 `);
-
 for (const row of seedCategories) insertCategory.run(...row);
 
+const defaultFeeds = [
+  ['G1', 'https://g1.globo.com/rss/g1/'],
+  ['Tecnoblog', 'https://tecnoblog.net/feed/'],
+  ['The Verge', 'https://www.theverge.com/rss/index.xml'],
+  ['Ars Technica', 'https://feeds.arstechnica.com/arstechnica/index'],
+  ['BBC World', 'https://feeds.bbci.co.uk/news/world/rss.xml'],
+  ['The Guardian World', 'https://www.theguardian.com/world/rss'],
+  ['Hacker News', 'https://news.ycombinator.com/rss']
+];
+
+const seedKey = 'default-feeds-v1';
+const alreadySeeded = db.prepare('SELECT value FROM app_meta WHERE key = ?').get(seedKey);
+if (!alreadySeeded) {
+  const insertFeed = db.prepare('INSERT OR IGNORE INTO feeds (name, url) VALUES (?, ?)');
+  for (const feed of defaultFeeds) insertFeed.run(...feed);
+  db.prepare('INSERT INTO app_meta (key, value) VALUES (?, ?)').run(seedKey, new Date().toISOString());
+}
+
 export function slugify(input) {
-  return input
+  return String(input || '')
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
