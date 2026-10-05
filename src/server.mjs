@@ -5,7 +5,7 @@ import fastifyStatic from '@fastify/static';
 import { config } from './config.mjs';
 import { db, listCategories, listFeeds, slugify } from './db.mjs';
 import { checkOllama } from './services/ollama.mjs';
-import { buildEdition, listArticles, refreshNews, refreshStatus } from './services/news.mjs';
+import { buildEdition, invalidateEditions, listArticles, refreshNews, refreshStatus } from './services/news.mjs';
 
 const __dirname = path.dirname(fileURLToPath(import.meta.url));
 const app = Fastify({ logger: true });
@@ -17,7 +17,7 @@ await app.register(fastifyStatic, {
 
 app.get('/api/health', async () => ({
   app: 'Highlords Post',
-  version: '0.1.0',
+  version: '0.2.0',
   ollama: await checkOllama(),
   refresh: refreshStatus()
 }));
@@ -40,13 +40,39 @@ app.post('/api/categories', async (request, reply) => {
   } catch {
     return reply.code(409).send({ error: 'Já existe uma categoria com esse identificador.' });
   }
+  invalidateEditions();
   return reply.code(201).send(listCategories());
+});
+
+app.put('/api/categories/:id', async (request, reply) => {
+  const id = Number(request.params.id);
+  if (!Number.isInteger(id)) return reply.code(400).send({ error: 'Categoria inválida.' });
+  const existing = db.prepare('SELECT * FROM categories WHERE id = ?').get(id);
+  if (!existing) return reply.code(404).send({ error: 'Categoria não encontrada.' });
+
+  const name = String(request.body?.name ?? existing.name).trim().slice(0, 80);
+  const description = String(request.body?.description ?? existing.description).trim().slice(0, 700);
+  const position = Number.isFinite(Number(request.body?.position)) ? Number(request.body.position) : existing.position;
+  const enabled = request.body?.enabled == null ? existing.enabled : (request.body.enabled ? 1 : 0);
+  if (!name) return reply.code(400).send({ error: 'Nome da categoria é obrigatório.' });
+
+  db.prepare(`
+    UPDATE categories
+    SET name = ?, description = ?, position = ?, enabled = ?
+    WHERE id = ?
+  `).run(name, description, position, enabled, id);
+  invalidateEditions();
+  return listCategories();
 });
 
 app.delete('/api/categories/:id', async (request, reply) => {
   const id = Number(request.params.id);
   if (!Number.isInteger(id)) return reply.code(400).send({ error: 'Categoria inválida.' });
+  const category = db.prepare('SELECT slug FROM categories WHERE id = ?').get(id);
+  if (!category) return reply.code(404).send({ error: 'Categoria não encontrada.' });
+  db.prepare('UPDATE articles SET category_slug = NULL WHERE category_slug = ?').run(category.slug);
   db.prepare('DELETE FROM categories WHERE id = ?').run(id);
+  invalidateEditions();
   return { ok: true };
 });
 
