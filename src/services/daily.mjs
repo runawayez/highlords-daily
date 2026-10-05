@@ -113,7 +113,7 @@ function fallbackSelection(articles, categories) {
   };
 }
 
-function normalizeSelection(curated, articles, categories) {
+function normalizeSelection(curated, articles, categories, { backfill = false } = {}) {
   const byId = new Map(articles.map(article => [Number(article.id), article]));
   const leadCandidate = byId.get(Number(curated?.leadId));
   const lead = leadCandidate || articles[0] || null;
@@ -134,7 +134,7 @@ function normalizeSelection(curated, articles, categories) {
       if (selected.length >= config.dailyItemsPerCategory) break;
     }
 
-    if (selected.length < config.dailyItemsPerCategory) {
+    if (backfill && selected.length < config.dailyItemsPerCategory) {
       for (const article of articles) {
         if (article.category !== category.slug || used.has(article.id)) continue;
         used.add(article.id);
@@ -185,14 +185,16 @@ export async function generateDailyEdition({ date = dailyDateKey(), force = fals
 
   let curated;
   let curatedBy = 'ranking';
+  let backfill = true;
   try {
     curated = await curateDailyNewsletter(articles, categories, date);
     curatedBy = 'ollama';
+    backfill = false;
   } catch {
     curated = fallbackSelection(articles, categories);
   }
 
-  const { lead, sections } = normalizeSelection(curated, articles, categories);
+  const { lead, sections } = normalizeSelection(curated, articles, categories, { backfill });
   const allStories = [lead, ...sections.flatMap(section => section.articles)].filter(Boolean);
   const edition = {
     editionDate: date,
