@@ -29,7 +29,7 @@ O projeto nasce com três princípios: **local-first**, **interface leve** e **c
 
 ### Feeds iniciais
 
-Na primeira execução o banco recebe um conjunto pequeno de fontes para você testar imediatamente: G1, Tecnoblog, The Verge, Ars Technica, BBC World, The Guardian World e Hacker News. Elas podem ser removidas normalmente pela interface e não são recriadas depois.
+Na primeira execução o banco recebe um conjunto pequeno de fontes para você testar imediatamente: Agência Brasil, Tecnoblog, The Verge, Ars Technica, BBC World, The Guardian World e Hacker News. Elas podem ser removidas normalmente pela interface e não são recriadas depois.
 
 ## Stack
 
