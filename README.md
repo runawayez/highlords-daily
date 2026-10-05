@@ -10,20 +10,22 @@ Highlords Post coleta feeds RSS/Atom, usa uma LLM local via **Ollama** para clas
 
 O projeto nasce com três princípios: **local-first**, **interface leve** e **controle do usuário sobre as categorias**.
 
-## MVP 0.2
+## MVP 0.3
 
 - RSS/Atom configurável pela interface.
 - Feeds iniciais adicionados automaticamente na primeira execução.
-- Categorias personalizadas com descrição de interesse.
-- Categorias editáveis, pausáveis e removíveis.
-- Botão **Todos** e seleção livre das seções exibidas.
+- Categorias personalizadas, editáveis, pausáveis e removíveis.
+- Filtro rápido por categoria e botão **Todos**.
 - Ollama local para headline, resumo, categoria, score e tags.
-- **Editor-chefe local**: uma segunda etapa do Ollama escolhe a manchete, a ordem das seções e a seleção de matérias da edição.
+- **Editor-chefe local** para escolher manchete, ordem das seções e seleção de matérias.
+- Processamento paralelo configurável, com fila limitada por atualização para não travar a máquina.
+- Progresso em tempo real: coleta, análise e montagem da edição.
+- Thumbnails extraídas dos feeds quando disponíveis, com fallback visual da marca.
+- Interface editorial responsiva inspirada em dashboards modernos de notícias, sem framework de frontend.
 - Fallback automático para ranking se a etapa editorial falhar.
 - Cache curto da edição para evitar chamadas repetidas ao modelo.
 - Saída sempre em português brasileiro.
 - SQLite local.
-- Interface sem framework de frontend: HTML + CSS + JS puro.
 - Atualização manual e agendada.
 - Docker opcional.
 
@@ -42,7 +44,7 @@ Na primeira execução o banco recebe um conjunto pequeno de fontes para você t
 
 ## Rodando localmente
 
-1. Instale o [Ollama](https://ollama.com/) e baixe um modelo:
+1. Instale o Ollama e baixe um modelo:
 
 ```bash
 ollama pull qwen3:4b
@@ -65,17 +67,23 @@ http://localhost:8090
 
 O banco será criado automaticamente em `./data/highlords-post.db`.
 
-Na primeira execução, abra o site e clique em **Atualizar agora**. O primeiro processamento pode levar alguns minutos porque cada matéria nova passa pelo Ollama antes de entrar no jornal.
+Na primeira execução, abra o site e clique em **Atualizar agora**. O topo da interface mostra o estágio atual e o número de matérias já analisadas.
+
+### Ajustando velocidade
+
+Os principais controles ficam no `.env`:
+
+```env
+MAX_ITEMS_PER_FEED=12
+MAX_PROCESS_PER_RUN=36
+ANALYSIS_CONCURRENCY=2
+```
+
+`MAX_PROCESS_PER_RUN` evita que uma primeira sincronização enorme tente analisar tudo de uma vez. Se restarem matérias, o botão passa a mostrar quantas continuam na fila. `ANALYSIS_CONCURRENCY=2` é um bom ponto de partida para GPUs de 8 GB com `qwen3:4b`.
 
 ## Docker
 
-Se o Ollama estiver rodando nativamente no computador:
-
-```bash
-cp .env.example .env
-```
-
-No `.env`, ajuste:
+Se o Ollama estiver rodando nativamente no computador, ajuste no `.env`:
 
 ```env
 OLLAMA_HOST=http://host.docker.internal:11434
@@ -94,11 +102,11 @@ Acesse `http://localhost:8090`.
 ```text
 RSS / Atom
    ↓
-coletor
+coleta + artwork
    ↓
-normalização + deduplicação por URL
+fila limitada
    ↓
-Ollama / editor de matéria
+Ollama / editores de matéria em paralelo
    ├─ headline em PT-BR
    ├─ resumo em PT-BR
    ├─ categoria
@@ -122,6 +130,7 @@ O Ollama nunca gera o HTML. Ele devolve dados estruturados; a interface é respo
 - Deduplicação semântica entre fontes diferentes.
 - Feedback `quero mais / quero menos`.
 - Página de leitura posterior.
+- Busca semântica local.
 - Extração opcional do texto integral das matérias.
 - Importação/exportação de OPML.
 - Fontes além de RSS: APIs, Reddit, GitHub Releases e YouTube.
