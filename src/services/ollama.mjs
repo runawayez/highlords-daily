@@ -158,12 +158,17 @@ Analise TODAS as matérias recebidas e devolva somente JSON válido.
 
 IMPORTANTE:
 - as categorias editoriais abaixo são a fonte de verdade desta newsletter;
-- os campos focus enviados junto de cada matéria são somente pistas sobre a fonte, nunca uma obrigação de classificação;
+- focus é uma pista editorial sobre a fonte;
+- quando strictFocus for true, a categoria escolhida DEVE obrigatoriamente estar dentro de focus; se nenhuma categoria de focus servir, use category null;
+- quando strictFocus for false, escolha livremente entre as categorias configuradas;
+- FUTEBOL significa exclusivamente futebol de associação/soccer. NFL, NCAA football, American football, quarterback, Super Bowl e similares pertencem a ESPORTES, nunca a FUTEBOL;
+- não classifique automaticamente a palavra inglesa "football" como futebol: determine pelo contexto se é soccer ou futebol americano;
 - na dúvida entre duas categorias válidas, escolha a categoria cujo assunto central melhor representa a matéria;
 - use category null SOMENTE quando a matéria claramente não pertencer a nenhuma categoria configurada;
 - devolva EXATAMENTE um item para cada id recebido, inclusive os rejeitados;
 - category deve ser SOMENTE um destes slugs exatos: ${validSlugList}; ou null;
 - nunca use os nomes bonitos das categorias no campo category;
+- headline e summary devem descrever EXCLUSIVAMENTE a matéria daquele mesmo id. Nunca misture, copie ou transfira conteúdo de um id para outro;
 - não invente fatos e use somente o material fornecido.
 
 CATEGORIAS CONFIGURADAS:
@@ -188,6 +193,7 @@ function parseBatch(parsed, batch) {
   const seen = new Set();
   let invalidId = 0;
   let invalidCategory = 0;
+  let strictMismatch = 0;
   let belowScore = 0;
 
   for (const row of rows) {
@@ -204,6 +210,11 @@ function parseBatch(parsed, batch) {
     const score = normalizeScore(row?.score ?? row?.relevance ?? row?.relevancia ?? row?.rating ?? row?.nota);
     if (!category) {
       invalidCategory += 1;
+      continue;
+    }
+
+    if (article.strictFocus && Array.isArray(article.focus) && article.focus.length && !article.focus.includes(category)) {
+      strictMismatch += 1;
       continue;
     }
 
@@ -233,6 +244,7 @@ function parseBatch(parsed, batch) {
       missing: Math.max(0, batch.length - seen.size),
       invalidId,
       invalidCategory,
+      strictMismatch,
       belowScore
     }
   };
@@ -243,6 +255,7 @@ async function analyzeBatch(batch) {
     id: article.id,
     source: article.source,
     focus: article.focus,
+    strictFocus: Boolean(article.strictFocus),
     title: article.originalTitle,
     excerpt: article.excerpt,
     publishedAt: article.publishedAt
@@ -255,7 +268,7 @@ async function analyzeBatch(batch) {
   if (result.stats.matched < Math.max(1, Math.ceil(batch.length / 2))) {
     retried = true;
     parsed = await chatJson(
-      `${analysisSystem}\n\nATENÇÃO EXTRA: sua resposta anterior não cobriu todos os IDs. Não omita nenhum item. Repita cada id exatamente uma vez.`,
+      `${analysisSystem}\n\nATENÇÃO EXTRA: sua resposta anterior não cobriu todos os IDs. Não omita nenhum item. Repita cada id exatamente uma vez e nunca misture o conteúdo entre IDs.`,
       payload,
       150000
     );
@@ -306,6 +319,38 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
     }
   }
 
+  const rescueFloor = Math.max(0, config.llmMinScore - 1);
+  const targetPerCategory = config.itemsPerCategory + 1;
+  const selectedIds = new Set(analyzed.map(article => article.id));
+
+  for (const category of categories) {
+    let count = analyzed.filter(article => article.category === category.slug).length;
+    if (count >= targetPerCategory) continue;
+
+    const extras = classified
+      .filter(article => article.category === category.slug && !selectedIds.has(article.id) && Number(article.score) >= rescueFloor)
+      .sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+
+    let added = 0;
+    for (const article of extras) {
+      analyzed.push(article);
+      selectedIds.add(article.id);
+      count += 1;
+      added += 1;
+      if (count >= targetPerCategory) break;
+    }
+
+    if (added) {
+      onProgress({
+        status: 'category-rescue',
+        category: category.name,
+        count: added,
+        floor: rescueFloor,
+        total: count
+      });
+    }
+  }
+
   if (!analyzed.length && failedBatches === totalBatches) {
     throw new Error('Todos os lotes falharam ao conversar com o Ollama. Veja as mensagens de erro acima.');
   }
@@ -317,7 +362,7 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
 }
 
 export async function curateNewsletter(articles, editionDate) {
-  const compact = articles.slice(0, 60).map(article => ({
+  const compact = articles.slice(0, 80).map(article => ({
     id: article.id,
     category: article.category,
     score: article.score,
@@ -342,10 +387,12 @@ Monte uma newsletter curta, calma e realmente útil usando SOMENTE os IDs fornec
 REGRAS:
 - escolha 1 manchete principal entre as matérias mais importantes;
 - escolha no máximo ${config.itemsPerCategory} matérias por categoria;
+- sempre que existirem candidatas suficientes, preencha ${config.itemsPerCategory} matérias em cada categoria;
 - existem ${categories.length} seções configuradas e elas devem aparecer como chaves em sections;
-- uma seção pode ficar vazia se não houver candidata válida para ela;
+- uma seção só deve ficar incompleta quando realmente não houver candidatas suficientes para ela;
 - não use a manchete novamente nas seções;
 - não repita a mesma história ou assunto;
+- Futebol significa soccer/futebol de associação; NFL e futebol americano pertencem a Esportes;
 - prefira impacto, utilidade, novidade e relevância a clickbait;
 - equilibre fontes quando houver alternativas equivalentes;
 - escreva título e introdução SEMPRE em português brasileiro;
