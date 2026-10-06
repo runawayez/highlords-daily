@@ -25,7 +25,7 @@ O preset padrão vem com dez categorias:
 9. **Economia**
 10. **Futuro**
 
-**Futebol** fica separado de **Esportes**. A seção Esportes é voltada a basquete, Fórmula 1, tênis, vôlei, lutas, atletismo e outras modalidades.
+**Futebol** significa futebol de associação/soccer. Futebol americano, NFL, NCAA, Super Bowl e outras modalidades ficam em **Esportes**, junto de basquete, Fórmula 1, tênis, vôlei, lutas, atletismo, rugby e esportes olímpicos.
 
 A configuração editorial fica em:
 
@@ -52,6 +52,11 @@ Ollama analisa em lotes
    ├─ gera tags
    └─ atribui nota de relevância de 0 a 10
           ↓
+validação editorial
+   ├─ respeita fontes de foco estrito
+   ├─ impede vazamento entre verticais
+   └─ mantém candidatas de reserva por seção
+          ↓
 Ollama editor-chefe
    ├─ escolhe a manchete
    ├─ seleciona os melhores destaques
@@ -69,9 +74,9 @@ PDF com o mesmo layout e links do HTML
 
 Cada notícia recebe do Ollama categoria, nota de relevância de **0 a 10**, headline em PT-BR, resumo curto e tags. A nota combina **novidade, impacto, utilidade, relevância para o leitor e interesse editorial**.
 
-O padrão Vanilla tenta manter **2 destaques por categoria**. O gerador completa automaticamente vagas com candidatas da mesma categoria já aprovadas pela LLM e, quando possível, evita escolher como manchete uma matéria que faria sua própria seção perder um dos dois destaques. Se não existirem duas candidatas aprovadas para uma categoria, a edição continua normalmente e o layout se adapta a um único card.
+O padrão Vanilla tenta manter **2 destaques por categoria**. Para isso, o analisador conserva candidatas de reserva da mesma categoria quando elas ficam até 1 ponto abaixo do corte principal, e o gerador completa vagas antes da montagem final. Também evita, quando possível, escolher como manchete uma matéria que faria sua própria seção perder um dos dois destaques.
 
-Categorias sem matéria aprovada não são renderizadas.
+Categorias sem matéria válida não são renderizadas.
 
 ## Categorias personalizáveis
 
@@ -96,13 +101,15 @@ feeds:
   - name: Trivela
     url: https://trivela.com.br/feed/
     focus: [futebol]
+    strict_focus: true
 
   - name: BBC Sport
     url: https://feeds.bbci.co.uk/sport/rss.xml
     focus: [esportes]
+    strict_focus: true
 ```
 
-`focus` é apenas uma **dica**. A classificação final continua sendo feita pelo Ollama.
+Por padrão, `focus` funciona como uma dica editorial. Quando `strict_focus: true`, a matéria só pode ser classificada em uma das categorias listadas em `focus`. Isso é útil para fontes verticais e impede, por exemplo, uma matéria esportiva de acabar em Desenvolvimento por causa de uma resposta inconsistente do modelo.
 
 Se o RSS fornecer apenas logo ou arte genérica, use `images: page` para buscar a `og:image` diretamente na página da matéria. Para desativar imagens naquela fonte, use `images: false`. O coletor também elimina imagens idênticas repetidas pela mesma fonte.
 
