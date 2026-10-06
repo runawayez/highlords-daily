@@ -9,7 +9,8 @@ function browserCandidates() {
     '/usr/bin/google-chrome',
     '/usr/bin/google-chrome-stable',
     '/usr/bin/chromium',
-    '/usr/bin/chromium-browser'
+    '/usr/bin/chromium-browser',
+    '/snap/bin/chromium'
   ];
 
   if (process.platform === 'win32') {
@@ -22,13 +23,23 @@ function browserCandidates() {
     }
   }
 
+  if (process.platform === 'darwin') {
+    candidates.push(
+      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
+      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
+      '/Applications/Chromium.app/Contents/MacOS/Chromium',
+      path.join(process.env.HOME || '', 'Applications', 'Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome'),
+      path.join(process.env.HOME || '', 'Applications', 'Microsoft Edge.app', 'Contents', 'MacOS', 'Microsoft Edge')
+    );
+  }
+
   return [...new Set(candidates.filter(Boolean))];
 }
 
 function findBrowser() {
   const found = browserCandidates().find(candidate => fs.existsSync(candidate));
   if (!found) {
-    throw new Error('Chrome/Chromium não encontrado. Defina BROWSER_PATH apontando para chrome, chromium ou msedge.');
+    throw new Error('Chrome/Chromium/Edge não encontrado. Instale um navegador compatível ou defina BROWSER_PATH no arquivo .env.');
   }
   return found;
 }
