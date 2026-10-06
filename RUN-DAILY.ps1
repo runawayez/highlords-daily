@@ -85,101 +85,121 @@ function Find-Browser {
   return $null
 }
 
-Write-Host ''
-Write-Host '========================================' -ForegroundColor DarkGray
-Write-Host '         HIGH LORDS DAILY' -ForegroundColor White
-Write-Host '========================================' -ForegroundColor DarkGray
-Write-Host ''
-Write-Step 'Verificando ambiente...'
+$ollamaStartedByLauncher = $false
+$ollamaProcess = $null
 
-$node = Get-Command node -ErrorAction SilentlyContinue
-if (-not $node) {
-  throw 'Node.js nao encontrado. Instale Node.js 22.5 ou superior e execute novamente.'
-}
-$nodeVersionText = (& node -p "process.versions.node").Trim()
-try { $nodeVersion = [version]$nodeVersionText } catch { throw "Nao foi possivel identificar a versao do Node.js: $nodeVersionText" }
-if ($nodeVersion -lt [version]'22.5.0') {
-  throw "Node.js $nodeVersionText encontrado, mas o Highlords Daily requer Node.js 22.5 ou superior."
-}
-Write-Ok 'Node.js' $nodeVersionText
+try {
+  Write-Host ''
+  Write-Host '========================================' -ForegroundColor DarkGray
+  Write-Host '         HIGH LORDS DAILY' -ForegroundColor White
+  Write-Host '========================================' -ForegroundColor DarkGray
+  Write-Host ''
+  Write-Step 'Verificando ambiente...'
 
-$npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
-if (-not $npm) { throw 'npm.cmd nao encontrado no PATH. Reinstale o Node.js com npm.' }
-Write-Ok 'npm'
-
-$ollama = Get-Command ollama -ErrorAction SilentlyContinue
-if (-not $ollama) {
-  throw 'Ollama nao encontrado. Instale o Ollama em https://ollama.com e execute novamente.'
-}
-Write-Ok 'Ollama'
-
-$browser = Find-Browser
-if (-not $browser) {
-  throw 'Chrome ou Microsoft Edge nao encontrado. Instale um deles ou defina BROWSER_PATH no arquivo .env.'
-}
-Write-Ok 'Navegador' ([IO.Path]::GetFileName($browser))
-if (-not $env:BROWSER_PATH -and $null -eq $dotenvBrowser) { $env:BROWSER_PATH = $browser }
-
-if (-not (Test-Path 'node_modules\yaml\package.json') -or -not (Test-Path 'node_modules\rss-parser\package.json') -or -not (Test-Path 'node_modules\puppeteer-core\package.json')) {
-  Write-Step 'Instalando dependencias do projeto...'
-  & npm.cmd install
-  if ($LASTEXITCODE -ne 0) { throw "npm install falhou com codigo $LASTEXITCODE." }
-}
-Write-Ok 'Dependencias'
-
-$endpoint = Test-Ollama
-if (-not $endpoint) {
-  Write-Step 'Iniciando Ollama...'
-
-  $logDir = Join-Path $env:TEMP 'highlords-daily'
-  New-Item -ItemType Directory -Force -Path $logDir | Out-Null
-  $stdoutLog = Join-Path $logDir 'ollama-stdout.log'
-  $stderrLog = Join-Path $logDir 'ollama-stderr.log'
-  Remove-Item $stdoutLog, $stderrLog -Force -ErrorAction SilentlyContinue
-
-  try {
-    $ollamaProcess = Start-Process -FilePath $ollama.Source -ArgumentList 'serve' -WindowStyle Hidden -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog -PassThru
-  } catch {
-    throw "Falha ao iniciar o Ollama: $($_.Exception.Message)"
+  $node = Get-Command node -ErrorAction SilentlyContinue
+  if (-not $node) {
+    throw 'Node.js nao encontrado. Instale Node.js 22.5 ou superior e execute novamente.'
   }
+  $nodeVersionText = (& node -p "process.versions.node").Trim()
+  try { $nodeVersion = [version]$nodeVersionText } catch { throw "Nao foi possivel identificar a versao do Node.js: $nodeVersionText" }
+  if ($nodeVersion -lt [version]'22.5.0') {
+    throw "Node.js $nodeVersionText encontrado, mas o Highlords Daily requer Node.js 22.5 ou superior."
+  }
+  Write-Ok 'Node.js' $nodeVersionText
 
-  Write-Step 'Aguardando a API do Ollama...'
-  for ($second = 1; $second -le 30; $second++) {
-    Start-Sleep -Seconds 1
-    $endpoint = Test-Ollama
-    if ($endpoint) { break }
+  $npm = Get-Command npm.cmd -ErrorAction SilentlyContinue
+  if (-not $npm) { throw 'npm.cmd nao encontrado no PATH. Reinstale o Node.js com npm.' }
+  Write-Ok 'npm'
 
-    if ($ollamaProcess.HasExited) {
+  $ollama = Get-Command ollama -ErrorAction SilentlyContinue
+  if (-not $ollama) {
+    throw 'Ollama nao encontrado. Instale o Ollama em https://ollama.com e execute novamente.'
+  }
+  Write-Ok 'Ollama'
+
+  $browser = Find-Browser
+  if (-not $browser) {
+    throw 'Chrome ou Microsoft Edge nao encontrado. Instale um deles ou defina BROWSER_PATH no arquivo .env.'
+  }
+  Write-Ok 'Navegador' ([IO.Path]::GetFileName($browser))
+  if (-not $env:BROWSER_PATH -and $null -eq $dotenvBrowser) { $env:BROWSER_PATH = $browser }
+
+  if (-not (Test-Path 'node_modules\yaml\package.json') -or -not (Test-Path 'node_modules\rss-parser\package.json') -or -not (Test-Path 'node_modules\puppeteer-core\package.json')) {
+    Write-Step 'Instalando dependencias do projeto...'
+    & npm.cmd install
+    if ($LASTEXITCODE -ne 0) { throw "npm install falhou com codigo $LASTEXITCODE." }
+  }
+  Write-Ok 'Dependencias'
+
+  $endpoint = Test-Ollama
+  if (-not $endpoint) {
+    Write-Step 'Iniciando Ollama...'
+
+    $logDir = Join-Path $env:TEMP 'highlords-daily'
+    New-Item -ItemType Directory -Force -Path $logDir | Out-Null
+    $stdoutLog = Join-Path $logDir 'ollama-stdout.log'
+    $stderrLog = Join-Path $logDir 'ollama-stderr.log'
+    Remove-Item $stdoutLog, $stderrLog -Force -ErrorAction SilentlyContinue
+
+    try {
+      $ollamaProcess = Start-Process -FilePath $ollama.Source -ArgumentList 'serve' -WindowStyle Hidden -RedirectStandardOutput $stdoutLog -RedirectStandardError $stderrLog -PassThru
+      $ollamaStartedByLauncher = $true
+    } catch {
+      throw "Falha ao iniciar o Ollama: $($_.Exception.Message)"
+    }
+
+    Write-Step 'Aguardando a API do Ollama...'
+    for ($second = 1; $second -le 30; $second++) {
+      Start-Sleep -Seconds 1
+      $endpoint = Test-Ollama
+      if ($endpoint) { break }
+
+      if ($ollamaProcess.HasExited) {
+        $details = ''
+        if (Test-Path $stderrLog) { $details = (Get-Content $stderrLog -Tail 12 -ErrorAction SilentlyContinue) -join "`n" }
+        if (-not $details -and (Test-Path $stdoutLog)) { $details = (Get-Content $stdoutLog -Tail 12 -ErrorAction SilentlyContinue) -join "`n" }
+        throw "O processo 'ollama serve' encerrou antes de abrir a API.`n$details"
+      }
+    }
+
+    if (-not $endpoint) {
       $details = ''
       if (Test-Path $stderrLog) { $details = (Get-Content $stderrLog -Tail 12 -ErrorAction SilentlyContinue) -join "`n" }
-      if (-not $details -and (Test-Path $stdoutLog)) { $details = (Get-Content $stdoutLog -Tail 12 -ErrorAction SilentlyContinue) -join "`n" }
-      throw "O processo 'ollama serve' encerrou antes de abrir a API.`n$details"
+      throw "Ollama nao respondeu apos 30 segundos. Log: $stderrLog`n$details"
     }
   }
 
-  if (-not $endpoint) {
-    $details = ''
-    if (Test-Path $stderrLog) { $details = (Get-Content $stderrLog -Tail 12 -ErrorAction SilentlyContinue) -join "`n" }
-    throw "Ollama nao respondeu apos 30 segundos. Log: $stderrLog`n$details"
+  $env:OLLAMA_HOST = $endpoint
+  Write-Ok 'API Ollama' $endpoint
+
+  if (-not (Test-OllamaModel $endpoint $model)) {
+    Write-Step "Modelo $model nao encontrado. Baixando agora (somente na primeira execucao)..."
+    & $ollama.Source pull $model
+    if ($LASTEXITCODE -ne 0) { throw "Nao foi possivel baixar o modelo $model." }
+  }
+  $env:OLLAMA_MODEL = $model
+  Write-Ok 'Modelo' $model
+
+  Write-Host ''
+  Write-Step 'Gerando a newsletter...'
+  & npm.cmd run daily
+  if ($LASTEXITCODE -ne 0) { throw "A geracao falhou com codigo $LASTEXITCODE." }
+
+  Write-Host ''
+  Write-Host 'Newsletter gerada com sucesso.' -ForegroundColor Green
+  Write-Host 'HTML e PDF estao na pasta output.'
+}
+finally {
+  if ($ollamaStartedByLauncher -and $ollamaProcess) {
+    Write-Host ''
+    Write-Step 'Encerrando Ollama iniciado pelo Highlords...'
+    try {
+      if (-not $ollamaProcess.HasExited) {
+        & taskkill.exe /PID $ollamaProcess.Id /T /F 2>$null | Out-Null
+      }
+      Write-Ok 'Ollama' 'encerrado'
+    } catch {
+      Write-Warning "Nao foi possivel encerrar automaticamente o Ollama (PID $($ollamaProcess.Id))."
+    }
   }
 }
-
-$env:OLLAMA_HOST = $endpoint
-Write-Ok 'API Ollama' $endpoint
-
-if (-not (Test-OllamaModel $endpoint $model)) {
-  Write-Step "Modelo $model nao encontrado. Baixando agora (somente na primeira execucao)..."
-  & $ollama.Source pull $model
-  if ($LASTEXITCODE -ne 0) { throw "Nao foi possivel baixar o modelo $model." }
-}
-$env:OLLAMA_MODEL = $model
-Write-Ok 'Modelo' $model
-
-Write-Host ''
-Write-Step 'Gerando a newsletter...'
-& npm.cmd run daily
-if ($LASTEXITCODE -ne 0) { throw "A geracao falhou com codigo $LASTEXITCODE." }
-
-Write-Host ''
-Write-Host 'Newsletter gerada com sucesso.' -ForegroundColor Green
-Write-Host 'HTML e PDF estao na pasta output.'
