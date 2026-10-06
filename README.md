@@ -7,14 +7,18 @@
 <p align="center"><strong>Informação sem ruído.</strong></p>
 
 <p align="center">
+  <strong>Português</strong> · <a href="README.en.md">English</a>
+</p>
+
+<p align="center">
 Newsletter diária local e personalizável com curadoria por IA via Ollama, agregação RSS/Atom e geração editorial em HTML, JSON e PDF.
 </p>
 
-O **Highlords Daily** coleta notícias recentes, valida imagens, usa uma LLM local para classificar, resumir e pontuar as matérias e depois executa uma segunda etapa de curadoria para montar uma edição pronta para leitura.
+O **Highlords Daily** coleta notícias recentes, valida imagens, usa uma LLM local para classificar, traduzir, resumir e pontuar as matérias e depois executa uma segunda etapa de curadoria para montar uma edição pronta para leitura.
 
 Tudo acontece localmente. **Nenhuma API externa de IA é necessária.**
 
-O preset padrão **Vanilla é Brazil-first**: usa somente fontes brasileiras para reduzir manchetes com preços, disponibilidade e contexto pensados para outros mercados.
+O preset padrão **Vanilla é Brazil-first**: usa somente fontes brasileiras, idioma `pt-BR` e contexto editorial brasileiro. Mas o motor do Highlords é universal: você pode trocar idioma, contexto regional, categorias e feeds sem alterar o JavaScript.
 
 ---
 
@@ -108,6 +112,9 @@ Configuração padrão:
 ```env
 OLLAMA_HOST=http://127.0.0.1:11434
 OLLAMA_MODEL=qwen3:4b
+
+LANGUAGE=pt-BR
+EDITORIAL_CONTEXT=Brasil
 TIME_ZONE=America/Sao_Paulo
 OUTPUT_DIR=./output
 
@@ -126,6 +133,9 @@ AUTO_OPEN=true
 
 Principais opções:
 
+- `LANGUAGE`: locale de saída da newsletter, por exemplo `pt-BR`, `en-AU`, `en-US`, `es-ES` ou `fr-FR`.
+- `EDITORIAL_CONTEXT`: país/região/público que deve orientar vocabulário e enquadramento editorial.
+- `TIME_ZONE`: fuso usado para definir a data da edição.
 - `OLLAMA_MODEL`: modelo local usado para análise e curadoria.
 - `LOOKBACK_HOURS`: janela de tempo das notícias coletadas.
 - `MAX_CANDIDATES`: máximo de matérias enviadas para análise.
@@ -134,6 +144,45 @@ Principais opções:
 - `REQUIRE_IMAGES=true`: elimina matérias sem imagem válida antes da IA.
 - `AUTO_OPEN=true`: abre o HTML automaticamente ao terminar.
 - `BROWSER_PATH`: opcional; use somente se Chrome/Chromium/Edge não for detectado automaticamente.
+
+---
+
+## Idioma e contexto regional
+
+O Highlords separa **idioma** de **contexto editorial**.
+
+`LANGUAGE` controla o locale da edição: manchetes, resumos, tags, título, introdução, data e rótulos da interface. `EDITORIAL_CONTEXT` diz ao Ollama para quem ele está escrevendo.
+
+Exemplo para uma edição australiana:
+
+```env
+LANGUAGE=en-AU
+EDITORIAL_CONTEXT=Australia
+TIME_ZONE=Australia/Sydney
+FEEDS_FILE=./config/feeds-australia.yml
+```
+
+A pessoa pode então criar `config/feeds-australia.yml` com os RSS que quiser. O Ollama escreve em inglês australiano e tenta enquadrar as notícias para um leitor australiano.
+
+O mesmo vale para qualquer outro mercado:
+
+```env
+LANGUAGE=es-MX
+EDITORIAL_CONTEXT=México
+TIME_ZONE=America/Mexico_City
+```
+
+ou:
+
+```env
+LANGUAGE=fr-FR
+EDITORIAL_CONTEXT=France
+TIME_ZONE=Europe/Paris
+```
+
+O Highlords **não inventa conversões de moeda**. Se a fonte mencionar um preço em moeda estrangeira, a orientação editorial é preservar o valor correto e deixar claro o mercado/contexto quando necessário, em vez de apresentar aquele preço como se fosse local.
+
+Os nomes das seções e os rótulos visuais também são localizados pelo editor-chefe do Ollama. Em caso de fallback, português e inglês possuem rótulos internos padrão.
 
 ---
 
@@ -174,9 +223,9 @@ coleta balanceada entre as fontes
 Ollama analisa em lotes
    ├─ remove conteúdo fora do escopo
    ├─ classifica nas categorias configuradas
-   ├─ reescreve títulos em PT-BR
-   ├─ cria resumos em PT-BR
-   ├─ gera tags
+   ├─ traduz/localiza para LANGUAGE
+   ├─ adapta o enquadramento a EDITORIAL_CONTEXT
+   ├─ cria resumos e tags
    └─ atribui nota de relevância de 0 a 10
           ↓
 validação editorial
@@ -187,6 +236,7 @@ validação editorial
 Ollama editor-chefe
    ├─ escolhe a manchete
    ├─ seleciona os melhores destaques
+   ├─ localiza nomes de seção e interface
    ├─ equilibra fontes e assuntos
    └─ escreve título e introdução
           ↓
@@ -197,7 +247,7 @@ template HTML editorial
 PDF com o mesmo layout e links do HTML
 ```
 
-Cada notícia recebe categoria, **nota de relevância de 0 a 10**, headline em PT-BR, resumo e tags. A nota considera novidade, impacto, utilidade e interesse editorial.
+Cada notícia recebe categoria, **nota de relevância de 0 a 10**, headline, resumo e tags no locale configurado. A nota considera novidade, impacto, utilidade e interesse editorial.
 
 ---
 
@@ -287,6 +337,8 @@ FEEDS_FILE=./config/feeds-global.yml
 ```
 
 Esse preset mantém fontes como The Verge, Ars Technica, Hacker News, TechCrunch, GitHub Blog, InfoQ, Tom's Hardware, BBC Sport e outras.
+
+Para outros países, a ideia é simples: copie um arquivo de feeds, troque as URLs RSS e ajuste `LANGUAGE`, `EDITORIAL_CONTEXT` e `TIME_ZONE`.
 
 ---
 
