@@ -4,9 +4,14 @@
 
 # Highlords Daily
 
-**Tecnologia sem ruído. Uma newsletter diária gerada localmente com RSS + Ollama.**
+**Tecnologia sem ruído. Uma newsletter diária gerada com RSS e curadoria local.**
 
-O Highlords Daily não é mais um news reader nem um servidor web. Ele é um gerador de edição: coleta as fontes, pede ao Ollama para filtrar e selecionar o que realmente importa e grava uma newsletter pronta em **HTML, JSON e PDF**.
+O Highlords Daily não é mais um news reader nem um servidor web. Ele é um gerador de edição: coleta as fontes, filtra e seleciona o que realmente importa e grava uma newsletter pronta em **HTML, JSON e PDF**.
+
+O projeto possui dois modos:
+
+- **Ollama**: melhor qualidade editorial, compreensão de contexto, headlines e resumos em PT-BR.
+- **Sem LLM**: curadoria determinística rápida para GitHub Actions, sem GPU, modelo ou API externa.
 
 ## As sete seções fixas
 
@@ -20,7 +25,7 @@ O Highlords Daily não é mais um news reader nem um servidor web. Ele é um ger
 
 Política, geopolítica, crime, celebridades, esportes e notícias gerais ficam fora da curadoria.
 
-## Fluxo
+## Fluxo com Ollama
 
 ```text
 RSS / Atom
@@ -39,18 +44,7 @@ Ollama editor-chefe
    ├─ escreve título e introdução
    └─ pode deixar uma seção vazia
    ↓
-output/AAAA-MM-DD/
-   ├─ index.html
-   ├─ edition.json
-   └─ highlords-daily-AAAA-MM-DD.pdf
-```
-
-Também são atualizados automaticamente:
-
-```text
-output/latest.html
-output/latest.json
-output/highlords-daily-latest.pdf
+HTML + JSON + PDF
 ```
 
 ## Uso mais simples no Windows
@@ -72,19 +66,79 @@ ollama pull qwen3:4b
 npm.cmd install
 ```
 
-Para gerar uma edição:
-
-```powershell
-ollama serve
-```
-
-Em outro terminal:
+Para gerar com Ollama:
 
 ```powershell
 npm.cmd run daily
 ```
 
-Não existe mais `localhost:8090`, Fastify ou SQLite. A edição é um arquivo HTML normal e abre diretamente no navegador.
+Para testar localmente a mesma versão **sem LLM** usada no GitHub Actions:
+
+```powershell
+npm.cmd run daily:no-llm
+```
+
+Não existe mais `localhost:8090`, Fastify ou SQLite. A edição é um arquivo HTML normal e abre diretamente no navegador no modo local com Ollama.
+
+## GitHub Actions — versão sem LLM
+
+O workflow `.github/workflows/daily-no-llm.yml` gera uma edição sem Ollama e publica o resultado como **Artifact**.
+
+Ele roda automaticamente todos os dias às **08:00 no horário de São Paulo** e também pode ser iniciado manualmente em:
+
+```text
+GitHub → Actions → Highlords Daily — sem LLM → Run workflow
+```
+
+O artifact contém:
+
+```text
+highlords-daily-no-llm-latest.pdf
+latest-no-llm.html
+latest-no-llm.json
+diagnostics.json
+```
+
+A curadoria sem LLM usa:
+
+- classificação ponderada por palavras e expressões específicas das 7 categorias;
+- peso maior para termos encontrados no título;
+- score de confiança por fonte;
+- recência da publicação;
+- sinais de lançamento, atualização importante, vulnerabilidade e novidade técnica;
+- penalização de rumores, ofertas, clickbait, earnings, layoffs e outros ruídos;
+- bloqueio forte de política e notícias gerais;
+- deduplicação por similaridade lexical de títulos;
+- limite de repetição da mesma fonte;
+- diversidade entre categorias e fontes;
+- tags determinísticas de marcas e tecnologias.
+
+Sem LLM, headlines permanecem próximas do título original e o resumo é extraído do próprio trecho RSS. Portanto, o modo Ollama continua sendo a opção de maior qualidade editorial; o modo Actions existe para gerar uma edição rápida, gratuita e independente de modelo.
+
+## Saída
+
+Modo Ollama:
+
+```text
+output/AAAA-MM-DD/
+   ├─ index.html
+   ├─ edition.json
+   └─ highlords-daily-AAAA-MM-DD.pdf
+
+output/latest.html
+output/latest.json
+output/highlords-daily-latest.pdf
+```
+
+Modo sem LLM:
+
+```text
+output/AAAA-MM-DD/no-llm/
+   ├─ index.html
+   ├─ edition.json
+   ├─ diagnostics.json
+   └─ highlords-daily-AAAA-MM-DD-no-llm.pdf
+```
 
 ## Configuração
 
@@ -115,10 +169,11 @@ A lista fica em `src/config.mjs` e atualmente inclui Tecnoblog, The Verge, Ars T
 
 - Node.js 22+
 - `rss-parser`
-- Ollama
+- Ollama opcional
 - PDFKit
 - HTML/CSS estático
+- GitHub Actions para geração sem LLM
 
 ## Privacidade
 
-A análise e a curadoria acontecem no seu próprio Ollama. Nenhuma API de LLM em nuvem é necessária.
+No modo Ollama, a análise acontece localmente. No modo sem LLM, nenhuma API de IA é utilizada.
