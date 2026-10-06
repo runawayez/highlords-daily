@@ -4,7 +4,7 @@ import { config, feeds } from '../config.mjs';
 const parser = new Parser({
   timeout: 15000,
   headers: {
-    'User-Agent': 'HighlordsDaily/2.2 (+https://github.com/runawayez/highlords-daily)'
+    'User-Agent': 'HighlordsDaily/3.0 (+https://github.com/runawayez/highlords-daily)'
   },
   customFields: {
     item: [
@@ -97,7 +97,7 @@ async function fetchPageImage(link) {
     const response = await fetch(link, {
       redirect: 'follow',
       headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/2.2',
+        'user-agent': 'Mozilla/5.0 HighlordsDaily/3.0',
         accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'
       },
       signal: AbortSignal.timeout(6000)
@@ -141,6 +141,7 @@ async function fetchFeed(feed) {
       return {
         id: `${feed.name}:${item.guid || item.id || link || index}`,
         source: feed.name || parsed.title || new URL(feed.url).hostname,
+        focus: Array.isArray(feed.focus) ? feed.focus : [],
         originalTitle: stripHtml(item.title || 'Sem título'),
         link,
         publishedAt: published.toISOString(),
@@ -165,6 +166,40 @@ function dedupe(articles) {
   });
 }
 
+function balancedLimit(articles, feedList, limit) {
+  if (articles.length <= limit) {
+    return [...articles].sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+  }
+
+  const quota = Math.max(1, Math.floor(limit / Math.max(1, feedList.length)));
+  const selected = [];
+  const selectedLinks = new Set();
+
+  for (const feed of feedList) {
+    const fromFeed = articles
+      .filter(article => article.source === feed.name)
+      .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+      .slice(0, quota);
+
+    for (const article of fromFeed) {
+      if (selected.length >= limit) break;
+      selected.push(article);
+      selectedLinks.add(article.link);
+    }
+  }
+
+  const remaining = articles
+    .filter(article => !selectedLinks.has(article.link))
+    .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+
+  for (const article of remaining) {
+    if (selected.length >= limit) break;
+    selected.push(article);
+  }
+
+  return selected.sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+}
+
 export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
   const articles = [];
   const errors = [];
@@ -179,10 +214,9 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
     }
   }
 
-  const unique = dedupe(articles)
-    .sort((a, b) => new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
-    .slice(0, config.maxCandidates);
+  const unique = dedupe(articles);
+  const selected = balancedLimit(unique, feedList, config.maxCandidates);
 
-  unique.forEach((article, index) => { article.id = index + 1; });
-  return { articles: unique, errors };
+  selected.forEach((article, index) => { article.id = index + 1; });
+  return { articles: selected, errors };
 }
