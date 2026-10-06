@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
 function browserCandidates() {
@@ -38,13 +39,11 @@ function browserCandidates() {
 
 function findBrowser() {
   const found = browserCandidates().find(candidate => fs.existsSync(candidate));
-  if (!found) {
-    throw new Error('Chrome/Chromium/Edge não encontrado. Instale um navegador compatível ou defina BROWSER_PATH no arquivo .env.');
-  }
+  if (!found) throw new Error('Chrome/Chromium/Edge não encontrado. Instale um navegador compatível ou defina BROWSER_PATH no arquivo .env.');
   return found;
 }
 
-async function waitForImages(page, timeoutMs = 9000) {
+async function waitForImages(page, timeoutMs = 12000) {
   await Promise.race([
     page.evaluate(async () => {
       const images = [...document.images];
@@ -60,18 +59,25 @@ async function waitForImages(page, timeoutMs = 9000) {
   ]);
 }
 
-export async function renderHtmlPdf(html) {
+function withBase(html, baseDir) {
+  if (!baseDir) return html;
+  const href = pathToFileURL(`${path.resolve(baseDir)}${path.sep}`).href;
+  const base = `<base href="${href}">`;
+  return String(html).includes('<head>') ? String(html).replace('<head>', `<head>\n${base}`) : `${base}${html}`;
+}
+
+export async function renderHtmlPdf(html, { baseDir } = {}) {
   const executablePath = findBrowser();
   const browser = await puppeteer.launch({
     executablePath,
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none']
+    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none', '--allow-file-access-from-files']
   });
 
   try {
     const page = await browser.newPage();
     await page.setViewport({ width: 1440, height: 1900, deviceScaleFactor: 1 });
-    await page.setContent(html, { waitUntil: 'domcontentloaded', timeout: 30000 });
+    await page.setContent(withBase(html, baseDir), { waitUntil: 'domcontentloaded', timeout: 30000 });
     await waitForImages(page);
     await page.emulateMediaType('print');
 

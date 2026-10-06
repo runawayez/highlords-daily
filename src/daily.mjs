@@ -1,10 +1,17 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { categories, config, editorial } from './config.mjs';
+import { categories, config, editorial, profile, publication } from './config.mjs';
 import { fetchAllFeeds } from './services/rss.mjs';
 import { analyzeArticles, curateNewsletter, ensureOllama } from './services/ollama.mjs';
 import { renderHtmlPdf } from './services/html-pdf.mjs';
+import { cacheEditionImages } from './services/image-cache.mjs';
+import { deduplicateArticles, filterPreviouslyPublished, pruneHistory, rememberEdition } from './services/memory.mjs';
+import { updateArchive } from './services/archive.mjs';
+import { loadPlugins, runPluginExporters, runPluginHook } from './plugins.mjs';
+import { renderMarkdown } from './exporters/markdown.mjs';
+import { renderEmailHtml } from './exporters/email.mjs';
+import { renderDiscordMarkdown, renderSocialText } from './exporters/social.mjs';
 import { renderNewsletterHtml } from './template.mjs';
 
 function dateKey(date = new Date()) {
@@ -35,19 +42,12 @@ function categoryCounts(articles) {
 function chooseLead(requestedLead, articles) {
   const counts = categoryCounts(articles);
   const canSpareForLead = article => article && (counts.get(article.category) || 0) > config.itemsPerCategory;
-
-  if (canSpareForLead(requestedLead)) {
-    return { lead: requestedLead, rebalanced: false };
-  }
+  if (canSpareForLead(requestedLead)) return { lead: requestedLead, rebalanced: false };
 
   const alternative = articles.find(canSpareForLead);
   if (alternative) {
-    return {
-      lead: alternative,
-      rebalanced: Boolean(requestedLead && alternative.id !== requestedLead.id)
-    };
+    return { lead: alternative, rebalanced: Boolean(requestedLead && alternative.id !== requestedLead.id) };
   }
-
   return { lead: requestedLead || articles[0] || null, rebalanced: false };
 }
 
@@ -79,47 +79,70 @@ function normalizeUi(value) {
   );
 }
 
+function canUseSource(article, globalCounts, sectionCounts) {
+  const global = globalCounts.get(article.source) || 0;
+  const section = sectionCounts.get(article.source) || 0;
+  if (config.maxItemsPerSource > 0 && global >= config.maxItemsPerSource) return false;
+  if (config.maxItemsPerSourcePerSection > 0 && section >= config.maxItemsPerSourcePerSection) return false;
+  return true;
+}
+
+function registerSource(article, globalCounts, sectionCounts) {
+  globalCounts.set(article.source, (globalCounts.get(article.source) || 0) + 1);
+  sectionCounts.set(article.source, (sectionCounts.get(article.source) || 0) + 1);
+}
+
 function normalizeNewsletter(curated, articles, editionDate) {
   const byId = new Map(articles.map(article => [Number(article.id), article]));
   const used = new Set();
+  const globalSourceCounts = new Map();
   const requestedLeadId = curatedId(curated?.leadId ?? curated?.lead ?? curated?.headlineId ?? curated?.mancheteId);
   const requestedLead = requestedLeadId != null ? byId.get(requestedLeadId) : null;
   const { lead, rebalanced: leadRebalanced } = chooseLead(requestedLead, articles);
-  if (lead) used.add(lead.id);
+  if (lead) {
+    used.add(lead.id);
+    globalSourceCounts.set(lead.source, 1);
+  }
 
   let backfilled = 0;
+  let diversityRelaxed = 0;
   const sections = categories.map(category => {
     const requested = Array.isArray(curated?.sections?.[category.slug]) ? curated.sections[category.slug] : [];
     const selected = [];
+    const sectionSourceCounts = new Map();
+
+    const tryAdd = (article, { relaxed = false, backfill = false } = {}) => {
+      if (!article || article.category !== category.slug || used.has(article.id)) return false;
+      if (!relaxed && !canUseSource(article, globalSourceCounts, sectionSourceCounts)) return false;
+      used.add(article.id);
+      selected.push(article);
+      registerSource(article, globalSourceCounts, sectionSourceCounts);
+      if (backfill) backfilled += 1;
+      if (relaxed) diversityRelaxed += 1;
+      return true;
+    };
 
     for (const rawValue of requested) {
       const id = curatedId(rawValue);
       if (id == null) continue;
-      const article = byId.get(id);
-      if (!article || article.category !== category.slug || used.has(article.id)) continue;
-      used.add(article.id);
-      selected.push(article);
+      tryAdd(byId.get(id));
       if (selected.length >= config.itemsPerCategory) break;
     }
 
-    if (selected.length < config.itemsPerCategory) {
-      const candidates = articles.filter(article =>
-        article.category === category.slug && !used.has(article.id)
-      );
+    const candidates = articles.filter(article => article.category === category.slug && !used.has(article.id));
+    for (const article of candidates) {
+      if (selected.length >= config.itemsPerCategory) break;
+      tryAdd(article, { backfill: true });
+    }
 
-      for (const article of candidates) {
-        used.add(article.id);
-        selected.push(article);
-        backfilled += 1;
+    if (selected.length < config.itemsPerCategory && !config.sourceDiversityStrict) {
+      for (const article of articles) {
         if (selected.length >= config.itemsPerCategory) break;
+        tryAdd(article, { relaxed: true, backfill: true });
       }
     }
 
-    return {
-      slug: category.slug,
-      name: localizedSectionName(curated, category),
-      articles: selected
-    };
+    return { slug: category.slug, name: localizedSectionName(curated, category), articles: selected };
   });
 
   const chosen = [lead, ...sections.flatMap(section => section.articles)].filter(Boolean);
@@ -130,8 +153,10 @@ function normalizeNewsletter(curated, articles, editionDate) {
     curatedBy: 'ollama',
     selectionMode: backfilled > 0 ? 'ollama+section-backfill' : 'ollama',
     preset: editorial.preset,
+    profile: profile.name,
     language: config.language,
     editorialContext: config.editorialContext,
+    publication: publication.name,
     title: String(curated?.title || fallback.title).trim().slice(0, 120),
     intro: String(curated?.intro || fallback.intro).trim().slice(0, 420),
     ui: normalizeUi(curated?.ui),
@@ -142,43 +167,17 @@ function normalizeNewsletter(curated, articles, editionDate) {
       sources: new Set(chosen.map(article => article.source)).size,
       candidates: articles.length,
       backfilled,
+      diversityRelaxed,
       leadRebalanced
     }
   };
 }
 
 function fallbackNewsletter(articles, editionDate) {
-  const { lead, rebalanced: leadRebalanced } = chooseLead(articles[0] || null, articles);
-  const used = new Set(lead ? [lead.id] : []);
-  const sections = categories.map(category => {
-    const selected = articles
-      .filter(article => article.category === category.slug && !used.has(article.id))
-      .slice(0, config.itemsPerCategory);
-    selected.forEach(article => used.add(article.id));
-    return { slug: category.slug, name: category.name, articles: selected };
-  });
-  const chosen = [lead, ...sections.flatMap(section => section.articles)].filter(Boolean);
   const fallback = fallbackCopy();
-  return {
-    editionDate,
-    generatedAt: new Date().toISOString(),
-    curatedBy: 'ollama',
-    selectionMode: 'ranking-fallback',
-    preset: editorial.preset,
-    language: config.language,
-    editorialContext: config.editorialContext,
-    title: fallback.title,
-    intro: fallback.intro,
-    ui: {},
-    lead,
-    sections,
-    stats: {
-      stories: chosen.length,
-      sources: new Set(chosen.map(article => article.source)).size,
-      candidates: articles.length,
-      leadRebalanced
-    }
-  };
+  const edition = normalizeNewsletter({ leadId: articles[0]?.id, title: fallback.title, intro: fallback.intro, sections: {} }, articles, editionDate);
+  edition.selectionMode = 'ranking-fallback';
+  return edition;
 }
 
 function sectionReport(edition) {
@@ -190,22 +189,22 @@ async function openFile(filePath) {
   const absolute = path.resolve(filePath);
   try {
     let child;
-    if (process.platform === 'win32') {
-      child = spawn('cmd.exe', ['/c', 'start', '', absolute], { detached: true, stdio: 'ignore' });
-    } else if (process.platform === 'darwin') {
-      child = spawn('open', [absolute], { detached: true, stdio: 'ignore' });
-    } else {
-      child = spawn('xdg-open', [absolute], { detached: true, stdio: 'ignore' });
-    }
+    if (process.platform === 'win32') child = spawn('cmd.exe', ['/c', 'start', '', absolute], { detached: true, stdio: 'ignore' });
+    else if (process.platform === 'darwin') child = spawn('open', [absolute], { detached: true, stdio: 'ignore' });
+    else child = spawn('xdg-open', [absolute], { detached: true, stdio: 'ignore' });
     child.unref();
   } catch {}
 }
 
+function mimeForLogo(filePath) {
+  const ext = path.extname(filePath).toLowerCase();
+  return ({ '.svg': 'image/svg+xml', '.png': 'image/png', '.jpg': 'image/jpeg', '.jpeg': 'image/jpeg', '.webp': 'image/webp', '.gif': 'image/gif' })[ext] || 'application/octet-stream';
+}
+
 async function loadLogoDataUri() {
   try {
-    const logoPath = path.resolve('public/assets/highlords-logo.svg');
-    const svg = await fs.readFile(logoPath);
-    return `data:image/svg+xml;base64,${svg.toString('base64')}`;
+    const buffer = await fs.readFile(publication.logoFile);
+    return `data:${mimeForLogo(publication.logoFile)};base64,${buffer.toString('base64')}`;
   } catch {
     return '';
   }
@@ -216,7 +215,6 @@ function logAnalysisProgress(event) {
     process.stdout.write(`  lote ${event.batch}/${event.totalBatches}... `);
     return;
   }
-
   if (event.status === 'done') {
     const details = [
       `${event.approved} aprovadas`,
@@ -230,94 +228,156 @@ function logAnalysisProgress(event) {
     console.log(details.join(' | '));
     return;
   }
-
   if (event.status === 'error') {
     console.log(`falhou: ${event.error}`);
     return;
   }
-
   if (event.status === 'rescue') {
-    console.log(`  Nenhuma matéria passou do corte ${event.threshold}; usando ${event.count} classificadas pelo Ollama como resgate para o editor-chefe.`);
+    console.log(`  Nenhuma matéria passou do corte ${event.threshold}; usando ${event.count} classificadas pelo Ollama como resgate.`);
     return;
   }
-
   if (event.status === 'category-rescue') {
-    console.log(`  ${event.category}: +${event.count} candidata(s) de reserva (mínimo ${event.floor.toFixed(1)}) para padronizar a seção; total ${event.total}.`);
+    console.log(`  ${event.category}: +${event.count} candidata(s) de reserva (mínimo ${event.floor.toFixed(1)}); total ${event.total}.`);
   }
+}
+
+function latestRedirectHtml(editionDate) {
+  const target = `./${editionDate}/index.html`;
+  return `<!doctype html><meta charset="utf-8"><meta http-equiv="refresh" content="0;url=${target}"><title>${publication.name}</title><p><a href="${target}">Open latest edition</a></p>`;
+}
+
+async function writeExports(edition, editionDir) {
+  const files = {};
+  if (config.exportMarkdown) {
+    files.markdown = path.join(editionDir, 'edition.md');
+    await fs.writeFile(files.markdown, renderMarkdown(edition), 'utf8');
+    await fs.writeFile(path.join(config.outputDir, 'latest.md'), renderMarkdown(edition), 'utf8');
+  }
+  if (config.exportEmail) {
+    files.email = path.join(editionDir, 'email.html');
+    const email = renderEmailHtml(edition);
+    await fs.writeFile(files.email, email, 'utf8');
+    await fs.writeFile(path.join(config.outputDir, 'latest-email.html'), email, 'utf8');
+  }
+  if (config.exportSocial) {
+    files.telegram = path.join(editionDir, 'telegram.txt');
+    files.discord = path.join(editionDir, 'discord.md');
+    const social = renderSocialText(edition);
+    const discord = renderDiscordMarkdown(edition);
+    await Promise.all([
+      fs.writeFile(files.telegram, social, 'utf8'),
+      fs.writeFile(files.discord, discord, 'utf8'),
+      fs.writeFile(path.join(config.outputDir, 'latest-telegram.txt'), social, 'utf8'),
+      fs.writeFile(path.join(config.outputDir, 'latest-discord.md'), discord, 'utf8')
+    ]);
+  }
+  return files;
 }
 
 async function main() {
   const editionDate = dateKey();
-  console.log('\nHIGH LORDS DAILY');
+  const plugins = await loadPlugins();
+  console.log(`\n${publication.name.toUpperCase()}`);
   console.log(`Edição: ${editionDate}`);
-  console.log(`Preset: ${editorial.preset} · ${categories.length} categorias`);
-  console.log(`Idioma: ${config.language} · Contexto: ${config.editorialContext}\n`);
+  console.log(`Preset: ${editorial.preset} · Perfil: ${profile.name} · ${categories.length} categorias`);
+  console.log(`Idioma: ${config.language} · Contexto: ${config.editorialContext}`);
+  if (plugins.length) console.log(`Plugins: ${plugins.map(plugin => plugin.name).join(', ')}`);
+  console.log('');
 
-  process.stdout.write('1/5 Verificando Ollama... ');
+  process.stdout.write('1/7 Verificando Ollama... ');
   await ensureOllama();
   console.log('ok');
 
-  console.log('2/5 Coletando feeds...');
-  const { articles, errors, imageRejected = 0 } = await fetchAllFeeds(({ index, total, feed }) => {
+  if (config.historyEnabled) await pruneHistory(config.historyDays);
+
+  console.log('2/7 Coletando feeds e eliminando repetição histórica...');
+  const collected = await fetchAllFeeds(({ index, total, feed }) => {
     process.stdout.write(`  [${index}/${total}] ${feed}\n`);
   });
-  console.log(`  ${articles.length} matérias recentes com imagem válida encontradas.`);
-  if (config.requireImages && imageRejected > 0) {
-    console.log(`  ${imageRejected} matéria(s) sem imagem válida foram descartadas antes da IA.`);
-  }
-  if (errors.length) {
-    console.log(`  ${errors.length} fonte(s) falharam e foram ignoradas.`);
-  }
-  if (!articles.length) throw new Error('Nenhuma matéria recente com imagem válida foi encontrada nos feeds.');
+  let collectState = await runPluginHook(plugins, 'afterCollect', { ...collected, editionDate });
+  let articles = Array.isArray(collectState?.articles) ? collectState.articles : collected.articles;
+  const historyFiltered = await filterPreviouslyPublished(articles);
+  articles = historyFiltered.articles;
 
-  console.log(`3/5 Ollama analisando e filtrando... corte inicial ${config.llmMinScore}/10`);
-  const analyzed = await analyzeArticles(articles, logAnalysisProgress);
-  if (!analyzed.length) {
-    throw new Error('O Ollama respondeu, mas nenhuma matéria pôde ser interpretada como candidata válida. Rode novamente e confira os diagnósticos dos lotes acima.');
-  }
+  console.log(`  ${collected.articles.length} matérias recentes elegíveis coletadas.`);
+  if (collected.imageRejected > 0) console.log(`  ${collected.imageRejected} sem imagem válida foram descartadas antes da IA.`);
+  if (historyFiltered.rejected.length) console.log(`  ${historyFiltered.rejected.length} história(s) já cobertas recentemente foram removidas pela memória local.`);
+  if (collected.errors.length) console.log(`  ${collected.errors.length} fonte(s) falharam e foram ignoradas.`);
+  if (!articles.length) throw new Error('Nenhuma matéria nova elegível restou após coleta e memória histórica.');
+
+  console.log(`3/7 Ollama analisando e filtrando... corte inicial ${config.llmMinScore}/10`);
+  let analyzed = await analyzeArticles(articles, logAnalysisProgress);
+  if (!analyzed.length) throw new Error('O Ollama respondeu, mas nenhuma matéria pôde ser interpretada como candidata válida.');
+
+  const semantic = deduplicateArticles(analyzed, config.duplicateThreshold);
+  analyzed = semantic.articles;
+  let analyzedState = await runPluginHook(plugins, 'afterAnalyze', { articles: analyzed, editionDate });
+  analyzed = Array.isArray(analyzedState?.articles) ? analyzedState.articles : analyzed;
+  if (semantic.duplicates.length) console.log(`  ${semantic.duplicates.length} duplicata(s) semântica(s) consolidadas.`);
   console.log(`  ${analyzed.length} matérias seguem para o editor-chefe.`);
 
-  console.log('4/5 Montando a newsletter...');
+  console.log('4/7 Montando a newsletter e aplicando diversidade editorial...');
   let edition;
   try {
     const curated = await curateNewsletter(analyzed, editionDate);
     edition = normalizeNewsletter(curated, analyzed, editionDate);
   } catch (error) {
-    console.log(`  Editor-chefe falhou (${error.message}). Usando ranking como fallback sobre matérias já analisadas pelo Ollama.`);
+    console.log(`  Editor-chefe falhou (${error.message}). Usando ranking como fallback.`);
     edition = fallbackNewsletter(analyzed, editionDate);
   }
   if (!edition.lead) throw new Error('Não foi possível escolher uma manchete para a edição.');
+  edition.stats.historyRejected = historyFiltered.rejected.length;
+  edition.stats.semanticDuplicates = semantic.duplicates.length;
   console.log(`  ${sectionReport(edition)}`);
-  if (edition.stats?.backfilled) {
-    console.log(`  ${edition.stats.backfilled} vaga(s) de seção completadas automaticamente com candidatas já aprovadas pelo Ollama.`);
-  }
-  if (edition.stats?.leadRebalanced) {
-    console.log('  Manchete reequilibrada para preservar a quantidade padrão de destaques nas seções.');
-  }
+  if (edition.stats.backfilled) console.log(`  ${edition.stats.backfilled} vaga(s) completadas automaticamente.`);
+  if (edition.stats.diversityRelaxed) console.log(`  ${edition.stats.diversityRelaxed} vaga(s) precisaram relaxar o limite de fonte para manter a quantidade.`);
+  if (edition.stats.leadRebalanced) console.log('  Manchete reequilibrada para preservar as seções.');
 
-  console.log('5/5 Gerando HTML, JSON e PDF visual...');
+  console.log('5/7 Baixando imagens selecionadas para a edição...');
   const editionDir = path.join(config.outputDir, editionDate);
   await fs.mkdir(editionDir, { recursive: true });
+  const imageResult = await cacheEditionImages(edition, editionDir);
+  edition = imageResult.edition;
+  edition.stats.imagesCached = imageResult.cached;
+  edition.stats.imageCacheFailures = imageResult.failed;
+  console.log(`  ${imageResult.cached} imagem(ns) cacheadas localmente${imageResult.failed ? ` · ${imageResult.failed} fallback(s) remoto(s)` : ''}.`);
+
+  const renderState = await runPluginHook(plugins, 'beforeRender', { edition, editionDir });
+  if (renderState?.edition) edition = renderState.edition;
+
+  console.log('6/7 Gerando HTML, JSON, PDF e formatos auxiliares...');
   const logoDataUri = await loadLogoDataUri();
   const html = renderNewsletterHtml(edition, logoDataUri);
-  const pdf = await renderHtmlPdf(html);
+  const pdf = await renderHtmlPdf(html, { baseDir: editionDir });
 
   const htmlPath = path.join(editionDir, 'index.html');
   const jsonPath = path.join(editionDir, 'edition.json');
-  const pdfPath = path.join(editionDir, `highlords-daily-${editionDate}.pdf`);
+  const pdfPath = path.join(editionDir, `${publication.slug}-${editionDate}.pdf`);
+  const latestPdf = path.join(config.outputDir, `${publication.slug}-latest.pdf`);
   await Promise.all([
     fs.writeFile(htmlPath, html, 'utf8'),
     fs.writeFile(jsonPath, JSON.stringify(edition, null, 2), 'utf8'),
     fs.writeFile(pdfPath, pdf),
-    fs.writeFile(path.join(config.outputDir, 'latest.html'), html, 'utf8'),
+    fs.writeFile(path.join(config.outputDir, 'latest.html'), latestRedirectHtml(editionDate), 'utf8'),
     fs.writeFile(path.join(config.outputDir, 'latest.json'), JSON.stringify(edition, null, 2), 'utf8'),
-    fs.writeFile(path.join(config.outputDir, 'highlords-daily-latest.pdf'), pdf)
+    fs.writeFile(latestPdf, pdf)
   ]);
+  const exportPaths = await writeExports(edition, editionDir);
+
+  console.log('7/7 Atualizando memória, arquivo histórico e plugins...');
+  const remembered = await rememberEdition(edition);
+  const archivePath = await updateArchive(config.outputDir);
+  const paths = { html: htmlPath, json: jsonPath, pdf: pdfPath, latestPdf, archive: archivePath, ...exportPaths };
+  await runPluginExporters(plugins, { edition, editionDir, paths, config });
+  await runPluginHook(plugins, 'afterWrite', { edition, editionDir, paths });
+  if (config.historyEnabled) console.log(`  ${remembered} história(s) registradas na memória local.`);
 
   console.log('\nPronto.');
   console.log(`HTML: ${htmlPath}`);
   console.log(`PDF:  ${pdfPath}`);
-  console.log(`JSON: ${jsonPath}\n`);
+  console.log(`JSON: ${jsonPath}`);
+  if (archivePath) console.log(`Arquivo: ${archivePath}`);
+  console.log('');
   await openFile(htmlPath);
 }
 

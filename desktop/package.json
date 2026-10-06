@@ -1,0 +1,36 @@
+{
+  "name": "highlords-daily-desktop",
+  "version": "0.1.0",
+  "private": true,
+  "type": "module",
+  "main": "main.mjs",
+  "scripts": {
+    "start": "electron .",
+    "prepare:core": "node prepare-core.mjs",
+    "dist": "npm run prepare:core && electron-builder"
+  },
+  "dependencies": {
+    "puppeteer-core": "^24.31.0",
+    "rss-parser": "^3.13.0",
+    "yaml": "^2.6.1"
+  },
+  "devDependencies": {
+    "electron": "^38.0.0",
+    "electron-builder": "^26.0.12"
+  },
+  "build": {
+    "appId": "com.highlords.daily",
+    "productName": "Highlords Daily",
+    "files": [
+      "main.mjs",
+      "preload.mjs",
+      "index.html",
+      "renderer.mjs",
+      "styles.css",
+      "core/**/*"
+    ],
+    "win": { "target": ["nsis"] },
+    "mac": { "target": ["dmg"] },
+    "linux": { "target": ["AppImage"] }
+  }
+}

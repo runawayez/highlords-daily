@@ -11,14 +11,14 @@
 </p>
 
 <p align="center">
-Newsletter diária local e personalizável com curadoria por IA via Ollama, agregação RSS/Atom e geração editorial em HTML, JSON e PDF.
+Motor local-first de newsletter diária com RSS/Atom, Ollama, memória editorial, localização regional e geração em HTML, JSON, PDF, Markdown e formatos para distribuição.
 </p>
 
-O **Highlords Daily** coleta notícias recentes, valida imagens, usa uma LLM local para classificar, traduzir, resumir e pontuar as matérias e depois executa uma segunda etapa de curadoria para montar uma edição pronta para leitura.
+O **Highlords Daily** coleta notícias recentes, valida e cacheia imagens, elimina histórias repetidas, usa uma LLM local para classificar, traduzir/localizar, resumir e pontuar as matérias e executa uma segunda etapa de curadoria para montar a edição.
 
-Tudo acontece localmente. **Nenhuma API externa de IA é necessária.**
+A IA roda localmente pelo **Ollama**. Nenhuma API externa de IA é necessária.
 
-O preset padrão **Vanilla é Brazil-first**: usa somente fontes brasileiras, idioma `pt-BR` e contexto editorial brasileiro. Mas o motor do Highlords é universal: você pode trocar idioma, contexto regional, categorias e feeds sem alterar o JavaScript.
+O preset padrão **Vanilla/BR** continua pronto para uso: `pt-BR`, contexto Brasil e fontes brasileiras. O engine, porém, é universal: idioma, país/contexto, timezone, categorias, feeds, perfil editorial, identidade visual e exportadores são configuráveis sem alterar o JavaScript.
 
 ---
 
@@ -26,41 +26,29 @@ O preset padrão **Vanilla é Brazil-first**: usa somente fontes brasileiras, id
 
 ### Windows
 
-Você precisa ter instalado:
+Pré-requisitos:
 
-- **Git**
-- **Node.js 22.5 ou superior**
-- **Ollama**
-- **Google Chrome ou Microsoft Edge**
-
-Clone o projeto:
+- Git
+- Node.js 22.5+
+- Ollama
+- Google Chrome ou Microsoft Edge
 
 ```powershell
 git clone https://github.com/runawayez/highlords-daily.git
 cd highlords-daily
 ```
 
-Depois, dê dois cliques em:
-
-```text
-GERAR-DAILY.bat
-```
-
-Ou execute pelo terminal:
+Depois dê dois cliques em `GERAR-DAILY.bat` ou execute:
 
 ```powershell
 .\GERAR-DAILY.bat
 ```
 
-O launcher verifica automaticamente Node.js, npm, Ollama e o navegador. Se as dependências ainda não estiverem instaladas, ele executa `npm install`. Se o modelo `qwen3:4b` ainda não existir, ele também faz o download automaticamente.
-
-> Na primeira execução o download do modelo pode levar alguns minutos. Nas próximas execuções ele não será baixado novamente.
-
-Você **não precisa** iniciar `ollama serve` manualmente. O launcher inicia o Ollama quando necessário e, se ele próprio tiver iniciado o serviço, encerra-o ao final da geração.
+O launcher verifica o ambiente, instala dependências quando necessário, inicia o Ollama, baixa o modelo configurado na primeira execução e encerra o Ollama ao final quando foi ele quem iniciou o serviço.
 
 ### macOS / Linux
 
-Instale **Git**, **Node.js 22.5+**, **Ollama**, `curl` e um navegador compatível (**Chrome, Chromium ou Edge**).
+Instale Git, Node.js 22.5+, Ollama, `curl` e Chrome/Chromium/Edge.
 
 ```bash
 git clone https://github.com/runawayez/highlords-daily.git
@@ -68,208 +56,235 @@ cd highlords-daily
 bash RUN-DAILY.sh
 ```
 
-O script faz as mesmas verificações do launcher do Windows, instala dependências quando necessário, inicia o Ollama, baixa o modelo na primeira execução e encerra o serviço ao final quando foi ele quem o iniciou.
+### Setup guiado opcional
 
-### Pronto
+O Vanilla funciona sem `.env`. Para personalizar sem editar o arquivo na mão:
 
-Ao finalizar, o Highlords abre a edição HTML automaticamente e grava os arquivos em:
-
-```text
-output/
-├─ AAAA-MM-DD/
-│  ├─ index.html
-│  ├─ edition.json
-│  └─ highlords-daily-AAAA-MM-DD.pdf
-├─ latest.html
-├─ latest.json
-└─ highlords-daily-latest.pdf
+```bash
+npm run setup
 ```
 
-O PDF usa o mesmo layout do HTML e preserva imagens, cores e links clicáveis.
+O assistente pergunta preset, idioma, contexto regional, timezone, perfil editorial, nome da publicação, modelo e quantidade por categoria.
 
 ---
 
-## Nenhuma configuração é obrigatória
+## Universal por design
 
-O preset **Vanilla** já vem pronto para uso. Você pode clonar o projeto e gerar a newsletter sem criar `.env` e sem editar YAML.
-
-Crie um `.env` somente se quiser alterar os padrões:
-
-**Windows:**
-
-```powershell
-copy .env.example .env
-```
-
-**macOS / Linux:**
-
-```bash
-cp .env.example .env
-```
-
-Configuração padrão:
+As três configurações que definem o contexto principal são:
 
 ```env
-OLLAMA_HOST=http://127.0.0.1:11434
-OLLAMA_MODEL=qwen3:4b
-
+PRESET=br
 LANGUAGE=pt-BR
 EDITORIAL_CONTEXT=Brasil
 TIME_ZONE=America/Sao_Paulo
-OUTPUT_DIR=./output
-
-CATEGORIES_FILE=./config/categories.yml
-FEEDS_FILE=./config/feeds.yml
-
-LOOKBACK_HOURS=48
-MAX_ITEMS_PER_FEED=12
-MAX_CANDIDATES=96
-AI_BATCH_SIZE=10
-ITEMS_PER_CATEGORY=2
-LLM_MIN_SCORE=4.5
-REQUIRE_IMAGES=true
-AUTO_OPEN=true
 ```
 
-Principais opções:
-
-- `LANGUAGE`: locale de saída da newsletter, por exemplo `pt-BR`, `en-AU`, `en-US`, `es-ES` ou `fr-FR`.
-- `EDITORIAL_CONTEXT`: país/região/público que deve orientar vocabulário e enquadramento editorial.
-- `TIME_ZONE`: fuso usado para definir a data da edição.
-- `OLLAMA_MODEL`: modelo local usado para análise e curadoria.
-- `LOOKBACK_HOURS`: janela de tempo das notícias coletadas.
-- `MAX_CANDIDATES`: máximo de matérias enviadas para análise.
-- `ITEMS_PER_CATEGORY`: quantidade alvo de destaques por seção.
-- `LLM_MIN_SCORE`: nota mínima principal para uma matéria seguir à etapa editorial.
-- `REQUIRE_IMAGES=true`: elimina matérias sem imagem válida antes da IA.
-- `AUTO_OPEN=true`: abre o HTML automaticamente ao terminar.
-- `BROWSER_PATH`: opcional; use somente se Chrome/Chromium/Edge não for detectado automaticamente.
-
----
-
-## Idioma e contexto regional
-
-O Highlords separa **idioma** de **contexto editorial**.
-
-`LANGUAGE` controla o locale da edição: manchetes, resumos, tags, título, introdução, data e rótulos da interface. `EDITORIAL_CONTEXT` diz ao Ollama para quem ele está escrevendo.
-
-Exemplo para uma edição australiana:
+Um leitor australiano pode usar, por exemplo:
 
 ```env
+PRESET=custom
 LANGUAGE=en-AU
 EDITORIAL_CONTEXT=Australia
 TIME_ZONE=Australia/Sydney
-FEEDS_FILE=./config/feeds-australia.yml
+CATEGORIES_FILE=./my-config/categories.yml
+FEEDS_FILE=./my-config/feeds.yml
 ```
 
-A pessoa pode então criar `config/feeds-australia.yml` com os RSS que quiser. O Ollama escreve em inglês australiano e tenta enquadrar as notícias para um leitor australiano.
-
-O mesmo vale para qualquer outro mercado:
-
-```env
-LANGUAGE=es-MX
-EDITORIAL_CONTEXT=México
-TIME_ZONE=America/Mexico_City
-```
-
-ou:
-
-```env
-LANGUAGE=fr-FR
-EDITORIAL_CONTEXT=France
-TIME_ZONE=Europe/Paris
-```
-
-O Highlords **não inventa conversões de moeda**. Se a fonte mencionar um preço em moeda estrangeira, a orientação editorial é preservar o valor correto e deixar claro o mercado/contexto quando necessário, em vez de apresentar aquele preço como se fosse local.
-
-Os nomes das seções e os rótulos visuais também são localizados pelo editor-chefe do Ollama. Em caso de fallback, português e inglês possuem rótulos internos padrão.
+O Ollama localiza títulos, resumos, tags, introdução, nomes de seções e rótulos da interface para o locale escolhido. Ele **não inventa conversão cambial**: preços estrangeiros continuam na moeda original e recebem contexto de mercado quando necessário.
 
 ---
 
-## Highlords Daily Vanilla
+## Presets
 
-O preset padrão vem com dez categorias editoriais:
-
-1. **IA**
-2. **Desenvolvimento**
-3. **Mobile & Gadgets**
-4. **Hardware**
-5. **Software & Internet**
-6. **Games**
-7. **Futebol**
-8. **Esportes**
-9. **Economia**
-10. **Futuro**
-
-O Vanilla usa **somente fontes brasileiras**. Isso não significa que as notícias precisam acontecer no Brasil; significa que a seleção e o contexto editorial partem de veículos voltados ao público brasileiro.
-
-**Futebol** significa futebol de associação/soccer. Futebol americano, NFL, NCAA, Super Bowl e outras modalidades ficam em **Esportes**, junto de basquete, Fórmula 1, tênis, vôlei, lutas, atletismo, rugby e esportes olímpicos.
-
-O Vanilla tenta manter **2 destaques por categoria**, sem forçar conteúdo irrelevante apenas para preencher espaço.
-
----
-
-## Como funciona
+A estrutura é:
 
 ```text
-categories.yml + feeds.yml
-          ↓
-       RSS / Atom
-          ↓
-extração + validação de imagens
-          ↓
-coleta balanceada entre as fontes
-          ↓
-Ollama analisa em lotes
-   ├─ remove conteúdo fora do escopo
-   ├─ classifica nas categorias configuradas
-   ├─ traduz/localiza para LANGUAGE
-   ├─ adapta o enquadramento a EDITORIAL_CONTEXT
-   ├─ cria resumos e tags
-   └─ atribui nota de relevância de 0 a 10
-          ↓
-validação editorial
-   ├─ respeita fontes de foco estrito
-   ├─ impede vazamento entre verticais
-   └─ mantém candidatas de reserva por seção
-          ↓
-Ollama editor-chefe
-   ├─ escolhe a manchete
-   ├─ seleciona os melhores destaques
-   ├─ localiza nomes de seção e interface
-   ├─ equilibra fontes e assuntos
-   └─ escreve título e introdução
-          ↓
-template HTML editorial
-          ↓
-       Chromium
-          ↓
-PDF com o mesmo layout e links do HTML
+presets/
+├─ br/
+│  ├─ categories.yml
+│  └─ feeds.yml
+└─ global/
+   ├─ categories.yml
+   └─ feeds.yml
 ```
 
-Cada notícia recebe categoria, **nota de relevância de 0 a 10**, headline, resumo e tags no locale configurado. A nota considera novidade, impacto, utilidade e interesse editorial.
+`PRESET=br` é o Vanilla Brazil-first. `PRESET=global` mistura fontes brasileiras e internacionais.
+
+Para criar um preset regional, copie uma pasta, troque os RSS/Atom e configure `LANGUAGE`, `EDITORIAL_CONTEXT` e `TIME_ZONE`. O engine resolve automaticamente `presets/<nome>/categories.yml` e `feeds.yml`.
+
+`CATEGORIES_FILE` e `FEEDS_FILE` continuam disponíveis como overrides completos.
 
 ---
 
-## Política de imagens
+## Perfis editoriais
 
-No Vanilla, `REQUIRE_IMAGES=true` vem ativado por padrão.
+Use:
 
-O coletor tenta obter a imagem pelo RSS e, quando necessário, busca `og:image` ou `twitter:image` diretamente na página da matéria. A URL é validada antes de a notícia entrar no pool editorial.
+```env
+EDITORIAL_PROFILE=balanced
+```
 
-Matérias sem imagem válida são descartadas **antes** de serem enviadas ao Ollama. Isso mantém imagem em 100% dos cards elegíveis e evita gastar processamento com conteúdo que quebraria o layout da edição.
+Perfis incluídos:
+
+- `balanced` — equilíbrio geral;
+- `tech-heavy` — tecnologia em primeiro plano;
+- `business` — economia e negócios;
+- `gaming` — games e hardware;
+- `minimal` — edição mais curta.
+
+As definições ficam em `config/editorial-profiles.yml` e podem ser editadas ou ampliadas.
 
 ---
 
-## Personalizar categorias
+## Memória e deduplicação
 
-A taxonomia fica em:
+O Highlords mantém memória local entre edições. Por padrão:
+
+```env
+HISTORY_ENABLED=true
+HISTORY_DAYS=90
+DUPLICATE_DAYS=7
+DUPLICATE_THRESHOLD=0.72
+MEMORY_FILE=./data/highlords.sqlite
+```
+
+Quando o `node:sqlite` está disponível, o histórico usa SQLite. Em runtimes onde o módulo não está disponível, o engine cai automaticamente para um arquivo JSON local.
+
+Antes da IA, links e histórias já publicadas recentemente são removidos. Depois da análise, o Ollama gera um `topicKey` por matéria e o engine faz uma segunda deduplicação semântica para consolidar coberturas do mesmo acontecimento.
+
+A pasta `data/` é local e ignorada pelo Git.
+
+---
+
+## Imagens estáveis
+
+O Vanilla usa:
+
+```env
+REQUIRE_IMAGES=true
+CACHE_IMAGES=true
+```
+
+O coletor valida imagens antes de gastar processamento com a matéria. Depois da curadoria, as imagens das histórias realmente selecionadas são baixadas para:
 
 ```text
-config/categories.yml
+output/AAAA-MM-DD/assets/
 ```
 
-Exemplo:
+Assim a edição HTML/PDF não depende permanentemente de hotlinks externos. Se um download de cache falhar no último estágio, a matéria mantém a URL remota como fallback.
+
+---
+
+## Diversidade de fontes
+
+```env
+MAX_ITEMS_PER_SOURCE=3
+MAX_ITEMS_PER_SOURCE_PER_SECTION=1
+SOURCE_DIVERSITY_STRICT=false
+```
+
+O engine tenta evitar que uma única fonte domine a edição e cada seção. Com `SOURCE_DIVERSITY_STRICT=false`, o limite pode ser relaxado apenas quando necessário para não deixar vagas vazias. Use `true` para transformar a regra em limite rígido.
+
+---
+
+## Identidade visual
+
+O Highlords pode continuar sendo Highlords ou virar outra publicação em cima do mesmo engine:
+
+```env
+PUBLICATION_NAME=Highlords Daily
+PUBLICATION_TAGLINE=Informação sem ruído
+PUBLICATION_LOGO=./public/assets/highlords-logo.svg
+ACCENT_COLOR=#c92f2b
+PAPER_COLOR=#f7f3e9
+BACKGROUND_COLOR=#0b0b0d
+```
+
+Nome, logo, slogan e cores são usados no HTML/PDF e no arquivo histórico.
+
+---
+
+## Diagnóstico dos feeds
+
+Antes de gerar uma edição você pode verificar as fontes sem chamar o Ollama:
+
+```bash
+npm run feeds:check
+```
+
+O comando testa cada feed, mede tempo, mostra quantas matérias recentes permaneceram elegíveis e quantas foram descartadas por falta de imagem.
+
+Para saída estruturada:
+
+```bash
+npm run feeds:check -- --json
+```
+
+---
+
+## Agendamento local
+
+Agende uma edição diária às 07:00:
+
+```bash
+npm run schedule -- --time 07:00
+```
+
+O comando usa:
+
+- Windows Task Scheduler no Windows;
+- `launchd` no macOS;
+- `cron` no Linux.
+
+Remover:
+
+```bash
+npm run schedule:remove
+```
+
+Nada depende de servidor ou GitHub Actions.
+
+---
+
+## Saídas
+
+Cada execução cria:
+
+```text
+output/
+├─ index.html                         # arquivo navegável das edições
+├─ latest.html                        # redireciona para a edição mais recente
+├─ latest.json
+├─ latest.md
+├─ latest-email.html
+├─ latest-telegram.txt
+├─ latest-discord.md
+├─ highlords-daily-latest.pdf
+└─ AAAA-MM-DD/
+   ├─ index.html
+   ├─ edition.json
+   ├─ edition.md
+   ├─ email.html
+   ├─ telegram.txt
+   ├─ discord.md
+   ├─ highlords-daily-AAAA-MM-DD.pdf
+   └─ assets/
+```
+
+Você pode desligar exportadores individualmente:
+
+```env
+EXPORT_MARKDOWN=true
+EXPORT_EMAIL=true
+EXPORT_SOCIAL=true
+ARCHIVE_ENABLED=true
+```
+
+---
+
+## Categorias e fontes
+
+Uma categoria:
 
 ```yaml
 categories:
@@ -279,132 +294,98 @@ categories:
     aliases: [science, astronomia]
 ```
 
-O prompt do Ollama e o formato esperado do editor-chefe são construídos dinamicamente a partir desse arquivo. Você pode trocar completamente as categorias sem alterar o JavaScript.
-
----
-
-## Personalizar fontes
-
-As fontes do Vanilla ficam em:
-
-```text
-config/feeds.yml
-```
-
-Exemplo:
+Uma fonte:
 
 ```yaml
 feeds:
-  - name: Trivela
-    url: https://trivela.com.br/feed/
-    focus: [futebol]
+  - name: Example News
+    url: https://example.com/feed.xml
+    focus: [ciencia]
     strict_focus: true
     images: page
 ```
 
-`focus` funciona como orientação editorial. Com `strict_focus: true`, uma fonte vertical só pode gerar matérias para as categorias declaradas em `focus`.
+`focus` orienta a classificação. `strict_focus: true` impede uma fonte vertical de vazar para outras categorias. `images: page` força a busca de `og:image`/`twitter:image` na página da matéria.
 
-Para fontes cujo RSS fornece logos ou imagens genéricas, use:
+---
 
-```yaml
-images: page
+## Plugins
+
+Arquivos `plugins/*.plugin.mjs` são carregados automaticamente quando:
+
+```env
+PLUGINS_ENABLED=true
 ```
 
-Assim o Highlords busca a imagem diretamente na página da matéria.
+Hooks disponíveis:
 
-### Fontes incluídas no Vanilla
+- `afterCollect`
+- `afterAnalyze`
+- `beforeRender`
+- `afterWrite`
+- `exportEdition`
 
-**Tecnologia, desenvolvimento e games:** Tecnoblog, Canaltech, TecMundo, Olhar Digital, iMasters, Diolinux, Adrenaline e GameVicio.
+Erros de plugins são isolados e não derrubam a edição. Veja `plugins/README.md`.
 
-**Futebol:** ge, Trivela, Placar e UOL Esporte.
+Isso permite integrar novas fontes, filtros, exportadores ou automações sem alterar o core.
 
-**Esportes:** ge, UOL Esporte, Grande Prêmio, Olimpíada Todo Dia e Agência Brasil Esportes.
+---
 
-**Economia:** InfoMoney, MoneyTimes, Exame, Seu Dinheiro, Brazil Journal, UOL Economia e Agência Brasil Economia.
+## Desktop experimental
 
-### Preset global opcional
+Existe uma camada Electron opcional em `desktop/`:
 
-Quem preferir uma seleção misturando fontes brasileiras e internacionais pode usar:
+```bash
+npm run desktop:install
+npm run desktop
+```
+
+Ela permite editar as principais configurações e gerar a edição por interface gráfica.
+
+Para preparar um instalador no sistema operacional atual:
+
+```bash
+npm run desktop:build
+```
+
+Targets configurados: NSIS/Windows, DMG/macOS e AppImage/Linux. Ollama e Chrome/Chromium/Edge continuam sendo pré-requisitos externos. A interface desktop é opcional; o CLI continua sendo o caminho principal e mais leve.
+
+---
+
+## Como funciona
 
 ```text
-config/feeds-global.yml
+Preset / YAML / .env
+        ↓
+RSS / Atom
+        ↓
+validação de imagens
+        ↓
+memória histórica
+        ↓
+Ollama: classificação + localização + topicKey
+        ↓
+deduplicação semântica
+        ↓
+perfil editorial + diversidade de fontes
+        ↓
+Ollama editor-chefe
+        ↓
+cache local das imagens selecionadas
+        ↓
+HTML + PDF + JSON + Markdown + email + social
+        ↓
+memória + arquivo navegável + plugins
 ```
-
-No `.env`:
-
-```env
-FEEDS_FILE=./config/feeds-global.yml
-```
-
-Esse preset mantém fontes como The Verge, Ars Technica, Hacker News, TechCrunch, GitHub Blog, InfoQ, Tom's Hardware, BBC Sport e outras.
-
-Para outros países, a ideia é simples: copie um arquivo de feeds, troque as URLs RSS e ajuste `LANGUAGE`, `EDITORIAL_CONTEXT` e `TIME_ZONE`.
 
 ---
 
-## Uso manual
+## Configuração completa
 
-Se preferir não usar os launchers:
+Veja `.env.example`. Os valores Vanilla funcionam sem criar `.env`.
 
-```powershell
-ollama serve
-```
-
-Em outro terminal:
-
-```powershell
-npm.cmd install
-ollama pull qwen3:4b
-npm.cmd run daily
-```
-
-No macOS/Linux, use `npm` no lugar de `npm.cmd`.
-
----
-
-## Solução de problemas
-
-### `Ollama não está respondendo`
-
-Os launchers tentam iniciar o serviço automaticamente. Se quiser testar manualmente:
-
-```bash
-ollama serve
-```
-
-### `Modelo qwen3:4b não encontrado`
-
-```bash
-ollama pull qwen3:4b
-```
-
-### `Chrome/Chromium/Edge não encontrado`
-
-Instale um navegador compatível ou configure no `.env`:
-
-```env
-BROWSER_PATH=C:\Program Files\Google\Chrome\Application\chrome.exe
-```
-
-Em Linux/macOS, informe o caminho absoluto do executável correspondente.
-
-### A primeira execução está demorando
-
-É normal quando o modelo ainda precisa ser baixado. Depois disso, o tempo passa a depender principalmente da quantidade de notícias e da velocidade da sua máquina ao executar a LLM local.
-
----
-
-## Stack
-
-- Node.js
-- `rss-parser`
-- `yaml`
-- Ollama
-- `qwen3:4b`
-- HTML/CSS
-- `puppeteer-core`
-- Chrome / Chromium / Edge
+O projeto requer Node.js 22.5+ e utiliza `package-lock.json` para instalações reproduzíveis. Os launchers instalam dependências automaticamente quando necessário.
 
 ## Privacidade
 
-A curadoria acontece localmente através do Ollama. O Highlords Daily não precisa enviar o conteúdo das matérias para uma API externa de IA.
+A curadoria acontece localmente pelo Ollama. O conteúdo das matérias não precisa ser enviado a uma API externa de IA. As requisições externas do Highlords são apenas as necessárias para buscar RSS/Atom, páginas e imagens das fontes configuradas.

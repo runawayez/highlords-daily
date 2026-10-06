@@ -1,27 +1,21 @@
-import { categories, config } from '../config.mjs';
+import { categories, config, profile, publication } from '../config.mjs';
 
 function safeJson(content) {
   if (typeof content !== 'string' || !content.trim()) throw new Error('Resposta vazia do Ollama.');
   const cleaned = content.trim().replace(/^```(?:json)?\s*/i, '').replace(/\s*```$/i, '').trim();
 
-  try {
-    return JSON.parse(cleaned);
-  } catch {}
+  try { return JSON.parse(cleaned); } catch {}
 
   const objectStart = cleaned.indexOf('{');
   const objectEnd = cleaned.lastIndexOf('}');
   if (objectStart >= 0 && objectEnd > objectStart) {
-    try {
-      return JSON.parse(cleaned.slice(objectStart, objectEnd + 1));
-    } catch {}
+    try { return JSON.parse(cleaned.slice(objectStart, objectEnd + 1)); } catch {}
   }
 
   const arrayStart = cleaned.indexOf('[');
   const arrayEnd = cleaned.lastIndexOf(']');
   if (arrayStart >= 0 && arrayEnd > arrayStart) {
-    try {
-      return JSON.parse(cleaned.slice(arrayStart, arrayEnd + 1));
-    } catch {}
+    try { return JSON.parse(cleaned.slice(arrayStart, arrayEnd + 1)); } catch {}
   }
 
   throw new Error(`JSON inválido do Ollama: ${cleaned.slice(0, 180)}`);
@@ -57,9 +51,7 @@ async function chatJson(system, user, timeout = 120000) {
 export async function ensureOllama() {
   let response;
   try {
-    response = await fetch(`${config.ollamaHost}/api/tags`, {
-      signal: AbortSignal.timeout(3000)
-    });
+    response = await fetch(`${config.ollamaHost}/api/tags`, { signal: AbortSignal.timeout(3000) });
   } catch {
     throw new Error(`Ollama não está respondendo em ${config.ollamaHost}. Execute: ollama serve`);
   }
@@ -68,9 +60,7 @@ export async function ensureOllama() {
   const data = await response.json();
   const models = Array.isArray(data.models) ? data.models.map(model => model.name) : [];
   const available = models.some(name => name === config.ollamaModel || name.startsWith(`${config.ollamaModel}:`) || name.startsWith(config.ollamaModel));
-  if (!available) {
-    throw new Error(`Modelo ${config.ollamaModel} não encontrado. Execute: ollama pull ${config.ollamaModel}`);
-  }
+  if (!available) throw new Error(`Modelo ${config.ollamaModel} não encontrado. Execute: ollama pull ${config.ollamaModel}`);
 }
 
 const taxonomy = categories
@@ -83,12 +73,19 @@ const localeBrief = `
 LOCALIZAÇÃO DA EDIÇÃO:
 - idioma/locale de saída: ${config.language};
 - contexto editorial do leitor: ${config.editorialContext};
+- publicação: ${publication.name};
 - todo texto editorial visível ao leitor deve soar natural para esse locale, incluindo ortografia, vocabulário, terminologia e tom regional;
 - traduza headline, summary, tags, título da edição, introdução, nomes de seções e rótulos de interface quando solicitado;
 - preserve fatos, marcas, nomes próprios e valores originais;
 - NÃO converta moedas, preços ou unidades inventando uma cotação. Se um preço estiver em moeda estrangeira, mantenha a moeda correta e deixe claro o mercado/contexto quando isso evitar uma interpretação errada;
 - não sugira que preço, disponibilidade, legislação ou serviço valem para ${config.editorialContext} se a matéria não disser isso;
 - adapte o enquadramento ao leitor de ${config.editorialContext} sem adicionar fatos que não estejam no material fornecido.
+
+PERFIL EDITORIAL:
+- perfil: ${profile.name} (${profile.key});
+- objetivo: ${profile.description};
+- tom: ${profile.tone};
+- categorias prioritárias: ${profile.priorityCategories.length ? profile.priorityCategories.join(', ') : 'nenhuma; equilíbrio geral'}.
 `;
 
 function key(value = '') {
@@ -100,6 +97,10 @@ function key(value = '') {
     .replace(/[^a-z0-9]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function topicKey(value = '') {
+  return key(value).split(' ').filter(Boolean).slice(0, 12).join('-').slice(0, 160);
 }
 
 const categoryAliases = new Map();
@@ -165,7 +166,7 @@ function tagsField(row) {
 }
 
 const exampleSlug = categories[0]?.slug || 'geral';
-const analysisSystem = `Você é o editor do Highlords Daily, uma newsletter diária local e configurável.
+const analysisSystem = `Você é o editor do ${publication.name}, uma newsletter diária local e configurável.
 Analise TODAS as matérias recebidas e devolva somente JSON válido.
 ${localeBrief}
 IMPORTANTE:
@@ -175,12 +176,12 @@ IMPORTANTE:
 - quando strictFocus for false, escolha livremente entre as categorias configuradas;
 - FUTEBOL significa exclusivamente futebol de associação/soccer. NFL, NCAA football, American football, quarterback, Super Bowl e similares pertencem a ESPORTES, nunca a FUTEBOL;
 - não classifique automaticamente a palavra inglesa "football" como futebol: determine pelo contexto se é soccer ou futebol americano;
-- na dúvida entre duas categorias válidas, escolha a categoria cujo assunto central melhor representa a matéria;
 - use category null SOMENTE quando a matéria claramente não pertencer a nenhuma categoria configurada;
 - devolva EXATAMENTE um item para cada id recebido, inclusive os rejeitados;
 - category deve ser SOMENTE um destes slugs exatos: ${validSlugList}; ou null;
-- nunca use os nomes bonitos das categorias no campo category;
-- headline e summary devem descrever EXCLUSIVAMENTE a matéria daquele mesmo id. Nunca misture, copie ou transfira conteúdo de um id para outro;
+- headline, summary e topicKey devem descrever EXCLUSIVAMENTE a matéria daquele mesmo id;
+- topicKey deve ser uma chave curta e estável do ASSUNTO central, sem floreio, útil para detectar duas matérias que falam do mesmo acontecimento. Exemplos: "nvidia-rtx-5070-ti-preco-eua", "openai-novo-modelo", "flamengo-transferencia-jogador";
+- duas matérias sobre o mesmo acontecimento devem receber topicKey igual ou muito parecido, mesmo que os títulos sejam diferentes;
 - não invente fatos e use somente o material fornecido.
 
 CATEGORIAS CONFIGURADAS:
@@ -188,6 +189,7 @@ ${taxonomy}
 
 EDITORIAL:
 - score de 0 a 10 mede valor para esta newsletter, combinando novidade, impacto, utilidade, relevância para o leitor e interesse editorial;
+- considere o perfil editorial acima ao atribuir score, mas não distorça a relevância factual;
 - uma matéria válida e comum pode ficar entre 4 e 7; reserve 8 a 10 para grandes destaques;
 - fora do escopo deve receber category null e score 0;
 - headline deve ser curta, natural e informativa no locale ${config.language};
@@ -195,7 +197,7 @@ EDITORIAL:
 - tags: 2 a 6 termos curtos e específicos no idioma da edição.
 
 Retorne exatamente:
-{"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"headline":"string","summary":"string","tags":["tag"]}]}`;
+{"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"topicKey":"assunto-central","headline":"string","summary":"string","tags":["tag"]}]}`;
 
 function parseBatch(parsed, batch) {
   const rows = rowsFrom(parsed);
@@ -234,6 +236,7 @@ function parseBatch(parsed, batch) {
       ...article,
       category,
       score,
+      topicKey: topicKey(textField(row, ['topicKey', 'topic_key', 'assunto', 'storyKey', 'story_key'], article.originalTitle)),
       headline: textField(row, ['headline', 'title', 'titulo', 'manchete'], article.originalTitle).slice(0, 220),
       summary: textField(row, ['summary', 'resumo', 'description', 'descricao'], article.excerpt || '').slice(0, 900),
       tags: tagsField(row)
@@ -353,13 +356,7 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
     }
 
     if (added) {
-      onProgress({
-        status: 'category-rescue',
-        category: category.name,
-        count: added,
-        floor: rescueFloor,
-        total: count
-      });
+      onProgress({ status: 'category-rescue', category: category.name, count: added, floor: rescueFloor, total: count });
     }
   }
 
@@ -368,7 +365,9 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
   }
 
   return analyzed.sort((a, b) => {
-    const score = Number(b.score) - Number(a.score);
+    const priorityA = profile.priorityCategories.includes(a.category) ? 0.25 : 0;
+    const priorityB = profile.priorityCategories.includes(b.category) ? 0.25 : 0;
+    const score = (Number(b.score) + priorityB) - (Number(a.score) + priorityA);
     return score || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
   });
 }
@@ -380,6 +379,7 @@ export async function curateNewsletter(articles, editionDate) {
     score: article.score,
     source: article.source,
     publishedAt: article.publishedAt,
+    topicKey: article.topicKey,
     headline: article.headline,
     summary: article.summary,
     tags: article.tags
@@ -410,7 +410,7 @@ export async function curateNewsletter(articles, editionDate) {
     sections: emptySections
   };
 
-  const system = `Você é o editor-chefe do Highlords Daily.
+  const system = `Você é o editor-chefe do ${publication.name}.
 Monte uma newsletter curta, calma e realmente útil usando SOMENTE os IDs fornecidos.
 ${localeBrief}
 REGRAS:
@@ -420,9 +420,10 @@ REGRAS:
 - existem ${categories.length} seções configuradas e elas devem aparecer como chaves em sections;
 - uma seção só deve ficar incompleta quando realmente não houver candidatas suficientes para ela;
 - não use a manchete novamente nas seções;
-- não repita a mesma história ou assunto;
+- não repita a mesma história, acontecimento ou topicKey;
 - Futebol significa soccer/futebol de associação; NFL e futebol americano pertencem a Esportes;
 - prefira impacto, utilidade, novidade e relevância a clickbait;
+- considere o perfil ${profile.name}; quando duas matérias tiverem qualidade equivalente, favoreça as categorias prioritárias do perfil;
 - equilibre fontes quando houver alternativas equivalentes;
 - escreva title e intro no locale ${config.language}, naturais para ${config.editorialContext};
 - em sectionTitles, devolva um nome de seção natural no idioma da edição para CADA slug configurado, preservando o significado editorial;
@@ -438,7 +439,7 @@ ${JSON.stringify(responseExample)}`;
 
   return chatJson(
     system,
-    `Data da edição: ${editionDate}\nIdioma: ${config.language}\nContexto editorial: ${config.editorialContext}\n\nCandidatas:\n${JSON.stringify(compact)}`,
+    `Data da edição: ${editionDate}\nIdioma: ${config.language}\nContexto editorial: ${config.editorialContext}\nPerfil editorial: ${profile.name}\n\nCandidatas:\n${JSON.stringify(compact)}`,
     150000
   );
 }

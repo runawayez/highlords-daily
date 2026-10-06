@@ -1,0 +1,47 @@
+version: 1
+
+profiles:
+  balanced:
+    name: Balanced
+    description: Equilíbrio entre impacto, utilidade, novidade, diversidade de fontes e variedade de categorias.
+    tone: claro, sóbrio e direto
+    priority_categories: []
+    items_per_category: 2
+    max_items_per_source: 3
+    max_items_per_source_per_section: 1
+
+  tech-heavy:
+    name: Tech Heavy
+    description: Prioriza IA, desenvolvimento, hardware, software, mobile, games e tecnologias emergentes.
+    tone: técnico sem ser hermético
+    priority_categories: [ia, desenvolvimento, hardware, software-internet, mobile-gadgets, games, futuro]
+    items_per_category: 2
+    max_items_per_source: 3
+    max_items_per_source_per_section: 1
+
+  business:
+    name: Business
+    description: Prioriza economia, empresas, mercados, tecnologia com impacto comercial e movimentos de negócios.
+    tone: executivo, objetivo e contextual
+    priority_categories: [economia, ia, hardware, software-internet, futuro]
+    items_per_category: 2
+    max_items_per_source: 3
+    max_items_per_source_per_section: 1
+
+  gaming:
+    name: Gaming
+    description: Prioriza games, hardware, plataformas, estúdios e tecnologia relacionada a jogos.
+    tone: informativo e entusiasmado sem clickbait
+    priority_categories: [games, hardware, mobile-gadgets, software-internet]
+    items_per_category: 2
+    max_items_per_source: 3
+    max_items_per_source_per_section: 1
+
+  minimal:
+    name: Minimal
+    description: Edição enxuta, com menos histórias e foco apenas no que tem maior impacto e utilidade.
+    tone: minimalista, seco e informativo
+    priority_categories: []
+    items_per_category: 1
+    max_items_per_source: 2
+    max_items_per_source_per_section: 1

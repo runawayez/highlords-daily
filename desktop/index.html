@@ -1,0 +1,23 @@
+<!doctype html>
+<html lang="en">
+<head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>Highlords Daily</title><link rel="stylesheet" href="styles.css"></head>
+<body>
+<main>
+  <header><div><div class="eyebrow">LOCAL-FIRST NEWS ENGINE</div><h1>Highlords Daily</h1><p>Configure the edition, generate it locally and keep your archive on your machine.</p></div><button id="openOutput" class="ghost">Open archive</button></header>
+  <section class="panel form">
+    <label>Preset<select id="PRESET"><option value="br">BR / Vanilla</option><option value="global">Global</option><option value="custom">Custom</option></select></label>
+    <label>Editorial profile<select id="EDITORIAL_PROFILE"><option value="balanced">Balanced</option><option value="tech-heavy">Tech Heavy</option><option value="business">Business</option><option value="gaming">Gaming</option><option value="minimal">Minimal</option></select></label>
+    <label>Language / locale<input id="LANGUAGE" placeholder="pt-BR"></label>
+    <label>Editorial context<input id="EDITORIAL_CONTEXT" placeholder="Brasil"></label>
+    <label>Timezone<input id="TIME_ZONE" placeholder="America/Sao_Paulo"></label>
+    <label>Publication name<input id="PUBLICATION_NAME" placeholder="Highlords Daily"></label>
+    <label>Tagline<input id="PUBLICATION_TAGLINE" placeholder="Information without noise"></label>
+    <label>Ollama model<input id="OLLAMA_MODEL" placeholder="qwen3:4b"></label>
+    <label>Items per category<input id="ITEMS_PER_CATEGORY" type="number" min="1" max="3" value="2"></label>
+  </section>
+  <div class="actions"><button id="save" class="ghost">Save configuration</button><button id="generate">Generate daily</button></div>
+  <section class="panel console"><div class="console-head"><strong>Run log</strong><span id="status">idle</span></div><pre id="log">Ready.</pre></section>
+</main>
+<script type="module" src="renderer.mjs"></script>
+</body>
+</html>
