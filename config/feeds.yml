@@ -45,7 +45,7 @@ feeds:
   # Futebol — fontes brasileiras e uma fonte internacional para ampliar a pluralidade.
   - name: ge
     url: https://ge.globo.com/rss/ge
-    focus: [futebol]
+    focus: [futebol, esportes]
 
   - name: Trivela
     url: https://trivela.com.br/feed/
@@ -57,11 +57,20 @@ feeds:
 
   - name: UOL Esporte
     url: https://rss.uol.com.br/feed/esporte.xml
-    focus: [futebol]
+    focus: [futebol, esportes]
 
   - name: BBC Sport Football
     url: https://feeds.bbci.co.uk/sport/football/rss.xml
     focus: [futebol]
+
+  # Esportes — cobertura geral para basquete, F1, tênis, vôlei, lutas e outras modalidades.
+  - name: BBC Sport
+    url: https://feeds.bbci.co.uk/sport/rss.xml
+    focus: [esportes]
+
+  - name: ESPN Top Headlines
+    url: https://www.espn.com/espn/rss/news
+    focus: [esportes, futebol]
 
   # Economia — mistura de mercado, macroeconomia, negócios e cobertura geral.
   - name: InfoMoney
