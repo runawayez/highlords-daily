@@ -65,7 +65,7 @@ categories:
 
   - slug: futebol
     name: Futebol
-    description: Futebol de associação (soccer) exclusivamente: clubes, campeonatos, partidas, transferências, seleções, mercado da bola e acontecimentos do futebol brasileiro e internacional. NÃO inclui futebol americano, NFL ou NCAA.
+    description: "Futebol de associação (soccer) exclusivamente: clubes, campeonatos, partidas, transferências, seleções, mercado da bola e acontecimentos do futebol brasileiro e internacional. NÃO inclui futebol americano, NFL ou NCAA."
     aliases:
       - soccer
       - association football
