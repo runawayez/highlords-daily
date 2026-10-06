@@ -1,5 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
+import YAML from 'yaml';
 
 if (fs.existsSync('.env') && typeof process.loadEnvFile === 'function') {
   process.loadEnvFile('.env');
@@ -16,27 +17,81 @@ function booleanEnv(name, fallback = false) {
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
 }
 
-export const categories = [
-  ['ia', 'IA', 'Modelos, agentes, machine learning, OpenAI, Anthropic, Gemini e produtos cujo assunto principal seja inteligência artificial.'],
-  ['desenvolvimento', 'Desenvolvimento', 'Programação, linguagens, frameworks, APIs, bancos, GitHub, QA, testes, DevOps, cloud e ferramentas para desenvolvedores.'],
-  ['mobile-gadgets', 'Mobile & Gadgets', 'Smartphones, tablets, relógios, fones, smart home, acessórios e gadgets de consumo.'],
-  ['hardware', 'Hardware', 'CPUs, GPUs, PCs, notebooks, monitores, periféricos, memória, armazenamento, chips e semicondutores.'],
-  ['software-internet', 'Software & Internet', 'Sistemas operacionais, apps, browsers, serviços digitais, segurança, privacidade, web, redes e plataformas.'],
-  ['games', 'Games', 'Jogos, consoles, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, estúdios, engines e lançamentos.'],
-  ['futuro', 'Futuro', 'Robótica, computação quântica, VR/AR, computação espacial, novas interfaces, protótipos e tecnologias emergentes.']
-].map(([slug, name, description]) => ({ slug, name, description }));
+function loadYaml(filePath, label) {
+  let raw;
+  try {
+    raw = fs.readFileSync(filePath, 'utf8');
+  } catch (error) {
+    throw new Error(`${label} não encontrado em ${filePath}: ${error.message}`);
+  }
 
-export const feeds = [
-  { name: 'Tecnoblog', url: 'https://tecnoblog.net/feed/' },
-  { name: 'The Verge', url: 'https://www.theverge.com/rss/index.xml' },
-  { name: 'Ars Technica', url: 'https://feeds.arstechnica.com/arstechnica/index' },
-  { name: 'Hacker News', url: 'https://news.ycombinator.com/rss' },
-  { name: 'TechCrunch', url: 'https://techcrunch.com/feed/' },
-  { name: 'GitHub Blog', url: 'https://github.blog/feed/' },
-  { name: 'InfoQ', url: 'https://feed.infoq.com/' },
-  { name: "Tom's Hardware", url: 'https://www.tomshardware.com/feeds/all' },
-  { name: 'Rock Paper Shotgun', url: 'https://www.rockpapershotgun.com/feed' }
-];
+  try {
+    return YAML.parse(raw) || {};
+  } catch (error) {
+    throw new Error(`${label} inválido em ${filePath}: ${error.message}`);
+  }
+}
+
+function slug(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
+const categoriesFile = path.resolve(process.env.CATEGORIES_FILE || './config/categories.yml');
+const feedsFile = path.resolve(process.env.FEEDS_FILE || './config/feeds.yml');
+const categoriesDocument = loadYaml(categoriesFile, 'Arquivo de categorias');
+const feedsDocument = loadYaml(feedsFile, 'Arquivo de feeds');
+
+const rawCategories = Array.isArray(categoriesDocument.categories) ? categoriesDocument.categories : [];
+export const categories = rawCategories
+  .filter(category => category && category.enabled !== false)
+  .map(category => ({
+    slug: slug(category.slug || category.name),
+    name: String(category.name || category.slug || '').trim(),
+    description: String(category.description || '').trim(),
+    aliases: Array.isArray(category.aliases)
+      ? category.aliases.map(alias => String(alias).trim()).filter(Boolean)
+      : []
+  }))
+  .filter(category => category.slug && category.name);
+
+if (!categories.length) {
+  throw new Error(`Nenhuma categoria habilitada em ${categoriesFile}.`);
+}
+
+const duplicateSlugs = categories
+  .map(category => category.slug)
+  .filter((value, index, all) => all.indexOf(value) !== index);
+if (duplicateSlugs.length) {
+  throw new Error(`Categorias com slug duplicado: ${[...new Set(duplicateSlugs)].join(', ')}`);
+}
+
+const validCategorySlugs = new Set(categories.map(category => category.slug));
+const rawFeeds = Array.isArray(feedsDocument.feeds) ? feedsDocument.feeds : [];
+export const feeds = rawFeeds
+  .filter(feed => feed && feed.enabled !== false)
+  .map(feed => ({
+    name: String(feed.name || '').trim(),
+    url: String(feed.url || '').trim(),
+    focus: Array.isArray(feed.focus)
+      ? feed.focus.map(value => slug(value)).filter(value => validCategorySlugs.has(value))
+      : []
+  }))
+  .filter(feed => feed.name && /^https?:\/\//i.test(feed.url));
+
+if (!feeds.length) {
+  throw new Error(`Nenhum feed habilitado em ${feedsFile}.`);
+}
+
+export const editorial = {
+  preset: String(categoriesDocument.preset || feedsDocument.preset || 'custom'),
+  categoriesFile,
+  feedsFile
+};
 
 export const config = {
   ollamaHost: (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/$/, ''),
@@ -48,7 +103,6 @@ export const config = {
   maxCandidates: Math.max(20, numberEnv('MAX_CANDIDATES', 72)),
   aiBatchSize: Math.max(4, Math.min(16, numberEnv('AI_BATCH_SIZE', 10))),
   itemsPerCategory: Math.max(1, Math.min(3, numberEnv('ITEMS_PER_CATEGORY', 2))),
-  // A triagem da LLM é permissiva; o editor-chefe faz a seleção mais rigorosa depois.
   llmMinScore: Math.max(0, Math.min(10, numberEnv('LLM_MIN_SCORE', 4.5))),
   autoOpen: booleanEnv('AUTO_OPEN', true)
 };
