@@ -12,7 +12,7 @@ O projeto já vem com o preset editorial **Vanilla**. Basta clonar, instalar o m
 
 ## Highlords Daily Vanilla
 
-O preset padrão vem com nove categorias:
+O preset padrão vem com dez categorias:
 
 1. **IA**
 2. **Desenvolvimento**
@@ -21,8 +21,11 @@ O preset padrão vem com nove categorias:
 5. **Software & Internet**
 6. **Games**
 7. **Futebol**
-8. **Economia**
-9. **Futuro**
+8. **Esportes**
+9. **Economia**
+10. **Futuro**
+
+**Futebol** fica separado de **Esportes**. A seção Esportes é voltada a basquete, Fórmula 1, tênis, vôlei, lutas, atletismo e outras modalidades.
 
 A configuração editorial fica em:
 
@@ -64,17 +67,11 @@ PDF com o mesmo layout e links do HTML
 
 ## Curadoria por IA local
 
-Cada notícia recebe do Ollama:
+Cada notícia recebe do Ollama categoria, nota de relevância de **0 a 10**, headline em PT-BR, resumo curto e tags. A nota combina **novidade, impacto, utilidade, relevância para o leitor e interesse editorial**.
 
-- categoria;
-- nota de relevância de **0 a 10**;
-- headline em português brasileiro;
-- resumo curto em português brasileiro;
-- tags.
+O padrão Vanilla tenta manter **2 destaques por categoria**. O gerador completa automaticamente vagas com candidatas da mesma categoria já aprovadas pela LLM e, quando possível, evita escolher como manchete uma matéria que faria sua própria seção perder um dos dois destaques. Se não existirem duas candidatas aprovadas para uma categoria, a edição continua normalmente e o layout se adapta a um único card.
 
-A nota combina **novidade, impacto, utilidade, relevância para o leitor e interesse editorial**. Notícias comuns tendem a ficar na faixa intermediária; notas de 8 a 10 ficam reservadas para destaques fortes.
-
-Depois da triagem, uma segunda chamada ao Ollama atua como **editor-chefe**. Se uma seção ficar incompleta, o gerador pode completar as vagas com as melhores candidatas daquela categoria já aprovadas pela LLM. Categorias sem matéria aprovada não são renderizadas naquela edição.
+Categorias sem matéria aprovada não são renderizadas.
 
 ## Categorias personalizáveis
 
@@ -86,11 +83,6 @@ categories:
     name: Ciência
     description: Pesquisa, espaço, astronomia, biologia e descobertas científicas.
     aliases: [science, astronomia]
-
-  - slug: cinema
-    name: Cinema
-    description: Filmes, festivais, lançamentos, bilheteria e indústria cinematográfica.
-    aliases: [movies, filmes]
 ```
 
 O prompt do Ollama e o formato esperado do editor-chefe são montados dinamicamente a partir desse arquivo.
@@ -105,23 +97,16 @@ feeds:
     url: https://trivela.com.br/feed/
     focus: [futebol]
 
-  - name: InfoMoney
-    url: https://www.infomoney.com.br/feed/
-    focus: [economia]
+  - name: BBC Sport
+    url: https://feeds.bbci.co.uk/sport/rss.xml
+    focus: [esportes]
 ```
 
 `focus` é apenas uma **dica**. A classificação final continua sendo feita pelo Ollama.
 
-Se o RSS de uma fonte fornecer apenas logo ou arte genérica, use `images: page` para ignorar essa imagem e buscar a `og:image` diretamente na página da matéria:
+Se o RSS fornecer apenas logo ou arte genérica, use `images: page` para buscar a `og:image` diretamente na página da matéria. Para desativar imagens naquela fonte, use `images: false`. O coletor também elimina imagens idênticas repetidas pela mesma fonte.
 
-```yaml
-  - name: Minha Fonte
-    url: https://exemplo.com/feed/
-    focus: [economia]
-    images: page
-```
-
-Para desativar imagens totalmente naquela fonte, use `images: false`. O coletor também elimina imagens idênticas repetidas pela mesma fonte, evitando cards duplicados com logos genéricos.
+Quando uma matéria realmente não possui imagem válida, o card passa a usar um layout textual compacto em vez de exibir um grande bloco de placeholder.
 
 ## Fontes Vanilla
 
@@ -145,6 +130,13 @@ Para desativar imagens totalmente naquela fonte, use `images: false`. O coletor 
 - UOL Esporte
 - BBC Sport Football
 
+### Esportes
+
+- UOL Esporte
+- ge
+- BBC Sport
+- ESPN Top Headlines
+
 ### Economia
 
 - InfoMoney
@@ -155,7 +147,7 @@ Para desativar imagens totalmente naquela fonte, use `images: false`. O coletor 
 - UOL Economia
 - Agência Brasil Economia
 
-A coleta é balanceada entre os feeds antes da análise para que uma única fonte muito movimentada não ocupe sozinha todas as candidatas. Feeds internacionais podem ser usados normalmente: títulos e resumos são produzidos em português brasileiro pela LLM local.
+A coleta é balanceada antes da análise para que uma única fonte muito movimentada não ocupe sozinha todas as candidatas. Feeds internacionais podem ser usados normalmente: títulos e resumos são produzidos em português brasileiro pela LLM local.
 
 ## Requisitos
 
@@ -223,7 +215,7 @@ FEEDS_FILE=./config/feeds.yml
 
 LOOKBACK_HOURS=48
 MAX_ITEMS_PER_FEED=12
-MAX_CANDIDATES=72
+MAX_CANDIDATES=96
 AI_BATCH_SIZE=10
 ITEMS_PER_CATEGORY=2
 LLM_MIN_SCORE=4.5
