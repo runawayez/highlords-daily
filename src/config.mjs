@@ -63,6 +63,9 @@ export const config = {
   maxCandidates: Math.max(20, numberEnv('MAX_CANDIDATES', 72)),
   aiBatchSize: Math.max(4, Math.min(16, numberEnv('AI_BATCH_SIZE', 10))),
   itemsPerCategory: Math.max(1, Math.min(3, numberEnv('ITEMS_PER_CATEGORY', 2))),
+  // A triagem da LLM deve ser permissiva; o editor-chefe faz a seleção realmente rigorosa depois.
+  llmMinScore: Math.max(0, Math.min(10, numberEnv('LLM_MIN_SCORE', 4.5))),
+  // MIN_SCORE continua sendo usado pelo modo determinístico sem LLM.
   minScore: Math.max(0, Math.min(10, numberEnv('MIN_SCORE', 6))),
   autoOpen: booleanEnv('AUTO_OPEN', true)
 };
