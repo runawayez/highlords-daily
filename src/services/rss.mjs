@@ -146,12 +146,12 @@ async function fetchFeed(feed) {
         link,
         publishedAt: published.toISOString(),
         excerpt: excerpt.slice(0, 1400),
-        imageUrl: feed.images === false ? null : extractImage(item, link || feed.url)
+        imageUrl: feed.imageMode === 'auto' ? extractImage(item, link || feed.url) : null
       };
     })
     .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff);
 
-  if (feed.images === false) return articles;
+  if (feed.imageMode === 'off') return articles;
   return enrichImages(articles);
 }
 
