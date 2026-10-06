@@ -24,12 +24,39 @@ function curatedId(value) {
   return Number.isFinite(number) ? number : null;
 }
 
+function categoryCounts(articles) {
+  const counts = new Map(categories.map(category => [category.slug, 0]));
+  for (const article of articles) {
+    if (counts.has(article.category)) counts.set(article.category, counts.get(article.category) + 1);
+  }
+  return counts;
+}
+
+function chooseLead(requestedLead, articles) {
+  const counts = categoryCounts(articles);
+  const canSpareForLead = article => article && (counts.get(article.category) || 0) > config.itemsPerCategory;
+
+  if (canSpareForLead(requestedLead)) {
+    return { lead: requestedLead, rebalanced: false };
+  }
+
+  const alternative = articles.find(canSpareForLead);
+  if (alternative) {
+    return {
+      lead: alternative,
+      rebalanced: Boolean(requestedLead && alternative.id !== requestedLead.id)
+    };
+  }
+
+  return { lead: requestedLead || articles[0] || null, rebalanced: false };
+}
+
 function normalizeNewsletter(curated, articles, editionDate) {
   const byId = new Map(articles.map(article => [Number(article.id), article]));
   const used = new Set();
   const requestedLeadId = curatedId(curated?.leadId ?? curated?.lead ?? curated?.headlineId ?? curated?.mancheteId);
   const requestedLead = requestedLeadId != null ? byId.get(requestedLeadId) : null;
-  const lead = requestedLead || articles[0] || null;
+  const { lead, rebalanced: leadRebalanced } = chooseLead(requestedLead, articles);
   if (lead) used.add(lead.id);
 
   let backfilled = 0;
@@ -78,13 +105,14 @@ function normalizeNewsletter(curated, articles, editionDate) {
       stories: chosen.length,
       sources: new Set(chosen.map(article => article.source)).size,
       candidates: articles.length,
-      backfilled
+      backfilled,
+      leadRebalanced
     }
   };
 }
 
 function fallbackNewsletter(articles, editionDate) {
-  const lead = articles[0] || null;
+  const { lead, rebalanced: leadRebalanced } = chooseLead(articles[0] || null, articles);
   const used = new Set(lead ? [lead.id] : []);
   const sections = categories.map(category => {
     const selected = articles
@@ -107,7 +135,8 @@ function fallbackNewsletter(articles, editionDate) {
     stats: {
       stories: chosen.length,
       sources: new Set(chosen.map(article => article.source)).size,
-      candidates: articles.length
+      candidates: articles.length,
+      leadRebalanced
     }
   };
 }
@@ -211,6 +240,9 @@ async function main() {
   console.log(`  ${sectionReport(edition)}`);
   if (edition.stats?.backfilled) {
     console.log(`  ${edition.stats.backfilled} vaga(s) de seção completadas automaticamente com candidatas já aprovadas pelo Ollama.`);
+  }
+  if (edition.stats?.leadRebalanced) {
+    console.log('  Manchete reequilibrada para preservar a quantidade padrão de destaques nas seções.');
   }
 
   console.log('5/5 Gerando HTML, JSON e PDF visual...');
