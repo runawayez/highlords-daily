@@ -10,9 +10,11 @@
 Newsletter diária local e personalizável com curadoria por IA via Ollama, agregação RSS/Atom e geração editorial em HTML, JSON e PDF.
 </p>
 
-O **Highlords Daily** coleta notícias recentes, valida imagens, usa uma LLM local para classificar, traduzir, resumir e pontuar as matérias e depois executa uma segunda etapa de curadoria para montar uma edição pronta para leitura.
+O **Highlords Daily** coleta notícias recentes, valida imagens, usa uma LLM local para classificar, resumir e pontuar as matérias e depois executa uma segunda etapa de curadoria para montar uma edição pronta para leitura.
 
 Tudo acontece localmente. **Nenhuma API externa de IA é necessária.**
+
+O preset padrão **Vanilla é Brazil-first**: usa somente fontes brasileiras para reduzir manchetes com preços, disponibilidade e contexto pensados para outros mercados.
 
 ---
 
@@ -46,11 +48,11 @@ Ou execute pelo terminal:
 .\GERAR-DAILY.bat
 ```
 
-O launcher verifica automaticamente Node.js, npm, Ollama e o navegador. Se as dependências do projeto ainda não estiverem instaladas, ele executa `npm install`. Se o modelo `qwen3:4b` ainda não existir no Ollama, ele também faz o download automaticamente.
+O launcher verifica automaticamente Node.js, npm, Ollama e o navegador. Se as dependências ainda não estiverem instaladas, ele executa `npm install`. Se o modelo `qwen3:4b` ainda não existir, ele também faz o download automaticamente.
 
 > Na primeira execução o download do modelo pode levar alguns minutos. Nas próximas execuções ele não será baixado novamente.
 
-Você **não precisa** iniciar `ollama serve` manualmente. O launcher inicia o Ollama quando necessário.
+Você **não precisa** iniciar `ollama serve` manualmente. O launcher inicia o Ollama quando necessário e, se ele próprio tiver iniciado o serviço, encerra-o ao final da geração.
 
 ### macOS / Linux
 
@@ -62,7 +64,7 @@ cd highlords-daily
 bash RUN-DAILY.sh
 ```
 
-O script faz as mesmas verificações do launcher do Windows, instala dependências quando necessário, inicia o Ollama e baixa o modelo na primeira execução.
+O script faz as mesmas verificações do launcher do Windows, instala dependências quando necessário, inicia o Ollama, baixa o modelo na primeira execução e encerra o serviço ao final quando foi ele quem o iniciou.
 
 ### Pronto
 
@@ -150,6 +152,8 @@ O preset padrão vem com dez categorias editoriais:
 9. **Economia**
 10. **Futuro**
 
+O Vanilla usa **somente fontes brasileiras**. Isso não significa que as notícias precisam acontecer no Brasil; significa que a seleção e o contexto editorial partem de veículos voltados ao público brasileiro.
+
 **Futebol** significa futebol de associação/soccer. Futebol americano, NFL, NCAA, Super Bowl e outras modalidades ficam em **Esportes**, junto de basquete, Fórmula 1, tênis, vôlei, lutas, atletismo, rugby e esportes olímpicos.
 
 O Vanilla tenta manter **2 destaques por categoria**, sem forçar conteúdo irrelevante apenas para preencher espaço.
@@ -231,7 +235,7 @@ O prompt do Ollama e o formato esperado do editor-chefe são construídos dinami
 
 ## Personalizar fontes
 
-As fontes ficam em:
+As fontes do Vanilla ficam em:
 
 ```text
 config/feeds.yml
@@ -260,13 +264,29 @@ Assim o Highlords busca a imagem diretamente na página da matéria.
 
 ### Fontes incluídas no Vanilla
 
-**Tecnologia e games:** Tecnoblog, The Verge, Ars Technica, Hacker News, TechCrunch, GitHub Blog, InfoQ, Tom's Hardware e Rock Paper Shotgun.
+**Tecnologia, desenvolvimento e games:** Tecnoblog, Canaltech, TecMundo, Olhar Digital, iMasters, Diolinux, Adrenaline e GameVicio.
 
-**Futebol:** ge, Trivela, Placar, UOL Esporte e BBC Sport Football.
+**Futebol:** ge, Trivela, Placar e UOL Esporte.
 
-**Esportes:** ge, UOL Esporte, BBC Sport e ESPN Top Headlines.
+**Esportes:** ge, UOL Esporte, Grande Prêmio, Olimpíada Todo Dia e Agência Brasil Esportes.
 
 **Economia:** InfoMoney, MoneyTimes, Exame, Seu Dinheiro, Brazil Journal, UOL Economia e Agência Brasil Economia.
+
+### Preset global opcional
+
+Quem preferir uma seleção misturando fontes brasileiras e internacionais pode usar:
+
+```text
+config/feeds-global.yml
+```
+
+No `.env`:
+
+```env
+FEEDS_FILE=./config/feeds-global.yml
+```
+
+Esse preset mantém fontes como The Verge, Ars Technica, Hacker News, TechCrunch, GitHub Blog, InfoQ, Tom's Hardware, BBC Sport e outras.
 
 ---
 
