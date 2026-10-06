@@ -8,13 +8,13 @@ feeds:
     focus: [ia, mobile-gadgets, hardware, software-internet, futuro]
   - name: Canaltech
     url: https://canaltech.com.br/rss/
-    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, futuro]
+    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
   - name: TecMundo
     url: https://www.tecmundo.com.br/rss
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
   - name: Olhar Digital
     url: https://olhardigital.com.br/feed/
-    focus: [ia, mobile-gadgets, hardware, software-internet, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, filmes-series, futuro]
   - name: iMasters
     url: https://imasters.com.br/feed
     focus: [ia, desenvolvimento, software-internet, futuro]
