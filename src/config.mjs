@@ -83,6 +83,7 @@ export const feeds = rawFeeds
   .map(feed => ({
     name: String(feed.name || '').trim(),
     url: String(feed.url || '').trim(),
+    images: feed.images !== false,
     focus: Array.isArray(feed.focus)
       ? feed.focus.map(value => slug(value)).filter(value => validCategorySlugs.has(value))
       : []
