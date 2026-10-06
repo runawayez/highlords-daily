@@ -7,6 +7,7 @@ const STOPWORDS = new Set([
   'a','o','as','os','um','uma','de','da','do','das','dos','e','em','no','na','nos','nas','para','por','com','sem','sobre','que','como','mais','menos','novo','nova','novos','novas','the','a','an','of','to','in','on','for','and','or','with','without','from','by','is','are','new','how','why','this','that','these','those','will','has','have','its','their'
 ]);
 
+const IMAGE_RESERVE_KEY = Symbol.for('highlords.imageReserveCandidates');
 let sqlitePromise;
 let sqliteDb;
 let warnedFallback = false;
@@ -97,6 +98,10 @@ export function deduplicateArticles(input = [], threshold = config.duplicateThre
     duplicates.push({ kept: winner, removed: loser, similarity });
   }
 
+  // Final image enforcement runs after editorial selection. Keep the complete
+  // deduplicated candidate pool available in-process so a failed image can be
+  // replaced by the next best story from the same category without another AI pass.
+  globalThis[IMAGE_RESERVE_KEY] = [...articles];
   return { articles, duplicates };
 }
 
