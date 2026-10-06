@@ -42,6 +42,8 @@ categories.yml + feeds.yml
           ↓
        RSS / Atom
           ↓
+extração + validação de imagens
+          ↓
 coleta balanceada entre as fontes
           ↓
 Ollama analisa em lotes
@@ -78,6 +80,14 @@ O padrão Vanilla tenta manter **2 destaques por categoria**. Para isso, o anali
 
 Categorias sem matéria válida não são renderizadas.
 
+## Política de imagens
+
+No preset Vanilla, `REQUIRE_IMAGES=true` vem ativado por padrão. Isso significa que uma matéria só segue para o Ollama se o coletor encontrar e validar uma imagem real para ela.
+
+O coletor tenta primeiro a imagem presente no RSS e, quando necessário, busca `og:image` ou `twitter:image` diretamente na página da matéria. A URL encontrada é testada antes de a notícia entrar no pool editorial. Matérias sem imagem válida são descartadas antes da análise por IA.
+
+Isso mantém **imagem em 100% dos cards selecionáveis da newsletter** e também evita gastar processamento do Ollama com matérias que depois quebrariam o layout visual.
+
 ## Categorias personalizáveis
 
 `config/categories.yml` é a fonte de verdade da taxonomia editorial:
@@ -113,7 +123,7 @@ Por padrão, `focus` funciona como uma dica editorial. Quando `strict_focus: tru
 
 Se o RSS fornecer apenas logo ou arte genérica, use `images: page` para buscar a `og:image` diretamente na página da matéria. Para desativar imagens naquela fonte, use `images: false`. O coletor também elimina imagens idênticas repetidas pela mesma fonte.
 
-Quando uma matéria realmente não possui imagem válida, o card passa a usar um layout textual compacto em vez de exibir um grande bloco de placeholder.
+Com `REQUIRE_IMAGES=true`, feeds configurados com `images: false` não terão matérias elegíveis para a edição.
 
 ## Fontes Vanilla
 
@@ -226,6 +236,7 @@ MAX_CANDIDATES=96
 AI_BATCH_SIZE=10
 ITEMS_PER_CATEGORY=2
 LLM_MIN_SCORE=4.5
+REQUIRE_IMAGES=true
 AUTO_OPEN=true
 ```
 
@@ -237,6 +248,7 @@ AUTO_OPEN=true
 - `AI_BATCH_SIZE`: matérias por lote do Ollama.
 - `ITEMS_PER_CATEGORY`: destaques por seção, de 1 a 3.
 - `LLM_MIN_SCORE`: nota mínima para seguir à etapa editorial.
+- `REQUIRE_IMAGES`: quando `true`, descarta antes da IA qualquer matéria sem imagem válida.
 - `AUTO_OPEN`: abre o HTML ao finalizar.
 
 ## Stack
