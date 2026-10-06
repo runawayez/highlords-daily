@@ -1,9 +1,9 @@
 {
   "name": "highlords-daily",
-  "version": "2.2.0",
+  "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Gerador local de newsletter diária de tecnologia com RSS, Ollama, HTML e PDF.",
+  "description": "Gerador local de newsletter diária com RSS, Ollama, categorias configuráveis, HTML e PDF.",
   "scripts": {
     "daily": "node src/daily.mjs",
     "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs"
@@ -13,6 +13,7 @@
   },
   "dependencies": {
     "puppeteer-core": "^24.31.0",
-    "rss-parser": "^3.13.0"
+    "rss-parser": "^3.13.0",
+    "yaml": "^2.6.1"
   }
 }
