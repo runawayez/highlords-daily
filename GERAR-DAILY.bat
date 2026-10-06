@@ -1,5 +1,5 @@
 @echo off
-setlocal
+setlocal EnableExtensions
 cd /d "%~dp0"
 
 echo.
@@ -22,12 +22,25 @@ if errorlevel 1 (
   exit /b 1
 )
 
-powershell -NoProfile -Command "try { Invoke-RestMethod 'http://localhost:11434/api/tags' -TimeoutSec 2 ^| Out-Null; exit 0 } catch { exit 1 }"
+call :check_ollama
 if errorlevel 1 (
   echo Iniciando Ollama...
   start "Ollama" /min cmd /c "ollama serve"
-  timeout /t 3 /nobreak >nul
+
+  echo Aguardando o Ollama ficar pronto...
+  set /a attempts=0
+  :wait_ollama
+  timeout /t 2 /nobreak >nul
+  call :check_ollama
+  if not errorlevel 1 goto :ollama_ready
+
+  set /a attempts+=1
+  if %attempts% GEQ 15 goto :ollama_failed
+  goto :wait_ollama
 )
+
+:ollama_ready
+echo Ollama pronto.
 
 if not exist node_modules\yaml\package.json (
   echo Instalando ou atualizando dependencias...
@@ -45,6 +58,18 @@ echo O HTML e o PDF estao dentro da pasta output.
 echo.
 pause
 exit /b 0
+
+:check_ollama
+powershell -NoProfile -ExecutionPolicy Bypass -Command "try { Invoke-RestMethod 'http://localhost:11434/api/tags' -TimeoutSec 2 ^| Out-Null; exit 0 } catch { exit 1 }" >nul 2>nul
+exit /b %errorlevel%
+
+:ollama_failed
+echo.
+echo O Ollama foi iniciado, mas nao respondeu em http://localhost:11434 apos 30 segundos.
+echo Tente executar manualmente: ollama serve
+echo.
+pause
+exit /b 1
 
 :error
 echo.
