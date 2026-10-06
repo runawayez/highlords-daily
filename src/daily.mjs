@@ -51,6 +51,34 @@ function chooseLead(requestedLead, articles) {
   return { lead: requestedLead || articles[0] || null, rebalanced: false };
 }
 
+function fallbackCopy() {
+  if (config.language.toLowerCase().startsWith('pt')) {
+    return {
+      title: 'O que vale sua atenção hoje',
+      intro: 'Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído.'
+    };
+  }
+  return {
+    title: 'What deserves your attention today',
+    intro: 'A concise selection of the stories most worth your attention today, without the noise.'
+  };
+}
+
+function localizedSectionName(curated, category) {
+  const value = curated?.sectionTitles?.[category.slug];
+  if (typeof value === 'string' && value.trim()) return value.trim().slice(0, 80);
+  return category.name;
+}
+
+function normalizeUi(value) {
+  if (!value || typeof value !== 'object' || Array.isArray(value)) return {};
+  return Object.fromEntries(
+    Object.entries(value)
+      .filter(([, text]) => typeof text === 'string' && text.trim())
+      .map(([key, text]) => [key, text.trim().slice(0, 120)])
+  );
+}
+
 function normalizeNewsletter(curated, articles, editionDate) {
   const byId = new Map(articles.map(article => [Number(article.id), article]));
   const used = new Set();
@@ -87,18 +115,26 @@ function normalizeNewsletter(curated, articles, editionDate) {
       }
     }
 
-    return { slug: category.slug, name: category.name, articles: selected };
+    return {
+      slug: category.slug,
+      name: localizedSectionName(curated, category),
+      articles: selected
+    };
   });
 
   const chosen = [lead, ...sections.flatMap(section => section.articles)].filter(Boolean);
+  const fallback = fallbackCopy();
   return {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: 'ollama',
     selectionMode: backfilled > 0 ? 'ollama+section-backfill' : 'ollama',
     preset: editorial.preset,
-    title: String(curated?.title || 'O que vale sua atenção hoje').trim().slice(0, 120),
-    intro: String(curated?.intro || 'Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído.').trim().slice(0, 420),
+    language: config.language,
+    editorialContext: config.editorialContext,
+    title: String(curated?.title || fallback.title).trim().slice(0, 120),
+    intro: String(curated?.intro || fallback.intro).trim().slice(0, 420),
+    ui: normalizeUi(curated?.ui),
     lead,
     sections,
     stats: {
@@ -122,14 +158,18 @@ function fallbackNewsletter(articles, editionDate) {
     return { slug: category.slug, name: category.name, articles: selected };
   });
   const chosen = [lead, ...sections.flatMap(section => section.articles)].filter(Boolean);
+  const fallback = fallbackCopy();
   return {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: 'ollama',
     selectionMode: 'ranking-fallback',
     preset: editorial.preset,
-    title: 'O que vale sua atenção hoje',
-    intro: 'Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído.',
+    language: config.language,
+    editorialContext: config.editorialContext,
+    title: fallback.title,
+    intro: fallback.intro,
+    ui: {},
     lead,
     sections,
     stats: {
@@ -210,7 +250,8 @@ async function main() {
   const editionDate = dateKey();
   console.log('\nHIGH LORDS DAILY');
   console.log(`Edição: ${editionDate}`);
-  console.log(`Preset: ${editorial.preset} · ${categories.length} categorias\n`);
+  console.log(`Preset: ${editorial.preset} · ${categories.length} categorias`);
+  console.log(`Idioma: ${config.language} · Contexto: ${config.editorialContext}\n`);
 
   process.stdout.write('1/5 Verificando Ollama... ');
   await ensureOllama();
