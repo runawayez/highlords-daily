@@ -1,0 +1,61 @@
+version: 1
+preset: vanilla
+
+# focus é apenas uma dica para a LLM e para a distribuição de candidatas.
+# A classificação final continua sendo decidida pelo Ollama.
+feeds:
+  - name: Tecnoblog
+    url: https://tecnoblog.net/feed/
+    focus: [ia, mobile-gadgets, hardware, software-internet]
+
+  - name: The Verge
+    url: https://www.theverge.com/rss/index.xml
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, futuro]
+
+  - name: Ars Technica
+    url: https://feeds.arstechnica.com/arstechnica/index
+    focus: [ia, desenvolvimento, hardware, software-internet, futuro]
+
+  - name: Hacker News
+    url: https://news.ycombinator.com/rss
+    focus: [ia, desenvolvimento, software-internet, futuro]
+
+  - name: TechCrunch
+    url: https://techcrunch.com/feed/
+    focus: [ia, desenvolvimento, software-internet, economia, futuro]
+
+  - name: GitHub Blog
+    url: https://github.blog/feed/
+    focus: [ia, desenvolvimento, software-internet]
+
+  - name: InfoQ
+    url: https://feed.infoq.com/
+    focus: [ia, desenvolvimento, software-internet]
+
+  - name: Tom's Hardware
+    url: https://www.tomshardware.com/feeds/all
+    focus: [hardware, mobile-gadgets, games]
+
+  - name: Rock Paper Shotgun
+    url: https://www.rockpapershotgun.com/feed
+    focus: [games]
+
+  - name: ge
+    url: https://ge.globo.com/rss/ge
+    focus: [futebol]
+
+  - name: Trivela
+    url: https://trivela.com.br/feed/
+    focus: [futebol]
+
+  - name: InfoMoney
+    url: https://www.infomoney.com.br/feed/
+    focus: [economia]
+
+  - name: MoneyTimes
+    url: https://www.moneytimes.com.br/feed/
+    focus: [economia]
+
+  - name: Agência Brasil Economia
+    url: https://agenciabrasil.ebc.com.br/rss/economia/feed.xml
+    focus: [economia]
