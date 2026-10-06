@@ -118,5 +118,6 @@ export const config = {
   aiBatchSize: Math.max(4, Math.min(16, numberEnv('AI_BATCH_SIZE', 10))),
   itemsPerCategory: Math.max(1, Math.min(3, numberEnv('ITEMS_PER_CATEGORY', 2))),
   llmMinScore: Math.max(0, Math.min(10, numberEnv('LLM_MIN_SCORE', 4.5))),
+  requireImages: booleanEnv('REQUIRE_IMAGES', true),
   autoOpen: booleanEnv('AUTO_OPEN', true)
 };
