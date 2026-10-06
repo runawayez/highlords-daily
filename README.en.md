@@ -182,7 +182,7 @@ The same engine can therefore power a completely different local publication.
 
 ---
 
-## Feed diagnostics
+## Feed diagnostics and discovery
 
 Test all configured sources without calling Ollama:
 
@@ -197,6 +197,24 @@ npm run feeds:check -- --json
 ```
 
 The command reports feed health, latency, recent eligible stories and image rejections.
+
+### Automatic RSS/Atom discovery
+
+You can also provide regular website domains and let Highlords search for valid feeds:
+
+```bash
+npm run feeds:discover -- abc.net.au theguardian.com/au
+```
+
+The command reads `<link rel="alternate">` declarations from HTML, probes common paths such as `/feed`, `/rss.xml`, `/feed.xml` and `/atom.xml`, validates candidates as real RSS/Atom feeds, then prints ready-to-use YAML.
+
+To append discovered feeds directly to a configuration file:
+
+```bash
+npm run feeds:discover -- example.com another.example --append ./my-config/feeds.yml
+```
+
+Newly appended feeds intentionally use `focus: []`; assign the appropriate editorial categories afterwards. Use `--json` for automation.
 
 ---
 
@@ -248,6 +266,8 @@ Exporters can be toggled with `EXPORT_MARKDOWN`, `EXPORT_EMAIL`, `EXPORT_SOCIAL`
 ---
 
 ## Categories and sources
+
+Vanilla now keeps `Games`, `Movies & Series`, `Football/Soccer`, `Sports` and `Economy` as distinct editorial boundaries. Deterministic guardrails run before Ollama for obvious cases: film/TV coverage does not fall into Games, association football does not fall into general Sports, and a purely electoral story from a strict economy feed is rejected rather than being forced into Economy.
 
 Category example:
 
@@ -308,7 +328,7 @@ Preset / YAML / .env
         ↓
 RSS / Atom
         ↓
-image validation
+editorial guardrails + image validation
         ↓
 editorial history
         ↓
