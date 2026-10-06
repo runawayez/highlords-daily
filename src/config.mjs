@@ -47,6 +47,12 @@ function slug(value = '') {
     .replace(/^-+|-+$/g, '');
 }
 
+function imageMode(value) {
+  if (value === false) return 'off';
+  const normalized = String(value || 'auto').trim().toLowerCase();
+  return normalized === 'page' ? 'page' : 'auto';
+}
+
 const categoriesFile = path.resolve(process.env.CATEGORIES_FILE || './config/categories.yml');
 const feedsFile = path.resolve(process.env.FEEDS_FILE || './config/feeds.yml');
 const categoriesDocument = loadYaml(categoriesFile, 'Arquivo de categorias');
@@ -83,7 +89,7 @@ export const feeds = rawFeeds
   .map(feed => ({
     name: String(feed.name || '').trim(),
     url: String(feed.url || '').trim(),
-    images: feed.images !== false,
+    imageMode: imageMode(feed.images),
     focus: Array.isArray(feed.focus)
       ? feed.focus.map(value => slug(value)).filter(value => validCategorySlugs.has(value))
       : []
