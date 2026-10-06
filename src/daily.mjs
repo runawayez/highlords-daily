@@ -217,14 +217,17 @@ async function main() {
   console.log('ok');
 
   console.log('2/5 Coletando feeds...');
-  const { articles, errors } = await fetchAllFeeds(({ index, total, feed }) => {
+  const { articles, errors, imageRejected = 0 } = await fetchAllFeeds(({ index, total, feed }) => {
     process.stdout.write(`  [${index}/${total}] ${feed}\n`);
   });
-  console.log(`  ${articles.length} matérias recentes encontradas.`);
+  console.log(`  ${articles.length} matérias recentes com imagem válida encontradas.`);
+  if (config.requireImages && imageRejected > 0) {
+    console.log(`  ${imageRejected} matéria(s) sem imagem válida foram descartadas antes da IA.`);
+  }
   if (errors.length) {
     console.log(`  ${errors.length} fonte(s) falharam e foram ignoradas.`);
   }
-  if (!articles.length) throw new Error('Nenhuma matéria recente foi encontrada nos feeds.');
+  if (!articles.length) throw new Error('Nenhuma matéria recente com imagem válida foi encontrada nos feeds.');
 
   console.log(`3/5 Ollama analisando e filtrando... corte inicial ${config.llmMinScore}/10`);
   const analyzed = await analyzeArticles(articles, logAnalysisProgress);
