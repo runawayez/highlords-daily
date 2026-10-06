@@ -1,46 +1,49 @@
 version: 1
 preset: vanilla
 
+# Vanilla é Brazil-first: somente veículos e comunidades editoriais brasileiras.
+# Isso reduz manchetes com preços, disponibilidade e contexto pensados para outros mercados.
 # focus é uma dica para a LLM e para a distribuição de candidatas.
 # strict_focus: true impede que uma fonte vertical vaze para categorias fora do seu escopo.
 # images: page ignora a arte do RSS e busca a imagem da página da matéria.
-# images: false desativa imagens para uma fonte específica.
 feeds:
+  # Tecnologia, desenvolvimento e games.
   - name: Tecnoblog
     url: https://tecnoblog.net/feed/
-    focus: [ia, mobile-gadgets, hardware, software-internet]
+    focus: [ia, mobile-gadgets, hardware, software-internet, futuro]
 
-  - name: The Verge
-    url: https://www.theverge.com/rss/index.xml
+  - name: Canaltech
+    url: https://canaltech.com.br/rss/
+    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, futuro]
+
+  - name: TecMundo
+    url: https://www.tecmundo.com.br/rss
     focus: [ia, mobile-gadgets, hardware, software-internet, games, futuro]
 
-  - name: Ars Technica
-    url: https://feeds.arstechnica.com/arstechnica/index
-    focus: [ia, desenvolvimento, hardware, software-internet, futuro]
+  - name: Olhar Digital
+    url: https://olhardigital.com.br/feed/
+    focus: [ia, mobile-gadgets, hardware, software-internet, futuro]
 
-  - name: Hacker News
-    url: https://news.ycombinator.com/rss
+  - name: iMasters
+    url: https://imasters.com.br/feed
     focus: [ia, desenvolvimento, software-internet, futuro]
+    strict_focus: true
 
-  - name: TechCrunch
-    url: https://techcrunch.com/feed/
-    focus: [ia, desenvolvimento, software-internet, economia, futuro]
+  - name: Diolinux
+    url: https://diolinux.com.br/feed
+    focus: [desenvolvimento, software-internet, hardware]
+    strict_focus: true
 
-  - name: GitHub Blog
-    url: https://github.blog/feed/
-    focus: [ia, desenvolvimento, software-internet]
-
-  - name: InfoQ
-    url: https://feed.infoq.com/
-    focus: [ia, desenvolvimento, software-internet]
-
-  - name: Tom's Hardware
-    url: https://www.tomshardware.com/feeds/all
+  - name: Adrenaline
+    url: https://www.adrenaline.com.br/feed/
     focus: [hardware, mobile-gadgets, games]
+    strict_focus: true
 
-  - name: Rock Paper Shotgun
-    url: https://www.rockpapershotgun.com/feed
+  - name: GameVicio
+    url: https://www.gamevicio.com/rss/
     focus: [games]
+    strict_focus: true
+    images: page
 
   # Futebol — futebol de associação/soccer.
   - name: ge
@@ -67,26 +70,26 @@ feeds:
     strict_focus: true
     images: page
 
-  - name: BBC Sport Football
-    url: https://feeds.bbci.co.uk/sport/football/rss.xml
-    focus: [futebol]
-    strict_focus: true
-    images: page
-
-  # Esportes — NFL, basquete, F1, tênis, vôlei, lutas e outras modalidades.
-  - name: BBC Sport
-    url: https://feeds.bbci.co.uk/sport/rss.xml
+  # Outros esportes — F1, basquete, tênis, vôlei, lutas, esportes olímpicos etc.
+  - name: Grande Prêmio
+    url: https://www.grandepremio.com.br/feed/
     focus: [esportes]
     strict_focus: true
     images: page
 
-  - name: ESPN Top Headlines
-    url: https://www.espn.com/espn/rss/news
+  - name: Olimpíada Todo Dia
+    url: https://www.olimpiadatododia.com.br/feed/
     focus: [esportes]
     strict_focus: true
     images: page
 
-  # Economia — mercado, macroeconomia e negócios.
+  - name: Agência Brasil Esportes
+    url: https://agenciabrasil.ebc.com.br/rss/esportes/feed.xml
+    focus: [esportes]
+    strict_focus: true
+    images: page
+
+  # Economia — mercado, macroeconomia e negócios no contexto do leitor brasileiro.
   - name: InfoMoney
     url: https://www.infomoney.com.br/feed/
     focus: [economia]
