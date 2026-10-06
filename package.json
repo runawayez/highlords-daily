@@ -3,7 +3,25 @@
   "version": "3.0.0",
   "private": true,
   "type": "module",
-  "description": "Gerador local de newsletter diária com RSS, Ollama, categorias configuráveis, HTML e PDF.",
+  "description": "Newsletter diária local e personalizável com curadoria por IA via Ollama, agregação RSS/Atom e geração editorial em HTML, JSON e PDF.",
+  "keywords": [
+    "newsletter",
+    "ollama",
+    "local-ai",
+    "llm",
+    "rss",
+    "atom",
+    "pdf",
+    "news-curation"
+  ],
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/runawayez/highlords-daily.git"
+  },
+  "homepage": "https://github.com/runawayez/highlords-daily#readme",
+  "bugs": {
+    "url": "https://github.com/runawayez/highlords-daily/issues"
+  },
   "scripts": {
     "daily": "node src/daily.mjs",
     "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs"
