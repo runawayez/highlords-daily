@@ -23,6 +23,15 @@ function normalizeOllamaHost(value) {
   return host;
 }
 
+function normalizeLocale(value) {
+  const raw = String(value || 'pt-BR').trim();
+  try {
+    return new Intl.Locale(raw).toString();
+  } catch {
+    return 'pt-BR';
+  }
+}
+
 function loadYaml(filePath, label) {
   let raw;
   try {
@@ -110,6 +119,8 @@ export const editorial = {
 export const config = {
   ollamaHost: normalizeOllamaHost(process.env.OLLAMA_HOST),
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:4b',
+  language: normalizeLocale(process.env.LANGUAGE || 'pt-BR'),
+  editorialContext: String(process.env.EDITORIAL_CONTEXT || 'Brasil').trim() || 'Brasil',
   timeZone: process.env.TIME_ZONE || 'America/Sao_Paulo',
   outputDir: path.resolve(process.env.OUTPUT_DIR || './output'),
   lookbackHours: Math.max(12, numberEnv('LOOKBACK_HOURS', 48)),
