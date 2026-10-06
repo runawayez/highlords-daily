@@ -63,13 +63,15 @@ if (-not $endpoint) {
   Remove-Item $stdoutLog, $stderrLog -Force -ErrorAction SilentlyContinue
 
   try {
-    $ollamaProcess = Start-Process \
-      -FilePath $ollama.Source \
-      -ArgumentList 'serve' \
-      -WindowStyle Hidden \
-      -RedirectStandardOutput $stdoutLog \
-      -RedirectStandardError $stderrLog \
-      -PassThru
+    $startArgs = @{
+      FilePath = $ollama.Source
+      ArgumentList = 'serve'
+      WindowStyle = 'Hidden'
+      RedirectStandardOutput = $stdoutLog
+      RedirectStandardError = $stderrLog
+      PassThru = $true
+    }
+    $ollamaProcess = Start-Process @startArgs
   } catch {
     throw "Falha ao iniciar o Ollama: $($_.Exception.Message)"
   }
