@@ -3,17 +3,15 @@
   "version": "2.2.0",
   "private": true,
   "type": "module",
-  "description": "Gerador de newsletter diária de tecnologia com RSS, curadoria local ou determinística, HTML e PDF.",
+  "description": "Gerador local de newsletter diária de tecnologia com RSS, Ollama, HTML e PDF.",
   "scripts": {
     "daily": "node src/daily.mjs",
-    "daily:no-llm": "node src/daily-no-llm.mjs",
-    "check": "node --check src/daily.mjs && node --check src/daily-no-llm.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/rules.mjs && node --check src/services/pdf.mjs && node --check src/services/html-pdf.mjs"
+    "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs"
   },
   "engines": {
     "node": ">=22.5.0"
   },
   "dependencies": {
-    "pdfkit": "^0.17.2",
     "puppeteer-core": "^24.31.0",
     "rss-parser": "^3.13.0"
   }
