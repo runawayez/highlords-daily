@@ -4,28 +4,13 @@
 
 # Highlords Daily
 
-**Tecnologia sem ruído. Uma newsletter diária gerada com RSS e curadoria local.**
+**Tecnologia sem ruído.**
 
-O Highlords Daily não é mais um news reader nem um servidor web. Ele é um gerador de edição: coleta as fontes, filtra e seleciona o que realmente importa e grava uma newsletter pronta em **HTML, JSON e PDF**.
+Highlords Daily é uma newsletter diária de tecnologia gerada localmente com **RSS + Ollama**. O projeto coleta notícias recentes, usa uma LLM local para filtrar, classificar, traduzir, resumir e pontuar cada matéria, monta a edição com uma segunda etapa editorial e entrega tudo em **HTML, JSON e PDF**.
 
-O projeto possui dois modos:
+A proposta é simples: abrir o projeto, gerar a edição do dia e receber uma newsletter pronta para leitura, sem depender de API de IA externa.
 
-- **Ollama**: melhor qualidade editorial, compreensão de contexto, headlines e resumos em PT-BR.
-- **Sem LLM**: curadoria determinística rápida para GitHub Actions, sem GPU, modelo ou API externa.
-
-## As sete seções fixas
-
-- IA
-- Desenvolvimento
-- Mobile & Gadgets
-- Hardware
-- Software & Internet
-- Games
-- Futuro
-
-Política, geopolítica, crime, celebridades, esportes e notícias gerais ficam fora da curadoria.
-
-## Fluxo com Ollama
+## Como funciona
 
 ```text
 RSS / Atom
@@ -33,116 +18,121 @@ RSS / Atom
 coleta das notícias recentes
    ↓
 Ollama analisa em lotes
-   ├─ descarta ruído
+   ├─ remove conteúdo fora do escopo
    ├─ classifica nas 7 seções
-   ├─ cria headline/resumo
-   └─ pontua relevância
+   ├─ reescreve títulos em PT-BR
+   ├─ cria resumos em PT-BR
+   ├─ gera tags
+   └─ atribui nota de relevância de 0 a 10
    ↓
 Ollama editor-chefe
    ├─ escolhe a manchete
-   ├─ escolhe as melhores por seção
-   ├─ escreve título e introdução
-   └─ pode deixar uma seção vazia
+   ├─ seleciona os melhores destaques
+   ├─ equilibra fontes e assuntos
+   └─ escreve título e introdução da edição
    ↓
-HTML + JSON + PDF
+template HTML editorial
+   ↓
+Chromium
+   ↓
+PDF com o mesmo layout do HTML
 ```
 
-## Uso mais simples no Windows
+## Seções
 
-Depois do primeiro `git pull`, dê dois cliques em:
+A newsletter trabalha com sete seções fixas:
+
+- **IA**
+- **Desenvolvimento**
+- **Mobile & Gadgets**
+- **Hardware**
+- **Software & Internet**
+- **Games**
+- **Futuro**
+
+Política partidária, geopolítica, crime, celebridades, esportes, fofoca e notícias gerais ficam fora da curadoria, exceto quando houver uma relação tecnológica clara e relevante.
+
+## Curadoria por IA local
+
+Cada notícia recebe do Ollama:
+
+- categoria;
+- nota de relevância de **0 a 10**;
+- headline em português brasileiro;
+- resumo curto em português brasileiro;
+- tags.
+
+A nota considera principalmente **novidade, impacto, utilidade, relevância técnica e interesse editorial**. Notícias tecnológicas comuns tendem a ficar na faixa intermediária; notas de 8 a 10 ficam reservadas para destaques realmente fortes.
+
+Depois dessa triagem, uma segunda chamada ao Ollama atua como **editor-chefe** e monta a edição final. Caso o editor deixe alguma seção incompleta, o gerador pode completar as vagas com as melhores candidatas daquela categoria que já tenham sido aprovadas pela análise da LLM.
+
+## Requisitos
+
+- **Node.js 22.5+**
+- **Ollama**
+- **Chrome, Chromium ou Microsoft Edge** para gerar o PDF
+- modelo local padrão: **qwen3:4b**
+
+## Instalação
+
+Clone o repositório e instale as dependências:
+
+```powershell
+git clone https://github.com/runawayez/highlords-daily.git
+cd highlords-daily
+npm.cmd install
+```
+
+Instale o modelo padrão no Ollama:
+
+```powershell
+ollama pull qwen3:4b
+```
+
+## Gerar a newsletter
+
+No Windows, a forma mais simples é dar dois cliques em:
 
 ```text
 GERAR-DAILY.bat
 ```
 
-Ele verifica se o Ollama está rodando, inicia o serviço quando necessário, instala as dependências na primeira execução e roda a geração. Ao terminar, o HTML abre no navegador automaticamente.
+O script verifica o Ollama, inicia o serviço quando necessário e executa o gerador.
 
-## Pelo terminal
-
-Primeira vez:
+Também é possível rodar pelo terminal:
 
 ```powershell
-ollama pull qwen3:4b
-npm.cmd install
+ollama serve
 ```
 
-Para gerar com Ollama:
+Em outro terminal:
 
 ```powershell
 npm.cmd run daily
 ```
 
-Para testar localmente a mesma versão **sem LLM** usada no GitHub Actions:
-
-```powershell
-npm.cmd run daily:no-llm
-```
-
-Não existe mais `localhost:8090`, Fastify ou SQLite. A edição é um arquivo HTML normal e abre diretamente no navegador no modo local com Ollama.
-
-## GitHub Actions — versão sem LLM
-
-O workflow `.github/workflows/daily-no-llm.yml` gera uma edição sem Ollama e publica o resultado como **Artifact**.
-
-Ele roda automaticamente todos os dias às **08:00 no horário de São Paulo** e também pode ser iniciado manualmente em:
-
-```text
-GitHub → Actions → Highlords Daily — sem LLM → Run workflow
-```
-
-O artifact contém:
-
-```text
-highlords-daily-no-llm-latest.pdf
-latest-no-llm.html
-latest-no-llm.json
-diagnostics.json
-```
-
-A curadoria sem LLM usa:
-
-- classificação ponderada por palavras e expressões específicas das 7 categorias;
-- peso maior para termos encontrados no título;
-- score de confiança por fonte;
-- recência da publicação;
-- sinais de lançamento, atualização importante, vulnerabilidade e novidade técnica;
-- penalização de rumores, ofertas, clickbait, earnings, layoffs e outros ruídos;
-- bloqueio forte de política e notícias gerais;
-- deduplicação por similaridade lexical de títulos;
-- limite de repetição da mesma fonte;
-- diversidade entre categorias e fontes;
-- tags determinísticas de marcas e tecnologias.
-
-Sem LLM, headlines permanecem próximas do título original e o resumo é extraído do próprio trecho RSS. Portanto, o modo Ollama continua sendo a opção de maior qualidade editorial; o modo Actions existe para gerar uma edição rápida, gratuita e independente de modelo.
+Ao terminar, o HTML da edição pode ser aberto automaticamente no navegador.
 
 ## Saída
 
-Modo Ollama:
+Cada edição fica salva em uma pasta pela data:
 
 ```text
-output/AAAA-MM-DD/
-   ├─ index.html
-   ├─ edition.json
-   └─ highlords-daily-AAAA-MM-DD.pdf
-
-output/latest.html
-output/latest.json
-output/highlords-daily-latest.pdf
+output/
+├─ 2026-10-06/
+│  ├─ index.html
+│  ├─ edition.json
+│  └─ highlords-daily-2026-10-06.pdf
+├─ latest.html
+├─ latest.json
+└─ highlords-daily-latest.pdf
 ```
 
-Modo sem LLM:
-
-```text
-output/AAAA-MM-DD/no-llm/
-   ├─ index.html
-   ├─ edition.json
-   ├─ diagnostics.json
-   └─ highlords-daily-AAAA-MM-DD-no-llm.pdf
-```
+O PDF é gerado pelo Chromium a partir do **mesmo HTML da newsletter**, preservando layout, imagens, cores, tipografia e links clicáveis.
 
 ## Configuração
 
-Copie `.env.example` para `.env` se quiser alterar os padrões:
+Os padrões podem ser alterados criando um arquivo `.env` baseado em `.env.example`:
 
 ```env
 OLLAMA_HOST=http://localhost:11434
@@ -155,25 +145,46 @@ MAX_ITEMS_PER_FEED=12
 MAX_CANDIDATES=72
 AI_BATCH_SIZE=10
 ITEMS_PER_CATEGORY=2
-MIN_SCORE=6
+LLM_MIN_SCORE=4.5
 AUTO_OPEN=true
 ```
 
-`LOOKBACK_HOURS` controla a janela das notícias. `ITEMS_PER_CATEGORY` aceita de 1 a 3 destaques por seção. `MIN_SCORE` controla o quanto a curadoria deve ser seletiva.
+Principais opções:
+
+- `LOOKBACK_HOURS`: janela de tempo das notícias coletadas.
+- `MAX_ITEMS_PER_FEED`: limite de itens lidos de cada RSS.
+- `MAX_CANDIDATES`: máximo de notícias enviadas para análise.
+- `AI_BATCH_SIZE`: quantidade de matérias por lote do Ollama.
+- `ITEMS_PER_CATEGORY`: número de destaques por seção, entre 1 e 3.
+- `LLM_MIN_SCORE`: nota mínima para uma matéria seguir para a etapa editorial.
+- `AUTO_OPEN`: abre o HTML automaticamente ao finalizar.
 
 ## Fontes
 
-A lista fica em `src/config.mjs` e atualmente inclui Tecnoblog, The Verge, Ars Technica, Hacker News, TechCrunch, GitHub Blog, InfoQ, Tom's Hardware e Rock Paper Shotgun.
+As fontes ficam definidas em `src/config.mjs` e atualmente incluem:
+
+- Tecnoblog
+- The Verge
+- Ars Technica
+- Hacker News
+- TechCrunch
+- GitHub Blog
+- InfoQ
+- Tom's Hardware
+- Rock Paper Shotgun
+
+Como a curadoria é feita por uma LLM local, feeds internacionais podem ser usados normalmente: títulos e resumos da edição são produzidos em português brasileiro.
 
 ## Stack
 
-- Node.js 22+
+- Node.js
 - `rss-parser`
-- Ollama opcional
-- PDFKit
-- HTML/CSS estático
-- GitHub Actions para geração sem LLM
+- Ollama
+- `qwen3:4b`
+- HTML/CSS
+- `puppeteer-core`
+- Chrome / Chromium / Edge para impressão em PDF
 
 ## Privacidade
 
-No modo Ollama, a análise acontece localmente. No modo sem LLM, nenhuma API de IA é utilizada.
+A análise editorial acontece localmente através do Ollama. Nenhuma API externa de IA é necessária para gerar a newsletter.
