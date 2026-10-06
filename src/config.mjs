@@ -90,6 +90,7 @@ export const feeds = rawFeeds
     name: String(feed.name || '').trim(),
     url: String(feed.url || '').trim(),
     imageMode: imageMode(feed.images),
+    strictFocus: feed.strict_focus === true || feed.strictFocus === true,
     focus: Array.isArray(feed.focus)
       ? feed.focus.map(value => slug(value)).filter(value => validCategorySlugs.has(value))
       : []
