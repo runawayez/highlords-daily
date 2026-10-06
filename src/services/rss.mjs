@@ -1,10 +1,10 @@
 import Parser from 'rss-parser';
-import { config, feeds } from '../config.mjs';
+import { categories, config, feeds } from '../config.mjs';
 
 const parser = new Parser({
   timeout: 15000,
   headers: {
-    'User-Agent': 'HighlordsDaily/3.0 (+https://github.com/runawayez/highlords-daily)'
+    'User-Agent': 'HighlordsDaily/4.0 (+https://github.com/runawayez/highlords-daily)'
   },
   customFields: {
     item: [
@@ -13,6 +13,8 @@ const parser = new Parser({
     ]
   }
 });
+
+const categorySlugs = new Set(categories.map(category => category.slug));
 
 function stripHtml(value = '') {
   return String(value)
@@ -26,6 +28,91 @@ function stripHtml(value = '') {
     .replace(/&apos;/gi, "'")
     .replace(/\s+/g, ' ')
     .trim();
+}
+
+function searchText(value = '') {
+  return String(value)
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .toLowerCase()
+    .replace(/[^a-z0-9+]+/g, ' ')
+    .replace(/\s+/g, ' ')
+    .trim();
+}
+
+const filmSeriesSignal = /\b(filme|filmes|cinema|serie|series|temporada|episodio|episodios|ator|atriz|atores|atrizes|diretor|diretora|bilheteria|oscar|emmy|documentario|documentarios|k drama|k dramas|anime|animes|rotton tomatoes|rotten tomatoes)\b/;
+const gameSignal = /\b(game|games|gaming|videogame|videogames|video game|xbox|playstation|nintendo|steam|gameplay|console|consoles|dlc|rpg|fps|ea fc|fortnite|gta)\b/;
+const soccerSignal = /\b(futebol|brasileirao|libertadores|copa do brasil|champions league|goleiro|goleira|zagueiro|zagueira|atacante|mercado da bola|selecao brasileira de futebol|serie a|serie b)\b/;
+const politicsSignal = /\b(tse|stf|tribunal superior eleitoral|justica eleitoral|eleicao|eleicoes|eleitoral|urna|urnas|presidencial|congresso nacional|camara dos deputados|senado federal|partido politico|partidos politicos)\b/;
+const economySignal = /\b(economia|economico|economica|mercado|mercados|bolsa|acoes|inflacao|juros|selic|pib|dolar|cambio|fiscal|imposto|impostos|tributacao|investimento|investimentos|lucro|receita|balanca comercial|superavit|deficit|emprego|desemprego|banco central)\b/;
+
+function canForceCategory(article, slug) {
+  if (!categorySlugs.has(slug)) return false;
+  if (!article.strictFocus || !Array.isArray(article.focus) || article.focus.length === 0) return true;
+  return article.focus.includes(slug);
+}
+
+function routeToCategory(article, slug, reason) {
+  return {
+    ...article,
+    focus: [slug],
+    strictFocus: true,
+    editorialGuardrail: reason
+  };
+}
+
+function rejectArticle(article, reason) {
+  return { ...article, editorialReject: true, editorialGuardrail: reason };
+}
+
+function applyEditorialGuardrails(article) {
+  const text = searchText(`${article.originalTitle} ${article.excerpt}`);
+  const isEconomy = economySignal.test(text);
+  const isFilmSeries = filmSeriesSignal.test(text);
+  const isGame = gameSignal.test(text);
+  const isSoccer = soccerSignal.test(text);
+  const isPolitics = politicsSignal.test(text);
+
+  const economyOnly = article.strictFocus
+    && Array.isArray(article.focus)
+    && article.focus.length === 1
+    && article.focus[0] === 'economia';
+
+  // Broad business outlets often publish politics/general news too. A strict
+  // economy feed must not turn a pure electoral story into "Economia" just
+  // because that is the only category it is allowed to choose.
+  if (economyOnly && isPolitics && !isEconomy) {
+    return rejectArticle(article, 'strict-economy-off-topic-politics');
+  }
+
+  // If an economy story happens to mention Netflix, a football club or a game
+  // company, keep its economic classification instead of rerouting by nouns.
+  if (economyOnly && isEconomy) return article;
+
+  // Strong deterministic routing handles the easiest category boundaries
+  // before the LLM. The LLM still decides ambiguous cases.
+  if (isFilmSeries && !isGame) {
+    if (canForceCategory(article, 'filmes-series')) {
+      return routeToCategory(article, 'filmes-series', 'clear-film-series-signal');
+    }
+    if (article.strictFocus) return rejectArticle(article, 'film-series-outside-strict-focus');
+  }
+
+  if (isSoccer && !isGame) {
+    if (canForceCategory(article, 'futebol')) {
+      return routeToCategory(article, 'futebol', 'clear-soccer-signal');
+    }
+    if (article.strictFocus) return rejectArticle(article, 'soccer-outside-strict-focus');
+  }
+
+  if (isGame) {
+    if (canForceCategory(article, 'games')) {
+      return routeToCategory(article, 'games', 'clear-game-signal');
+    }
+    if (article.strictFocus) return rejectArticle(article, 'game-outside-strict-focus');
+  }
+
+  return article;
 }
 
 function itemDate(item) {
@@ -97,7 +184,7 @@ async function fetchPageImage(link) {
     const response = await fetch(link, {
       redirect: 'follow',
       headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/3.0',
+        'user-agent': 'Mozilla/5.0 HighlordsDaily/4.0',
         accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'
       },
       signal: AbortSignal.timeout(6000)
@@ -123,7 +210,7 @@ async function validateImageUrl(url) {
       method: 'GET',
       redirect: 'follow',
       headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/3.0',
+        'user-agent': 'Mozilla/5.0 HighlordsDaily/4.0',
         accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
       },
       signal: AbortSignal.timeout(4500)
@@ -166,7 +253,7 @@ async function enrichImages(articles, imageMode) {
 async function fetchFeed(feed) {
   const parsed = await parser.parseURL(feed.url);
   const cutoff = Date.now() - config.lookbackHours * 60 * 60 * 1000;
-  const articles = (parsed.items || [])
+  const prepared = (parsed.items || [])
     .slice(0, config.maxItemsPerFeed)
     .map((item, index) => {
       const published = itemDate(item);
@@ -184,17 +271,19 @@ async function fetchFeed(feed) {
         imageUrl: feed.imageMode === 'auto' ? extractImage(item, link || feed.url) : null
       };
     })
-    .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff);
+    .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff)
+    .map(applyEditorialGuardrails)
+    .filter(article => !article.editorialReject);
 
-  if (feed.imageMode === 'off') return articles;
-  return enrichImages(articles, feed.imageMode);
+  if (feed.imageMode === 'off') return prepared;
+  return enrichImages(prepared, feed.imageMode);
 }
 
 function dedupe(articles) {
   const seenLinks = new Set();
   const seenTitles = new Set();
   return articles.filter(article => {
-    const titleKey = article.originalTitle.toLocaleLowerCase('pt-BR').replace(/\W+/g, ' ').trim();
+    const titleKey = article.originalTitle.toLocaleLowerCase(config.language).replace(/\W+/g, ' ').trim();
     if (seenLinks.has(article.link) || (titleKey && seenTitles.has(titleKey))) return false;
     seenLinks.add(article.link);
     if (titleKey) seenTitles.add(titleKey);
