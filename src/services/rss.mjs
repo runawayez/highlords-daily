@@ -4,7 +4,7 @@ import { config, feeds } from '../config.mjs';
 const parser = new Parser({
   timeout: 15000,
   headers: {
-    'User-Agent': 'HighlordsDaily/2.0 (+https://github.com/runawayez/highlords-daily)'
+    'User-Agent': 'HighlordsDaily/2.2 (+https://github.com/runawayez/highlords-daily)'
   },
   customFields: {
     item: [
@@ -23,6 +23,7 @@ function stripHtml(value = '') {
     .replace(/&amp;/gi, '&')
     .replace(/&quot;/gi, '"')
     .replace(/&#39;/gi, "'")
+    .replace(/&apos;/gi, "'")
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -48,6 +49,7 @@ function imageCandidate(value, baseUrl) {
   try {
     const url = new URL(String(rawUrl), baseUrl || undefined);
     if (!['http:', 'https:'].includes(url.protocol)) return null;
+    if (/\/(?:embed|player)\//i.test(url.pathname)) return null;
     const width = Number(data?.width || attrs?.width || 0);
     const height = Number(data?.height || attrs?.height || 0);
     return { url: url.toString(), area: width > 0 && height > 0 ? width * height : 0 };
@@ -95,7 +97,7 @@ async function fetchPageImage(link) {
     const response = await fetch(link, {
       redirect: 'follow',
       headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/2.0',
+        'user-agent': 'Mozilla/5.0 HighlordsDaily/2.2',
         accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'
       },
       signal: AbortSignal.timeout(6000)
@@ -142,7 +144,7 @@ async function fetchFeed(feed) {
         originalTitle: stripHtml(item.title || 'Sem título'),
         link,
         publishedAt: published.toISOString(),
-        excerpt: excerpt.slice(0, 1200),
+        excerpt: excerpt.slice(0, 1400),
         imageUrl: extractImage(item, link || feed.url)
       };
     })
@@ -163,13 +165,13 @@ function dedupe(articles) {
   });
 }
 
-export async function fetchAllFeeds(onProgress = () => {}) {
+export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
   const articles = [];
   const errors = [];
 
-  for (let index = 0; index < feeds.length; index += 1) {
-    const feed = feeds[index];
-    onProgress({ index: index + 1, total: feeds.length, feed: feed.name });
+  for (let index = 0; index < feedList.length; index += 1) {
+    const feed = feedList[index];
+    onProgress({ index: index + 1, total: feedList.length, feed: feed.name });
     try {
       articles.push(...await fetchFeed(feed));
     } catch (error) {
