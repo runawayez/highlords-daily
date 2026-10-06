@@ -1,7 +1,7 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { spawn } from 'node:child_process';
-import { categories, config } from './config.mjs';
+import { categories, config, editorial } from './config.mjs';
 import { fetchAllFeeds } from './services/rss.mjs';
 import { analyzeArticles, curateNewsletter, ensureOllama } from './services/ollama.mjs';
 import { renderHtmlPdf } from './services/html-pdf.mjs';
@@ -47,9 +47,6 @@ function normalizeNewsletter(curated, articles, editionDate) {
       if (selected.length >= config.itemsPerCategory) break;
     }
 
-    // O editor-chefe pode ser conservador demais ou devolver uma estrutura incompleta.
-    // Como todas as matérias daqui já foram aprovadas pelo Ollama, completamos a seção
-    // com as candidatas de maior score da própria categoria em vez de deixar o Daily vazio.
     if (selected.length < config.itemsPerCategory) {
       const candidates = articles.filter(article =>
         article.category === category.slug && !used.has(article.id)
@@ -72,8 +69,9 @@ function normalizeNewsletter(curated, articles, editionDate) {
     generatedAt: new Date().toISOString(),
     curatedBy: 'ollama',
     selectionMode: backfilled > 0 ? 'ollama+section-backfill' : 'ollama',
+    preset: editorial.preset,
     title: String(curated?.title || 'O que vale sua atenção hoje').trim().slice(0, 120),
-    intro: String(curated?.intro || 'Uma seleção curta das atualizações mais relevantes em tecnologia, sem política e sem excesso de ruído.').trim().slice(0, 420),
+    intro: String(curated?.intro || 'Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído.').trim().slice(0, 420),
     lead,
     sections,
     stats: {
@@ -101,8 +99,9 @@ function fallbackNewsletter(articles, editionDate) {
     generatedAt: new Date().toISOString(),
     curatedBy: 'ollama',
     selectionMode: 'ranking-fallback',
+    preset: editorial.preset,
     title: 'O que vale sua atenção hoje',
-    intro: 'Uma seleção curta das atualizações mais relevantes em tecnologia, sem política e sem excesso de ruído.',
+    intro: 'Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído.',
     lead,
     sections,
     stats: {
@@ -175,7 +174,8 @@ function logAnalysisProgress(event) {
 async function main() {
   const editionDate = dateKey();
   console.log('\nHIGH LORDS DAILY');
-  console.log(`Edição: ${editionDate}\n`);
+  console.log(`Edição: ${editionDate}`);
+  console.log(`Preset: ${editorial.preset} · ${categories.length} categorias\n`);
 
   process.stdout.write('1/5 Verificando Ollama... ');
   await ensureOllama();
@@ -218,9 +218,6 @@ async function main() {
   await fs.mkdir(editionDir, { recursive: true });
   const logoDataUri = await loadLogoDataUri();
   const html = renderNewsletterHtml(edition, logoDataUri);
-
-  // O PDF é impresso pelo Chromium a partir do MESMO HTML da newsletter.
-  // Assim ele preserva identidade visual, imagens, tipografia, cores e links clicáveis.
   const pdf = await renderHtmlPdf(html);
 
   const htmlPath = path.join(editionDir, 'index.html');
