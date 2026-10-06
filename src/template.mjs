@@ -27,6 +27,16 @@ function formatDate(dateKey) {
   }).format(date);
 }
 
+function curationLabel(mode) {
+  if (mode === 'ollama') return 'Ollama';
+  if (mode === 'rules') return 'algorítmica, sem LLM';
+  return 'ranking';
+}
+
+function engineLabel(mode) {
+  return mode === 'rules' ? 'RSS + regras determinísticas' : 'RSS + Ollama';
+}
+
 function story(article, { lead = false } = {}) {
   if (!article) return '';
   const image = article.imageUrl
@@ -84,12 +94,12 @@ export function renderNewsletterHtml(edition, logoDataUri = '') {
   <section class="intro">
     <h1>${escapeHtml(edition.title)}</h1>
     <p>${escapeHtml(edition.intro)}</p>
-    <div class="stats"><span><strong>${edition.stats.stories}</strong> matérias</span><span><strong>${edition.stats.sources}</strong> fontes</span><span><strong>${edition.stats.candidates}</strong> candidatas analisadas</span><span>Curadoria: ${edition.curatedBy === 'ollama' ? 'Ollama' : 'ranking'}</span></div>
+    <div class="stats"><span><strong>${edition.stats.stories}</strong> matérias</span><span><strong>${edition.stats.sources}</strong> fontes</span><span><strong>${edition.stats.candidates}</strong> candidatas analisadas</span><span>Curadoria: ${escapeHtml(curationLabel(edition.curatedBy))}</span></div>
   </section>
   <nav class="index">${nav}</nav>
   <section class="lead-wrap"><div class="label">MANCHETE DA EDIÇÃO</div>${story(edition.lead, { lead: true })}</section>
   ${sections}
-  <footer class="footer"><strong>Highlords Daily</strong> · gerado localmente com RSS + Ollama · ${escapeHtml(edition.editionDate)}</footer>
+  <footer class="footer"><strong>Highlords Daily</strong> · gerado com ${escapeHtml(engineLabel(edition.curatedBy))} · ${escapeHtml(edition.editionDate)}</footer>
 </main>
 </body>
 </html>`;
