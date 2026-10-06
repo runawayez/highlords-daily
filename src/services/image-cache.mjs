@@ -2,6 +2,14 @@ import crypto from 'node:crypto';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config } from '../config.mjs';
+import {
+  canonicalImageKey,
+  discoverPageImageCandidates,
+  fetchValidatedImageBuffer,
+  resolveBestArticleImage
+} from './image-quality.mjs';
+
+const IMAGE_RESERVE_KEY = Symbol.for('highlords.imageReserveCandidates');
 
 function extensionFor(contentType = '') {
   const type = String(contentType).split(';')[0].trim().toLowerCase();
@@ -11,76 +19,301 @@ function extensionFor(contentType = '') {
     ['image/png', 'png'],
     ['image/webp', 'webp'],
     ['image/avif', 'avif'],
-    ['image/gif', 'gif'],
-    ['image/svg+xml', 'svg']
+    ['image/gif', 'gif']
   ]);
   return map.get(type) || null;
 }
 
-async function downloadImage(article, assetsDir) {
-  if (!article?.imageUrl || !/^https?:\/\//i.test(article.imageUrl)) return article;
-  const originalImageUrl = article.imageUrl;
-  try {
-    const response = await fetch(originalImageUrl, {
-      redirect: 'follow',
-      headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/4.0',
-        accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-      },
-      signal: AbortSignal.timeout(12000)
-    });
-    if (!response.ok) throw new Error(`HTTP ${response.status}`);
-    const extension = extensionFor(response.headers.get('content-type'));
-    if (!extension) throw new Error('content-type não é imagem suportada');
-    const contentLength = Number(response.headers.get('content-length') || 0);
-    if (contentLength > 12 * 1024 * 1024) throw new Error('imagem maior que 12 MB');
-    const buffer = Buffer.from(await response.arrayBuffer());
-    if (!buffer.length || buffer.length > 12 * 1024 * 1024) throw new Error('imagem vazia ou muito grande');
+function articleKey(article) {
+  return String(article?.id ?? article?.link ?? '');
+}
 
-    const hash = crypto.createHash('sha1').update(originalImageUrl).digest('hex').slice(0, 10);
-    const filename = `story-${String(article.id).replace(/[^a-z0-9_-]/gi, '-')}-${hash}.${extension}`;
+function topicKey(article) {
+  return String(article?.topicKey || '').trim().toLowerCase();
+}
+
+function isPreparedValid(article) {
+  if (!article) return false;
+  return config.cacheImages ? article.imageCached === true : article.imageValidated === true;
+}
+
+function sourceAllowed(article, globalCounts, sectionCounts, relaxed = false) {
+  if (relaxed) return true;
+  const global = globalCounts.get(article.source) || 0;
+  const section = sectionCounts?.get(article.source) || 0;
+  if (config.maxItemsPerSource > 0 && global >= config.maxItemsPerSource) return false;
+  if (sectionCounts && config.maxItemsPerSourcePerSection > 0 && section >= config.maxItemsPerSourcePerSection) return false;
+  return true;
+}
+
+function registerArticle(article, usedIds, usedTopics, globalCounts, sectionCounts = null) {
+  usedIds.add(articleKey(article));
+  const topic = topicKey(article);
+  if (topic) usedTopics.add(topic);
+  globalCounts.set(article.source, (globalCounts.get(article.source) || 0) + 1);
+  if (sectionCounts) sectionCounts.set(article.source, (sectionCounts.get(article.source) || 0) + 1);
+}
+
+async function candidateImageUrls(article) {
+  const urls = [];
+  if (article?.imageUrl && /^https?:\/\//i.test(article.imageUrl)) urls.push(article.imageUrl);
+  const page = await discoverPageImageCandidates(article);
+  for (const candidate of page) urls.push(candidate.url);
+  const unique = new Map();
+  for (const url of urls) {
+    const key = canonicalImageKey(url);
+    if (key && !unique.has(key)) unique.set(key, url);
+  }
+  return [...unique.values()];
+}
+
+async function cacheRemoteImage(article, assetsDir) {
+  const originalImageUrl = article?.imageUrl || null;
+  const urls = await candidateImageUrls(article);
+  let lastError = originalImageUrl ? 'imagem rejeitada na validação final' : 'matéria sem imagem candidata';
+
+  for (let index = 0; index < urls.length; index += 1) {
+    const url = urls[index];
+    const fetched = await fetchValidatedImageBuffer(url);
+    if (!fetched.ok || !fetched.buffer) {
+      lastError = fetched.reason || lastError;
+      continue;
+    }
+
+    const extension = extensionFor(fetched.type);
+    if (!extension) {
+      lastError = 'formato de imagem não suportado';
+      continue;
+    }
+
+    const hash = crypto.createHash('sha1').update(fetched.url || url).digest('hex').slice(0, 10);
+    const filename = `story-${articleKey(article).replace(/[^a-z0-9_-]/gi, '-')}-${hash}.${extension}`;
     const target = path.join(assetsDir, filename);
-    await fs.writeFile(target, buffer);
+    try {
+      await fs.writeFile(target, fetched.buffer);
+    } catch (error) {
+      lastError = error.message || String(error);
+      continue;
+    }
+
     return {
       ...article,
       originalImageUrl,
       imageUrl: `assets/${filename}`,
-      imageCached: true
-    };
-  } catch (error) {
-    return {
-      ...article,
-      originalImageUrl,
-      imageCached: false,
-      imageCacheError: error.message || String(error)
+      imageCached: true,
+      imageValidated: true,
+      imageRecovered: index > 0 || (originalImageUrl && canonicalImageKey(originalImageUrl) !== canonicalImageKey(fetched.url || url)),
+      imageWidth: fetched.width || null,
+      imageHeight: fetched.height || null
     };
   }
+
+  return {
+    ...article,
+    originalImageUrl,
+    imageUrl: config.requireImages ? null : originalImageUrl,
+    imageCached: false,
+    imageValidated: false,
+    imageCacheError: lastError
+  };
 }
 
-export async function cacheEditionImages(edition, editionDir) {
-  if (!config.cacheImages || !edition) return { edition, cached: 0, failed: 0 };
-  const assetsDir = path.join(editionDir, 'assets');
-  await fs.mkdir(assetsDir, { recursive: true });
+async function validateRemoteOnly(article) {
+  const resolved = await resolveBestArticleImage(article, article?.imageUrl || null);
+  if (resolved) {
+    return {
+      ...article,
+      originalImageUrl: article?.imageUrl || null,
+      imageUrl: resolved,
+      imageValidated: true,
+      imageCached: false
+    };
+  }
+  return {
+    ...article,
+    originalImageUrl: article?.imageUrl || null,
+    imageUrl: config.requireImages ? null : article?.imageUrl || null,
+    imageValidated: false,
+    imageCached: false,
+    imageCacheError: 'nenhuma imagem editorial válida encontrada'
+  };
+}
 
+async function prepareArticle(article, assetsDir) {
+  if (!article) return null;
+  return config.cacheImages
+    ? cacheRemoteImage(article, assetsDir)
+    : validateRemoteOnly(article);
+}
+
+async function prepareInitialArticles(edition, assetsDir) {
   const unique = new Map();
   for (const article of [edition.lead, ...edition.sections.flatMap(section => section.articles || [])].filter(Boolean)) {
-    if (!unique.has(article.id)) unique.set(article.id, article);
+    if (!unique.has(articleKey(article))) unique.set(articleKey(article), article);
   }
 
   const entries = [...unique.values()];
-  const cachedById = new Map();
+  const prepared = new Map();
   let cursor = 0;
   const workers = Math.min(4, entries.length);
   async function worker() {
     while (cursor < entries.length) {
       const index = cursor++;
-      const cached = await downloadImage(entries[index], assetsDir);
-      cachedById.set(entries[index].id, cached);
+      const article = entries[index];
+      prepared.set(articleKey(article), await prepareArticle(article, assetsDir));
     }
   }
   await Promise.all(Array.from({ length: workers }, worker));
+  return prepared;
+}
 
-  const replace = article => article ? (cachedById.get(article.id) || article) : article;
+function rankedReserves() {
+  const candidates = Array.isArray(globalThis[IMAGE_RESERVE_KEY]) ? globalThis[IMAGE_RESERVE_KEY] : [];
+  return [...candidates].sort((a, b) => {
+    const score = Number(b.score || 0) - Number(a.score || 0);
+    return score || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+  });
+}
+
+async function enforceRequiredImages(edition, assetsDir, preparedById) {
+  const reserves = rankedReserves();
+  const usedIds = new Set();
+  const usedTopics = new Set();
+  const failedIds = new Set();
+  const globalCounts = new Map();
+  let replacements = 0;
+  let removed = 0;
+  let diversityRelaxed = 0;
+  let reserveFailures = 0;
+
+  const preparedFor = async article => {
+    const key = articleKey(article);
+    if (preparedById.has(key)) return preparedById.get(key);
+    const prepared = await prepareArticle(article, assetsDir);
+    preparedById.set(key, prepared);
+    if (!isPreparedValid(prepared)) {
+      failedIds.add(key);
+      reserveFailures += 1;
+    }
+    return prepared;
+  };
+
+  const usable = article => {
+    if (!article || !isPreparedValid(article)) return false;
+    const key = articleKey(article);
+    if (usedIds.has(key)) return false;
+    const topic = topicKey(article);
+    if (topic && usedTopics.has(topic)) return false;
+    return true;
+  };
+
+  const findReplacement = async (category, sectionCounts = null, allowAnyCategory = false) => {
+    const passes = config.sourceDiversityStrict ? [false] : [false, true];
+    for (const relaxed of passes) {
+      for (const candidate of reserves) {
+        const key = articleKey(candidate);
+        if (!key || usedIds.has(key) || failedIds.has(key)) continue;
+        if (!allowAnyCategory && category && candidate.category !== category) continue;
+        const topic = topicKey(candidate);
+        if (topic && usedTopics.has(topic)) continue;
+        if (!sourceAllowed(candidate, globalCounts, sectionCounts, relaxed)) continue;
+
+        const prepared = await preparedFor(candidate);
+        if (!usable(prepared)) continue;
+        if (relaxed) diversityRelaxed += 1;
+        return prepared;
+      }
+    }
+    return null;
+  };
+
+  let lead = await preparedFor(edition.lead);
+  if (!isPreparedValid(lead)) {
+    failedIds.add(articleKey(edition.lead));
+    lead = await findReplacement(edition.lead?.category || null, null, false)
+      || await findReplacement(null, null, true);
+    if (!lead) {
+      throw new Error('REQUIRE_IMAGES=true: nenhuma matéria com imagem editorial válida pôde assumir a manchete.');
+    }
+    replacements += 1;
+  }
+  registerArticle(lead, usedIds, usedTopics, globalCounts);
+
+  const sections = [];
+  for (const section of edition.sections || []) {
+    const sectionCounts = new Map();
+    const articles = [];
+    for (const original of section.articles || []) {
+      let prepared = await preparedFor(original);
+      if (!usable(prepared)) {
+        failedIds.add(articleKey(original));
+        prepared = await findReplacement(section.slug, sectionCounts, false);
+        if (prepared) replacements += 1;
+      }
+
+      if (!prepared || !usable(prepared)) {
+        removed += 1;
+        continue;
+      }
+
+      registerArticle(prepared, usedIds, usedTopics, globalCounts, sectionCounts);
+      articles.push(prepared);
+    }
+    sections.push({ ...section, articles });
+  }
+
+  const finalStories = [lead, ...sections.flatMap(section => section.articles || [])].filter(Boolean);
+  const cached = new Set(finalStories.filter(article => article.imageCached).map(articleKey)).size;
+  const validatedRemote = new Set(finalStories.filter(article => article.imageValidated && !article.imageCached).map(articleKey)).size;
+
+  if (replacements) console.log(`  ${replacements} matéria(s) substituída(s) por reserva após falha/rejeição de imagem.`);
+  if (removed) console.log(`  ${removed} vaga(s) removida(s): não havia reserva da mesma categoria com imagem válida.`);
+  if (reserveFailures) console.log(`  ${reserveFailures} candidata(s) de reserva também falharam na validação de imagem.`);
+
+  return {
+    edition: {
+      ...edition,
+      lead,
+      sections,
+      stats: {
+        ...(edition.stats || {}),
+        stories: finalStories.length,
+        sources: new Set(finalStories.map(article => article.source)).size,
+        imageHardRule: true,
+        imageReplacements: replacements,
+        imageRemoved: removed,
+        imageReserveFailures: reserveFailures,
+        imageDiversityRelaxed: diversityRelaxed
+      }
+    },
+    cached,
+    validatedRemote,
+    replacements,
+    removed,
+    reserveFailures
+  };
+}
+
+export async function cacheEditionImages(edition, editionDir) {
+  if (!edition) return { edition, cached: 0, failed: 0 };
+  const assetsDir = path.join(editionDir, 'assets');
+  if (config.cacheImages) await fs.mkdir(assetsDir, { recursive: true });
+
+  const preparedById = await prepareInitialArticles(edition, assetsDir);
+
+  if (config.requireImages) {
+    const strict = await enforceRequiredImages(edition, assetsDir, preparedById);
+    return {
+      edition: strict.edition,
+      cached: strict.cached,
+      failed: 0,
+      validatedRemote: strict.validatedRemote,
+      replaced: strict.replacements,
+      removed: strict.removed
+    };
+  }
+
+  const replace = article => article ? (preparedById.get(articleKey(article)) || article) : article;
   const nextEdition = {
     ...edition,
     lead: replace(edition.lead),
@@ -92,9 +325,9 @@ export async function cacheEditionImages(edition, editionDir) {
 
   let cached = 0;
   let failed = 0;
-  for (const article of cachedById.values()) {
+  for (const article of preparedById.values()) {
     if (article.imageCached) cached += 1;
-    else if (article.imageUrl) failed += 1;
+    else if (article.originalImageUrl || article.imageUrl) failed += 1;
   }
   return { edition: nextEdition, cached, failed };
 }
