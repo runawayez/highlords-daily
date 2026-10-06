@@ -1,5 +1,6 @@
 import Parser from 'rss-parser';
 import { categories, config, feeds } from '../config.mjs';
+import { canonicalImageKey, resolveBestArticleImage } from './image-quality.mjs';
 
 const parser = new Parser({
   timeout: 15000,
@@ -81,19 +82,12 @@ function applyEditorialGuardrails(article) {
     && article.focus.length === 1
     && article.focus[0] === 'economia';
 
-  // Broad business outlets often publish politics/general news too. A strict
-  // economy feed must not turn a pure electoral story into "Economia" just
-  // because that is the only category it is allowed to choose.
   if (economyOnly && isPolitics && !isEconomy) {
     return rejectArticle(article, 'strict-economy-off-topic-politics');
   }
 
-  // If an economy story happens to mention Netflix, a football club or a game
-  // company, keep its economic classification instead of rerouting by nouns.
   if (economyOnly && isEconomy) return article;
 
-  // Strong deterministic routing handles the easiest category boundaries
-  // before the LLM. The LLM still decides ambiguous cases.
   if (isFilmSeries && !isGame) {
     if (canForceCategory(article, 'filmes-series')) {
       return routeToCategory(article, 'filmes-series', 'clear-film-series-signal');
@@ -168,76 +162,9 @@ function extractImage(item, baseUrl) {
   return candidates[0]?.url || null;
 }
 
-function metaContent(html, key) {
-  const escaped = key.replace(/[.*+?^${}()|[\]\\]/g, '\\$&');
-  const patterns = [
-    new RegExp(`<meta[^>]+(?:property|name)=["']${escaped}["'][^>]+content=["']([^"']+)["']`, 'i'),
-    new RegExp(`<meta[^>]+content=["']([^"']+)["'][^>]+(?:property|name)=["']${escaped}["']`, 'i')
-  ];
-  for (const pattern of patterns) {
-    const match = html.match(pattern);
-    if (match?.[1]) return match[1].trim();
-  }
-  return null;
-}
-
-async function fetchPageImage(link) {
-  if (!link) return null;
-  try {
-    const response = await fetch(link, {
-      redirect: 'follow',
-      headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/4.0',
-        accept: 'text/html,application/xhtml+xml;q=0.9,*/*;q=0.8'
-      },
-      signal: AbortSignal.timeout(6000)
-    });
-    if (!response.ok) return null;
-    const type = String(response.headers.get('content-type') || '').toLowerCase();
-    if (!type.includes('text/html') && !type.includes('application/xhtml+xml')) return null;
-    const html = (await response.text()).slice(0, 350_000);
-    const raw = metaContent(html, 'og:image:secure_url')
-      || metaContent(html, 'og:image')
-      || metaContent(html, 'twitter:image')
-      || metaContent(html, 'twitter:image:src');
-    return imageCandidate(raw, response.url || link)?.url || null;
-  } catch {
-    return null;
-  }
-}
-
-async function validateImageUrl(url) {
-  if (!url) return false;
-  try {
-    const response = await fetch(url, {
-      method: 'GET',
-      redirect: 'follow',
-      headers: {
-        'user-agent': 'Mozilla/5.0 HighlordsDaily/4.0',
-        accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
-      },
-      signal: AbortSignal.timeout(4500)
-    });
-    const type = String(response.headers.get('content-type') || '').toLowerCase();
-    const valid = response.ok && type.startsWith('image/');
-    try { await response.body?.cancel(); } catch {}
-    return valid;
-  } catch {
-    return false;
-  }
-}
-
 async function resolveArticleImage(article, imageMode) {
   if (imageMode === 'off') return null;
-
-  if (imageMode === 'auto' && article.imageUrl && await validateImageUrl(article.imageUrl)) {
-    return article.imageUrl;
-  }
-
-  const pageImage = await fetchPageImage(article.link);
-  if (pageImage && await validateImageUrl(pageImage)) return pageImage;
-
-  return null;
+  return resolveBestArticleImage(article, article.imageUrl, { forcePage: imageMode === 'page' });
 }
 
 async function enrichImages(articles, imageMode) {
@@ -298,15 +225,15 @@ function suppressRepeatedSourceImages(articles) {
   const counts = new Map();
   for (const article of articles) {
     if (!article.imageUrl) continue;
-    const key = `${article.source}\n${article.imageUrl}`;
+    const key = `${article.source}\n${canonicalImageKey(article.imageUrl)}`;
     counts.set(key, (counts.get(key) || 0) + 1);
   }
 
   return articles.map(article => {
     if (!article.imageUrl) return article;
-    const key = `${article.source}\n${article.imageUrl}`;
+    const key = `${article.source}\n${canonicalImageKey(article.imageUrl)}`;
     if ((counts.get(key) || 0) < 2) return article;
-    return { ...article, imageUrl: null };
+    return { ...article, imageUrl: null, imageRejectedReason: 'repeated-source-image' };
   });
 }
 
