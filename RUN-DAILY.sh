@@ -25,6 +25,23 @@ OLLAMA_ENDPOINT="${OLLAMA_HOST:-$(dotenv_value OLLAMA_HOST)}"
 OLLAMA_ENDPOINT="${OLLAMA_ENDPOINT:-http://127.0.0.1:11434}"
 OLLAMA_ENDPOINT="${OLLAMA_ENDPOINT%/}"
 BROWSER_OVERRIDE="${BROWSER_PATH:-$(dotenv_value BROWSER_PATH)}"
+OLLAMA_PID=""
+
+cleanup() {
+  if [[ -n "${OLLAMA_PID:-}" ]] && kill -0 "$OLLAMA_PID" 2>/dev/null; then
+    step 'Encerrando Ollama iniciado pelo Highlords...'
+    kill "$OLLAMA_PID" 2>/dev/null || true
+    for _ in $(seq 1 20); do
+      kill -0 "$OLLAMA_PID" 2>/dev/null || break
+      sleep 0.1
+    done
+    if kill -0 "$OLLAMA_PID" 2>/dev/null; then
+      kill -9 "$OLLAMA_PID" 2>/dev/null || true
+    fi
+    ok 'Ollama' 'encerrado'
+  fi
+}
+trap cleanup EXIT
 
 printf '\n========================================\n'
 printf '         HIGH LORDS DAILY\n'
