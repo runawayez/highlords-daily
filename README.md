@@ -204,7 +204,7 @@ Nome, logo, slogan e cores são usados no HTML/PDF e no arquivo histórico.
 
 ---
 
-## Diagnóstico dos feeds
+## Diagnóstico e descoberta de feeds
 
 Antes de gerar uma edição você pode verificar as fontes sem chamar o Ollama:
 
@@ -219,6 +219,24 @@ Para saída estruturada:
 ```bash
 npm run feeds:check -- --json
 ```
+
+### Descoberta automática de RSS/Atom
+
+Você também pode informar apenas os sites e deixar o Highlords procurar feeds válidos:
+
+```bash
+npm run feeds:discover -- omelete.com.br canaltech.com.br
+```
+
+O comando procura `<link rel="alternate">` no HTML, testa caminhos comuns como `/feed`, `/rss.xml`, `/feed.xml` e `/atom.xml`, valida cada candidato como RSS/Atom real e imprime um bloco YAML pronto para usar.
+
+Para adicionar os feeds encontrados diretamente a um arquivo de configuração:
+
+```bash
+npm run feeds:discover -- abc.net.au theguardian.com/au --append ./my-config/feeds.yml
+```
+
+Os feeds adicionados entram com `focus: []` de propósito: depois da descoberta, defina as categorias editoriais adequadas para cada fonte. Para automação, use `--json`.
 
 ---
 
@@ -283,6 +301,8 @@ ARCHIVE_ENABLED=true
 ---
 
 ## Categorias e fontes
+
+O Vanilla inclui, entre outras, categorias separadas de `Games`, `Filmes e Séries`, `Futebol`, `Esportes` e `Economia`. Há guardrails determinísticos antes do Ollama para os limites mais óbvios — por exemplo, filme/série não entra em Games, futebol de associação não entra em Esportes e uma notícia puramente eleitoral de um feed econômico estrito é descartada em vez de ser forçada para Economia.
 
 Uma categoria:
 
@@ -359,7 +379,7 @@ Preset / YAML / .env
         ↓
 RSS / Atom
         ↓
-validação de imagens
+guardrails editoriais + validação de imagens
         ↓
 memória histórica
         ↓
