@@ -1,6 +1,6 @@
 import fs from 'node:fs';
 import path from 'node:path';
-import YAML from 'yaml';
+import { parse as parseYaml } from 'yaml';
 
 if (fs.existsSync('.env') && typeof process.loadEnvFile === 'function') {
   process.loadEnvFile('.env');
@@ -26,7 +26,7 @@ function loadYaml(filePath, label) {
   }
 
   try {
-    return YAML.parse(raw) || {};
+    return parseYaml(raw) || {};
   } catch (error) {
     throw new Error(`${label} inválido em ${filePath}: ${error.message}`);
   }
