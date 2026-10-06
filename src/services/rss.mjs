@@ -146,11 +146,12 @@ async function fetchFeed(feed) {
         link,
         publishedAt: published.toISOString(),
         excerpt: excerpt.slice(0, 1400),
-        imageUrl: extractImage(item, link || feed.url)
+        imageUrl: feed.images === false ? null : extractImage(item, link || feed.url)
       };
     })
     .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff);
 
+  if (feed.images === false) return articles;
   return enrichImages(articles);
 }
 
@@ -163,6 +164,22 @@ function dedupe(articles) {
     seenLinks.add(article.link);
     if (titleKey) seenTitles.add(titleKey);
     return true;
+  });
+}
+
+function suppressRepeatedSourceImages(articles) {
+  const counts = new Map();
+  for (const article of articles) {
+    if (!article.imageUrl) continue;
+    const key = `${article.source}\n${article.imageUrl}`;
+    counts.set(key, (counts.get(key) || 0) + 1);
+  }
+
+  return articles.map(article => {
+    if (!article.imageUrl) return article;
+    const key = `${article.source}\n${article.imageUrl}`;
+    if ((counts.get(key) || 0) < 2) return article;
+    return { ...article, imageUrl: null };
   });
 }
 
@@ -214,7 +231,7 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
     }
   }
 
-  const unique = dedupe(articles);
+  const unique = suppressRepeatedSourceImages(dedupe(articles));
   const selected = balancedLimit(unique, feedList, config.maxCandidates);
 
   selected.forEach((article, index) => { article.id = index + 1; });
