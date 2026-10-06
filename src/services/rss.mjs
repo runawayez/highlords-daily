@@ -142,6 +142,7 @@ async function fetchFeed(feed) {
         id: `${feed.name}:${item.guid || item.id || link || index}`,
         source: feed.name || parsed.title || new URL(feed.url).hostname,
         focus: Array.isArray(feed.focus) ? feed.focus : [],
+        strictFocus: Boolean(feed.strictFocus),
         originalTitle: stripHtml(item.title || 'Sem título'),
         link,
         publishedAt: published.toISOString(),
