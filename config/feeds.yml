@@ -3,6 +3,7 @@ preset: vanilla
 
 # focus é apenas uma dica para a LLM e para a distribuição de candidatas.
 # A classificação final continua sendo decidida pelo Ollama.
+# images: false desativa imagens em feeds que fornecem apenas logo/arte genérica.
 feeds:
   - name: Tecnoblog
     url: https://tecnoblog.net/feed/
@@ -40,6 +41,7 @@ feeds:
     url: https://www.rockpapershotgun.com/feed
     focus: [games]
 
+  # Futebol — fontes brasileiras e uma fonte internacional para ampliar a pluralidade.
   - name: ge
     url: https://ge.globo.com/rss/ge
     focus: [futebol]
@@ -48,6 +50,19 @@ feeds:
     url: https://trivela.com.br/feed/
     focus: [futebol]
 
+  - name: Placar
+    url: https://placar.com.br/feed/
+    focus: [futebol]
+
+  - name: UOL Esporte
+    url: https://rss.uol.com.br/feed/esporte.xml
+    focus: [futebol]
+
+  - name: BBC Sport Football
+    url: https://feeds.bbci.co.uk/sport/football/rss.xml
+    focus: [futebol]
+
+  # Economia — mistura de mercado, macroeconomia, negócios e cobertura geral.
   - name: InfoMoney
     url: https://www.infomoney.com.br/feed/
     focus: [economia]
@@ -56,6 +71,23 @@ feeds:
     url: https://www.moneytimes.com.br/feed/
     focus: [economia]
 
+  - name: Exame
+    url: https://exame.com/feed/
+    focus: [economia]
+
+  - name: Seu Dinheiro
+    url: https://www.seudinheiro.com/feed/
+    focus: [economia]
+
+  - name: Brazil Journal
+    url: https://braziljournal.com/feed/
+    focus: [economia]
+
+  - name: UOL Economia
+    url: https://rss.uol.com.br/feed/economia.xml
+    focus: [economia]
+
   - name: Agência Brasil Economia
     url: https://agenciabrasil.ebc.com.br/rss/economia/feed.xml
     focus: [economia]
+    images: false
