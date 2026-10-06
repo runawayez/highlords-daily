@@ -3,7 +3,8 @@ preset: vanilla
 
 # focus é apenas uma dica para a LLM e para a distribuição de candidatas.
 # A classificação final continua sendo decidida pelo Ollama.
-# images: false desativa imagens em feeds que fornecem apenas logo/arte genérica.
+# images: page ignora a arte do RSS e busca a imagem da página da matéria.
+# images: false desativa imagens para uma fonte específica.
 feeds:
   - name: Tecnoblog
     url: https://tecnoblog.net/feed/
@@ -90,4 +91,4 @@ feeds:
   - name: Agência Brasil Economia
     url: https://agenciabrasil.ebc.com.br/rss/economia/feed.xml
     focus: [economia]
-    images: false
+    images: page
