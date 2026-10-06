@@ -34,7 +34,7 @@
     "desktop": "npm --prefix desktop start",
     "desktop:install": "npm --prefix desktop install",
     "desktop:build": "npm --prefix desktop run dist",
-    "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/plugins.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs && node --check src/services/memory.mjs && node --check src/services/image-cache.mjs && node --check src/services/archive.mjs && node --check src/exporters/markdown.mjs && node --check src/exporters/email.mjs && node --check src/exporters/social.mjs && node --check src/cli/setup.mjs && node --check src/cli/feeds-check.mjs && node --check src/cli/feeds-discover.mjs && node --check src/cli/schedule.mjs"
+    "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/plugins.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs && node --check src/services/memory.mjs && node --check src/services/image-quality.mjs && node --check src/services/image-cache.mjs && node --check src/services/archive.mjs && node --check src/exporters/markdown.mjs && node --check src/exporters/email.mjs && node --check src/exporters/social.mjs && node --check src/cli/setup.mjs && node --check src/cli/feeds-check.mjs && node --check src/cli/feeds-discover.mjs && node --check src/cli/schedule.mjs"
   },
   "engines": {
     "node": ">=22.5.0"
