@@ -116,13 +116,47 @@ async function fetchPageImage(link) {
   }
 }
 
-async function enrichImages(articles) {
+async function validateImageUrl(url) {
+  if (!url) return false;
+  try {
+    const response = await fetch(url, {
+      method: 'GET',
+      redirect: 'follow',
+      headers: {
+        'user-agent': 'Mozilla/5.0 HighlordsDaily/3.0',
+        accept: 'image/avif,image/webp,image/apng,image/svg+xml,image/*,*/*;q=0.8'
+      },
+      signal: AbortSignal.timeout(4500)
+    });
+    const type = String(response.headers.get('content-type') || '').toLowerCase();
+    const valid = response.ok && type.startsWith('image/');
+    try { await response.body?.cancel(); } catch {}
+    return valid;
+  } catch {
+    return false;
+  }
+}
+
+async function resolveArticleImage(article, imageMode) {
+  if (imageMode === 'off') return null;
+
+  if (imageMode === 'auto' && article.imageUrl && await validateImageUrl(article.imageUrl)) {
+    return article.imageUrl;
+  }
+
+  const pageImage = await fetchPageImage(article.link);
+  if (pageImage && await validateImageUrl(pageImage)) return pageImage;
+
+  return null;
+}
+
+async function enrichImages(articles, imageMode) {
   let cursor = 0;
   const workers = Math.min(4, articles.length);
   async function worker() {
     while (cursor < articles.length) {
       const index = cursor++;
-      if (!articles[index].imageUrl) articles[index].imageUrl = await fetchPageImage(articles[index].link);
+      articles[index].imageUrl = await resolveArticleImage(articles[index], imageMode);
     }
   }
   await Promise.all(Array.from({ length: workers }, worker));
@@ -153,7 +187,7 @@ async function fetchFeed(feed) {
     .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff);
 
   if (feed.imageMode === 'off') return articles;
-  return enrichImages(articles);
+  return enrichImages(articles, feed.imageMode);
 }
 
 function dedupe(articles) {
@@ -233,8 +267,10 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
   }
 
   const unique = suppressRepeatedSourceImages(dedupe(articles));
-  const selected = balancedLimit(unique, feedList, config.maxCandidates);
+  const withImages = config.requireImages ? unique.filter(article => article.imageUrl) : unique;
+  const imageRejected = config.requireImages ? unique.length - withImages.length : 0;
+  const selected = balancedLimit(withImages, feedList, config.maxCandidates);
 
   selected.forEach((article, index) => { article.id = index + 1; });
-  return { articles: selected, errors };
+  return { articles: selected, errors, imageRejected };
 }
