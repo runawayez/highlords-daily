@@ -65,10 +65,10 @@ categories:
 
   - slug: futebol
     name: Futebol
-    description: Clubes, campeonatos, partidas, transferências, seleções, mercado da bola e os principais acontecimentos do futebol brasileiro e internacional.
+    description: Futebol de associação (soccer) exclusivamente: clubes, campeonatos, partidas, transferências, seleções, mercado da bola e acontecimentos do futebol brasileiro e internacional. NÃO inclui futebol americano, NFL ou NCAA.
     aliases:
-      - football
       - soccer
+      - association football
       - brasileirão
       - brasileirao
       - champions league
@@ -76,10 +76,14 @@ categories:
 
   - slug: esportes
     name: Esportes
-    description: Esportes que não sejam futebol, como basquete, Fórmula 1, tênis, vôlei, atletismo, lutas, ciclismo, esportes olímpicos e outras modalidades.
+    description: Esportes que não sejam futebol de associação, incluindo basquete, futebol americano/NFL, Fórmula 1, tênis, vôlei, atletismo, lutas, ciclismo, rugby, esportes olímpicos e outras modalidades.
     aliases:
       - sports
       - esporte
+      - american football
+      - nfl
+      - ncaa football
+      - super bowl
       - basquete
       - basketball
       - formula 1
@@ -92,6 +96,7 @@ categories:
       - volleyball
       - mma
       - ufc
+      - rugby
       - atletismo
       - olympics
       - olimpíadas
