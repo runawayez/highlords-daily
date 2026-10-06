@@ -17,6 +17,12 @@ function booleanEnv(name, fallback = false) {
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
 }
 
+function normalizeOllamaHost(value) {
+  let host = String(value || 'http://127.0.0.1:11434').trim().replace(/\/$/, '');
+  if (!/^https?:\/\//i.test(host)) host = `http://${host}`;
+  return host;
+}
+
 function loadYaml(filePath, label) {
   let raw;
   try {
@@ -94,7 +100,7 @@ export const editorial = {
 };
 
 export const config = {
-  ollamaHost: (process.env.OLLAMA_HOST || 'http://localhost:11434').replace(/\/$/, ''),
+  ollamaHost: normalizeOllamaHost(process.env.OLLAMA_HOST),
   ollamaModel: process.env.OLLAMA_MODEL || 'qwen3:4b',
   timeZone: process.env.TIME_ZONE || 'America/Sao_Paulo',
   outputDir: path.resolve(process.env.OUTPUT_DIR || './output'),
