@@ -40,7 +40,9 @@ function searchText(value = '') {
     .trim();
 }
 
-const filmSeriesSignal = /\b(filme|filmes|cinema|serie|series|temporada|episodio|episodios|ator|atriz|atores|atrizes|diretor|diretora|bilheteria|oscar|emmy|documentario|documentarios|k drama|k dramas|anime|animes|rotton tomatoes|rotten tomatoes)\b/;
+const filmSeriesSignal = /\b(filme|filmes|cinema|ator|atriz|atores|atrizes|diretor|diretora|bilheteria|oscar|emmy|documentario|documentarios|k drama|k dramas|anime|animes|rotten tomatoes)\b/;
+const seriesContextSignal = /\b(serie|series|temporada|episodio|episodios)\b/;
+const streamingContextSignal = /\b(streaming|netflix|hbo|max|prime video|disney\+|paramount\+|globoplay|apple tv)\b/;
 const gameSignal = /\b(game|games|gaming|videogame|videogames|video game|xbox|playstation|nintendo|steam|gameplay|console|consoles|dlc|rpg|fps|ea fc|fortnite|gta)\b/;
 const soccerSignal = /\b(futebol|brasileirao|libertadores|copa do brasil|champions league|goleiro|goleira|zagueiro|zagueira|atacante|mercado da bola|selecao brasileira de futebol|serie a|serie b)\b/;
 const politicsSignal = /\b(tse|stf|tribunal superior eleitoral|justica eleitoral|eleicao|eleicoes|eleitoral|urna|urnas|presidencial|congresso nacional|camara dos deputados|senado federal|partido politico|partidos politicos)\b/;
@@ -68,7 +70,8 @@ function rejectArticle(article, reason) {
 function applyEditorialGuardrails(article) {
   const text = searchText(`${article.originalTitle} ${article.excerpt}`);
   const isEconomy = economySignal.test(text);
-  const isFilmSeries = filmSeriesSignal.test(text);
+  const isFilmSeries = filmSeriesSignal.test(text)
+    || (seriesContextSignal.test(text) && streamingContextSignal.test(text));
   const isGame = gameSignal.test(text);
   const isSoccer = soccerSignal.test(text);
   const isPolitics = politicsSignal.test(text);
