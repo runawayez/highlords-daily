@@ -7,7 +7,7 @@ feeds:
     focus: [ia, mobile-gadgets, hardware, software-internet]
   - name: The Verge
     url: https://www.theverge.com/rss/index.xml
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
   - name: Ars Technica
     url: https://feeds.arstechnica.com/arstechnica/index
     focus: [ia, desenvolvimento, hardware, software-internet, futuro]
@@ -29,6 +29,7 @@ feeds:
   - name: Rock Paper Shotgun
     url: https://www.rockpapershotgun.com/feed
     focus: [games]
+    strict_focus: true
   - name: ge
     url: https://ge.globo.com/rss/ge
     focus: [futebol, esportes]
