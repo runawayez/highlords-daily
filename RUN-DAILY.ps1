@@ -103,6 +103,7 @@ if (-not $endpoint) {
   }
 }
 
+$env:OLLAMA_HOST = $endpoint
 Write-Host "Ollama pronto em $endpoint" -ForegroundColor Green
 
 if (-not (Test-Path 'node_modules\yaml\package.json')) {
