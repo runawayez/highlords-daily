@@ -43,6 +43,7 @@ function normalizeNewsletter(curated, articles, editionDate) {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: 'ollama',
+    selectionMode: 'ollama',
     title: String(curated?.title || 'O que vale sua atenção hoje').trim().slice(0, 120),
     intro: String(curated?.intro || 'Uma seleção curta das atualizações mais relevantes em tecnologia, sem política e sem excesso de ruído.').trim().slice(0, 420),
     lead,
@@ -69,7 +70,8 @@ function fallbackNewsletter(articles, editionDate) {
   return {
     editionDate,
     generatedAt: new Date().toISOString(),
-    curatedBy: 'ranking',
+    curatedBy: 'ollama',
+    selectionMode: 'ranking-fallback',
     title: 'O que vale sua atenção hoje',
     intro: 'Uma seleção curta das atualizações mais relevantes em tecnologia, sem política e sem excesso de ruído.',
     lead,
@@ -169,7 +171,7 @@ async function main() {
     const curated = await curateNewsletter(analyzed, editionDate);
     edition = normalizeNewsletter(curated, analyzed, editionDate);
   } catch (error) {
-    console.log(`  Editor-chefe falhou (${error.message}). Usando ranking como fallback.`);
+    console.log(`  Editor-chefe falhou (${error.message}). Usando ranking como fallback sobre matérias já analisadas pelo Ollama.`);
     edition = fallbackNewsletter(analyzed, editionDate);
   }
   if (!edition.lead) throw new Error('Não foi possível escolher uma manchete para a edição.');
