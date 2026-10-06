@@ -46,6 +46,7 @@ const seriesContextSignal = /\b(serie|series|temporada|episodio|episodios)\b/;
 const streamingContextSignal = /\b(streaming|netflix|hbo|max|prime video|disney\+|paramount\+|globoplay|apple tv)\b/;
 const gameSignal = /\b(game|games|gaming|videogame|videogames|video game|xbox|playstation|nintendo|steam|gameplay|console|consoles|dlc|rpg|fps|ea fc|fortnite|gta)\b/;
 const soccerSignal = /\b(futebol|brasileirao|libertadores|copa do brasil|champions league|goleiro|goleira|zagueiro|zagueira|atacante|mercado da bola|selecao brasileira de futebol|serie a|serie b)\b/;
+const otherSportsSignal = /\b(ufc|mma|octogono|octagon|lutador|lutadora|lutadores|lutadoras|nocaute|knockout|finalizacao|peso mosca|peso galo|peso pena|peso leve|peso meio medio|peso medio|peso meio pesado|peso pesado|boxe|boxing|muay thai|jiu jitsu|nba|wnba|basquete|basketball|nfl|super bowl|quarterback|futebol americano|formula 1|formula1|f1|motogp|indycar|tenis|tennis|atp|wta|volei|volleyball|vnl|atletismo|athletics|maratona|natacao|swimming|ciclismo|cycling|rugby|cricket|beisebol|baseball|mlb|nhl|hockey|ginastica|gymnastics|surf|surfe|skate|olimpiada|olimpiadas|paralimpico|paralimpica|paralimpicos|paralimpicas)\b/;
 const politicsSignal = /\b(tse|stf|tribunal superior eleitoral|justica eleitoral|eleicao|eleicoes|eleitoral|urna|urnas|presidencial|congresso nacional|camara dos deputados|senado federal|partido politico|partidos politicos)\b/;
 const economySignal = /\b(economia|economico|economica|mercado|mercados|bolsa|acoes|inflacao|juros|selic|pib|dolar|cambio|fiscal|imposto|impostos|tributacao|investimento|investimentos|lucro|receita|balanca comercial|superavit|deficit|emprego|desemprego|banco central)\b/;
 
@@ -75,6 +76,7 @@ function applyEditorialGuardrails(article) {
     || (seriesContextSignal.test(text) && streamingContextSignal.test(text));
   const isGame = gameSignal.test(text);
   const isSoccer = soccerSignal.test(text);
+  const isOtherSport = otherSportsSignal.test(text);
   const isPolitics = politicsSignal.test(text);
 
   const economyOnly = article.strictFocus
@@ -93,6 +95,16 @@ function applyEditorialGuardrails(article) {
       return routeToCategory(article, 'filmes-series', 'clear-film-series-signal');
     }
     if (article.strictFocus) return rejectArticle(article, 'film-series-outside-strict-focus');
+  }
+
+  // Modalidades inequivocamente não-soccer são resolvidas antes da LLM.
+  // A exigência !isSoccer evita forçar matérias genuinamente híbridas, como
+  // um jogador de futebol visitando um evento de UFC; nesses casos a LLM decide.
+  if (isOtherSport && !isSoccer && !isGame) {
+    if (canForceCategory(article, 'esportes')) {
+      return routeToCategory(article, 'esportes', 'clear-non-soccer-sport-signal');
+    }
+    if (article.strictFocus) return rejectArticle(article, 'non-soccer-sport-outside-strict-focus');
   }
 
   if (isSoccer && !isGame) {
