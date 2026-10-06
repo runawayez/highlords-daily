@@ -79,6 +79,18 @@ const taxonomy = categories
 const validSlugs = new Set(categories.map(category => category.slug));
 const validSlugList = categories.map(category => category.slug).join(', ');
 
+const localeBrief = `
+LOCALIZAÇÃO DA EDIÇÃO:
+- idioma/locale de saída: ${config.language};
+- contexto editorial do leitor: ${config.editorialContext};
+- todo texto editorial visível ao leitor deve soar natural para esse locale, incluindo ortografia, vocabulário, terminologia e tom regional;
+- traduza headline, summary, tags, título da edição, introdução, nomes de seções e rótulos de interface quando solicitado;
+- preserve fatos, marcas, nomes próprios e valores originais;
+- NÃO converta moedas, preços ou unidades inventando uma cotação. Se um preço estiver em moeda estrangeira, mantenha a moeda correta e deixe claro o mercado/contexto quando isso evitar uma interpretação errada;
+- não sugira que preço, disponibilidade, legislação ou serviço valem para ${config.editorialContext} se a matéria não disser isso;
+- adapte o enquadramento ao leitor de ${config.editorialContext} sem adicionar fatos que não estejam no material fornecido.
+`;
+
 function key(value = '') {
   return String(value)
     .normalize('NFD')
@@ -153,9 +165,9 @@ function tagsField(row) {
 }
 
 const exampleSlug = categories[0]?.slug || 'geral';
-const analysisSystem = `Você é o editor do Highlords Daily, uma newsletter diária brasileira configurável.
+const analysisSystem = `Você é o editor do Highlords Daily, uma newsletter diária local e configurável.
 Analise TODAS as matérias recebidas e devolva somente JSON válido.
-
+${localeBrief}
 IMPORTANTE:
 - as categorias editoriais abaixo são a fonte de verdade desta newsletter;
 - focus é uma pista editorial sobre a fonte;
@@ -178,9 +190,9 @@ EDITORIAL:
 - score de 0 a 10 mede valor para esta newsletter, combinando novidade, impacto, utilidade, relevância para o leitor e interesse editorial;
 - uma matéria válida e comum pode ficar entre 4 e 7; reserve 8 a 10 para grandes destaques;
 - fora do escopo deve receber category null e score 0;
-- headline deve ser curta, natural, informativa e SEMPRE em PT-BR;
-- summary deve ter 1 ou 2 frases curtas e SEMPRE em PT-BR;
-- tags: 2 a 6 termos curtos e específicos.
+- headline deve ser curta, natural e informativa no locale ${config.language};
+- summary deve ter 1 ou 2 frases curtas no locale ${config.language};
+- tags: 2 a 6 termos curtos e específicos no idioma da edição.
 
 Retorne exatamente:
 {"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"headline":"string","summary":"string","tags":["tag"]}]}`;
@@ -374,16 +386,33 @@ export async function curateNewsletter(articles, editionDate) {
   }));
 
   const emptySections = Object.fromEntries(categories.map(category => [category.slug, []]));
+  const sectionTitles = Object.fromEntries(categories.map(category => [category.slug, category.name]));
   const responseExample = {
     title: 'string',
     intro: 'string',
     leadId: 123,
+    sectionTitles,
+    ui: {
+      brandTagline: 'string',
+      dailyEdition: 'string',
+      leadLabel: 'string',
+      readArticle: 'string',
+      highlightSingular: 'string',
+      highlightPlural: 'string',
+      storySingular: 'string',
+      storyPlural: 'string',
+      sourceSingular: 'string',
+      sourcePlural: 'string',
+      candidateSingular: 'string',
+      candidatePlural: 'string',
+      localAiCuration: 'string'
+    },
     sections: emptySections
   };
 
   const system = `Você é o editor-chefe do Highlords Daily.
 Monte uma newsletter curta, calma e realmente útil usando SOMENTE os IDs fornecidos.
-
+${localeBrief}
 REGRAS:
 - escolha 1 manchete principal entre as matérias mais importantes;
 - escolha no máximo ${config.itemsPerCategory} matérias por categoria;
@@ -395,7 +424,9 @@ REGRAS:
 - Futebol significa soccer/futebol de associação; NFL e futebol americano pertencem a Esportes;
 - prefira impacto, utilidade, novidade e relevância a clickbait;
 - equilibre fontes quando houver alternativas equivalentes;
-- escreva título e introdução SEMPRE em português brasileiro;
+- escreva title e intro no locale ${config.language}, naturais para ${config.editorialContext};
+- em sectionTitles, devolva um nome de seção natural no idioma da edição para CADA slug configurado, preservando o significado editorial;
+- em ui, traduza/localize TODOS os rótulos para ${config.language}; mantenha brandTagline curto e em caixa adequada ao idioma;
 - título editorial curto; introdução de no máximo 2 frases;
 - não invente informações.
 
@@ -407,7 +438,7 @@ ${JSON.stringify(responseExample)}`;
 
   return chatJson(
     system,
-    `Data da edição: ${editionDate}\n\nCandidatas:\n${JSON.stringify(compact)}`,
+    `Data da edição: ${editionDate}\nIdioma: ${config.language}\nContexto editorial: ${config.editorialContext}\n\nCandidatas:\n${JSON.stringify(compact)}`,
     150000
   );
 }
