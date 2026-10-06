@@ -23,21 +23,20 @@ if errorlevel 1 (
 )
 
 call :check_ollama
-if errorlevel 1 (
-  echo Iniciando Ollama...
-  start "Ollama" /min cmd /c "ollama serve"
+if not errorlevel 1 goto :ollama_ready
 
-  echo Aguardando o Ollama ficar pronto...
-  set /a attempts=0
-  :wait_ollama
-  timeout /t 2 /nobreak >nul
-  call :check_ollama
-  if not errorlevel 1 goto :ollama_ready
+echo Iniciando Ollama...
+start "Ollama" /min cmd /c "ollama serve"
+echo Aguardando o Ollama ficar pronto...
+set /a attempts=0
 
-  set /a attempts+=1
-  if %attempts% GEQ 15 goto :ollama_failed
-  goto :wait_ollama
-)
+:wait_ollama
+timeout /t 2 /nobreak >nul
+call :check_ollama
+if not errorlevel 1 goto :ollama_ready
+set /a attempts+=1
+if %attempts% GEQ 15 goto :ollama_failed
+goto :wait_ollama
 
 :ollama_ready
 echo Ollama pronto.
