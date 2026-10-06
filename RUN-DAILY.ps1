@@ -57,7 +57,7 @@ function Test-OllamaModel([string]$Endpoint, [string]$Model) {
   try {
     $data = Invoke-RestMethod "$Endpoint/api/tags" -TimeoutSec 5
     $names = @($data.models | ForEach-Object { $_.name })
-    return [bool]($names | Where-Object { $_ -eq $Model -or $_ -like "$Model:*" -or $_ -like "$Model*" } | Select-Object -First 1)
+    return [bool]($names | Where-Object { $_ -eq $Model -or $_ -like "${Model}:*" -or $_ -like "${Model}*" } | Select-Object -First 1)
   } catch {
     return $false
   }
@@ -118,7 +118,7 @@ if (-not $browser) {
   throw 'Chrome ou Microsoft Edge nao encontrado. Instale um deles ou defina BROWSER_PATH no arquivo .env.'
 }
 Write-Ok 'Navegador' ([IO.Path]::GetFileName($browser))
-if (-not $env:BROWSER_PATH -and $dotenvBrowser -eq $null) { $env:BROWSER_PATH = $browser }
+if (-not $env:BROWSER_PATH -and $null -eq $dotenvBrowser) { $env:BROWSER_PATH = $browser }
 
 if (-not (Test-Path 'node_modules\yaml\package.json') -or -not (Test-Path 'node_modules\rss-parser\package.json') -or -not (Test-Path 'node_modules\puppeteer-core\package.json')) {
   Write-Step 'Instalando dependencias do projeto...'
