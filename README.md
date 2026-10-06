@@ -8,7 +8,7 @@
 
 Highlords Daily é um gerador local de newsletter diária feito com **RSS + Ollama**. Ele coleta notícias recentes, usa uma LLM local para filtrar, classificar, traduzir, resumir e pontuar cada matéria, monta a edição com uma segunda etapa editorial e entrega tudo em **HTML, JSON e PDF**.
 
-O projeto já vem com um preset editorial pronto chamado **Vanilla**. Basta clonar, instalar o modelo e gerar a edição. Quem quiser pode trocar categorias e fontes editando arquivos YAML, sem alterar o código da aplicação.
+O projeto já vem com o preset editorial **Vanilla**. Basta clonar, instalar o modelo e gerar. Categorias e fontes podem ser alteradas em YAML sem mexer no JavaScript.
 
 ## Highlords Daily Vanilla
 
@@ -24,19 +24,13 @@ O preset padrão vem com nove categorias:
 8. **Economia**
 9. **Futuro**
 
-As categorias ficam em:
+A configuração editorial fica em:
 
 ```text
-config/categories.yml
+config/
+├─ categories.yml
+└─ feeds.yml
 ```
-
-As fontes RSS ficam em:
-
-```text
-config/feeds.yml
-```
-
-Assim, a estrutura editorial não fica hardcoded no JavaScript. O Ollama recebe as categorias configuradas no YAML e adapta automaticamente a classificação e a montagem da newsletter.
 
 ## Como funciona
 
@@ -59,7 +53,7 @@ Ollama editor-chefe
    ├─ escolhe a manchete
    ├─ seleciona os melhores destaques
    ├─ equilibra fontes e assuntos
-   └─ escreve título e introdução da edição
+   └─ escreve título e introdução
           ↓
 template HTML editorial
           ↓
@@ -78,40 +72,32 @@ Cada notícia recebe do Ollama:
 - resumo curto em português brasileiro;
 - tags.
 
-A nota combina principalmente **novidade, impacto, utilidade, relevância para o leitor e interesse editorial**. Notícias comuns tendem a ficar na faixa intermediária; notas de 8 a 10 ficam reservadas para destaques realmente fortes.
+A nota combina **novidade, impacto, utilidade, relevância para o leitor e interesse editorial**. Notícias comuns tendem a ficar na faixa intermediária; notas de 8 a 10 ficam reservadas para destaques fortes.
 
-Depois dessa triagem, uma segunda chamada ao Ollama atua como **editor-chefe** e monta a edição final. Caso uma seção fique incompleta, o gerador pode completar as vagas com as melhores candidatas daquela categoria que já tenham sido aprovadas pela LLM.
-
-Categorias sem nenhuma matéria aprovada simplesmente não são renderizadas naquela edição.
+Depois da triagem, uma segunda chamada ao Ollama atua como **editor-chefe**. Se uma seção ficar incompleta, o gerador pode completar as vagas com as melhores candidatas daquela categoria já aprovadas pela LLM. Categorias sem matéria aprovada não são renderizadas naquela edição.
 
 ## Categorias personalizáveis
 
-O arquivo `config/categories.yml` é a fonte de verdade da taxonomia editorial.
-
-Exemplo:
+`config/categories.yml` é a fonte de verdade da taxonomia editorial:
 
 ```yaml
 categories:
   - slug: ciencia
     name: Ciência
     description: Pesquisa, espaço, astronomia, biologia e descobertas científicas.
-    aliases:
-      - science
-      - astronomia
+    aliases: [science, astronomia]
 
   - slug: cinema
     name: Cinema
     description: Filmes, festivais, lançamentos, bilheteria e indústria cinematográfica.
-    aliases:
-      - movies
-      - filmes
+    aliases: [movies, filmes]
 ```
 
-Depois de salvar o arquivo, não é necessário alterar `ollama.mjs`, `daily.mjs` ou o template. Os slugs válidos e o formato esperado da resposta do modelo são gerados dinamicamente.
+O prompt do Ollama e o formato esperado do editor-chefe são montados dinamicamente a partir desse arquivo.
 
 ## Fontes personalizáveis
 
-Cada feed pode indicar uma ou mais categorias em `focus`:
+Cada feed em `config/feeds.yml` pode indicar categorias em `focus`:
 
 ```yaml
 feeds:
@@ -124,13 +110,22 @@ feeds:
     focus: [economia]
 ```
 
-`focus` é apenas uma **dica** para o modelo. A classificação final continua sendo feita pelo Ollama com base no conteúdo da matéria.
+`focus` é apenas uma **dica**. A classificação final continua sendo feita pelo Ollama.
 
-O coletor também distribui as candidatas entre as fontes antes da análise, evitando que um feed muito movimentado ocupe sozinho todo o limite diário.
+Se uma fonte fornecer apenas um logo ou imagem genérica no lugar da imagem de cada matéria, é possível desativar suas imagens:
+
+```yaml
+  - name: Minha Fonte
+    url: https://exemplo.com/feed/
+    focus: [economia]
+    images: false
+```
+
+Nesse caso o layout usa o placeholder visual do Highlords. O coletor também elimina imagens idênticas repetidas pela mesma fonte, evitando cards com logos genéricos duplicados.
 
 ## Fontes Vanilla
 
-O preset padrão inclui fontes de tecnologia, games, futebol e economia, entre elas:
+### Tecnologia e games
 
 - Tecnoblog
 - The Verge
@@ -141,13 +136,26 @@ O preset padrão inclui fontes de tecnologia, games, futebol e economia, entre e
 - InfoQ
 - Tom's Hardware
 - Rock Paper Shotgun
+
+### Futebol
+
 - ge
 - Trivela
+- Placar
+- UOL Esporte
+- BBC Sport Football
+
+### Economia
+
 - InfoMoney
 - MoneyTimes
+- Exame
+- Seu Dinheiro
+- Brazil Journal
+- UOL Economia
 - Agência Brasil Economia
 
-Feeds internacionais podem ser usados normalmente: títulos e resumos da edição são produzidos em português brasileiro pela LLM local.
+A coleta é balanceada entre os feeds antes da análise para que uma única fonte muito movimentada não ocupe sozinha todas as candidatas. Feeds internacionais podem ser usados normalmente: títulos e resumos são produzidos em português brasileiro pela LLM local.
 
 ## Requisitos
 
@@ -167,15 +175,13 @@ ollama pull qwen3:4b
 
 ## Gerar a newsletter
 
-No Windows, a forma mais simples é dar dois cliques em:
+No Windows, dê dois cliques em:
 
 ```text
 GERAR-DAILY.bat
 ```
 
-O script verifica o Ollama, inicia o serviço quando necessário e executa o gerador.
-
-Pelo terminal:
+Ou use o terminal:
 
 ```powershell
 ollama serve
@@ -189,27 +195,25 @@ npm.cmd run daily
 
 ## Saída
 
-Cada edição fica salva em uma pasta pela data:
-
 ```text
 output/
-├─ 2026-10-06/
+├─ AAAA-MM-DD/
 │  ├─ index.html
 │  ├─ edition.json
-│  └─ highlords-daily-2026-10-06.pdf
+│  └─ highlords-daily-AAAA-MM-DD.pdf
 ├─ latest.html
 ├─ latest.json
 └─ highlords-daily-latest.pdf
 ```
 
-O PDF é gerado pelo Chromium a partir do **mesmo HTML da newsletter**, preservando layout, imagens, cores, tipografia e links clicáveis.
+O PDF é impresso pelo Chromium a partir do **mesmo HTML da newsletter**, preservando layout, imagens, cores, tipografia e links clicáveis.
 
 ## Configuração
 
-Os padrões podem ser alterados criando um arquivo `.env` baseado em `.env.example`:
+Crie um `.env` baseado em `.env.example` para alterar os padrões:
 
 ```env
-OLLAMA_HOST=http://localhost:11434
+OLLAMA_HOST=http://127.0.0.1:11434
 OLLAMA_MODEL=qwen3:4b
 TIME_ZONE=America/Sao_Paulo
 OUTPUT_DIR=./output
@@ -226,17 +230,15 @@ LLM_MIN_SCORE=4.5
 AUTO_OPEN=true
 ```
 
-Principais opções:
-
-- `CATEGORIES_FILE`: arquivo YAML que define a taxonomia da newsletter.
-- `FEEDS_FILE`: arquivo YAML com as fontes RSS e seus focos sugeridos.
-- `LOOKBACK_HOURS`: janela de tempo das notícias coletadas.
-- `MAX_ITEMS_PER_FEED`: limite de itens lidos de cada RSS.
-- `MAX_CANDIDATES`: máximo de notícias enviadas para análise.
-- `AI_BATCH_SIZE`: quantidade de matérias por lote do Ollama.
-- `ITEMS_PER_CATEGORY`: número de destaques por seção, entre 1 e 3.
-- `LLM_MIN_SCORE`: nota mínima para uma matéria seguir para a etapa editorial.
-- `AUTO_OPEN`: abre o HTML automaticamente ao finalizar.
+- `CATEGORIES_FILE`: taxonomia editorial.
+- `FEEDS_FILE`: fontes RSS e focos sugeridos.
+- `LOOKBACK_HOURS`: janela das notícias.
+- `MAX_ITEMS_PER_FEED`: itens lidos por feed.
+- `MAX_CANDIDATES`: notícias enviadas para análise.
+- `AI_BATCH_SIZE`: matérias por lote do Ollama.
+- `ITEMS_PER_CATEGORY`: destaques por seção, de 1 a 3.
+- `LLM_MIN_SCORE`: nota mínima para seguir à etapa editorial.
+- `AUTO_OPEN`: abre o HTML ao finalizar.
 
 ## Stack
 
@@ -247,7 +249,7 @@ Principais opções:
 - `qwen3:4b`
 - HTML/CSS
 - `puppeteer-core`
-- Chrome / Chromium / Edge para impressão em PDF
+- Chrome / Chromium / Edge
 
 ## Privacidade
 
