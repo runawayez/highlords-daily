@@ -74,6 +74,29 @@ categories:
       - champions league
       - futebol internacional
 
+  - slug: esportes
+    name: Esportes
+    description: Esportes que não sejam futebol, como basquete, Fórmula 1, tênis, vôlei, atletismo, lutas, ciclismo, esportes olímpicos e outras modalidades.
+    aliases:
+      - sports
+      - esporte
+      - basquete
+      - basketball
+      - formula 1
+      - f1
+      - tênis
+      - tenis
+      - tennis
+      - vôlei
+      - volei
+      - volleyball
+      - mma
+      - ufc
+      - atletismo
+      - olympics
+      - olimpíadas
+      - olimpiadas
+
   - slug: economia
     name: Economia
     description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo.
