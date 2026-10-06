@@ -108,6 +108,35 @@ async function loadLogoDataUri() {
   }
 }
 
+function logAnalysisProgress(event) {
+  if (event.status === 'start') {
+    process.stdout.write(`  lote ${event.batch}/${event.totalBatches}... `);
+    return;
+  }
+
+  if (event.status === 'done') {
+    const details = [
+      `${event.approved} aprovadas`,
+      `${event.classified} classificadas`,
+      `${event.invalidCategory} sem categoria`,
+      `${event.belowScore} abaixo de ${config.llmMinScore}`,
+      `${event.missing} ausentes`
+    ];
+    if (event.retried) details.push('retry');
+    console.log(details.join(' | '));
+    return;
+  }
+
+  if (event.status === 'error') {
+    console.log(`falhou: ${event.error}`);
+    return;
+  }
+
+  if (event.status === 'rescue') {
+    console.log(`  Nenhuma matéria passou do corte ${event.threshold}; usando ${event.count} classificadas pelo Ollama como resgate para o editor-chefe.`);
+  }
+}
+
 async function main() {
   const editionDate = dateKey();
   console.log('\nHIGH LORDS DAILY');
@@ -127,12 +156,12 @@ async function main() {
   }
   if (!articles.length) throw new Error('Nenhuma matéria recente foi encontrada nos feeds.');
 
-  console.log('3/5 Ollama analisando e filtrando...');
-  const analyzed = await analyzeArticles(articles, ({ batch, totalBatches }) => {
-    process.stdout.write(`  lote ${batch}/${totalBatches}\n`);
-  });
-  if (!analyzed.length) throw new Error('Nenhuma matéria atingiu o nível mínimo de relevância para a edição.');
-  console.log(`  ${analyzed.length} matérias aprovadas pela curadoria inicial.`);
+  console.log(`3/5 Ollama analisando e filtrando... corte inicial ${config.llmMinScore}/10`);
+  const analyzed = await analyzeArticles(articles, logAnalysisProgress);
+  if (!analyzed.length) {
+    throw new Error('O Ollama respondeu, mas nenhuma matéria pôde ser interpretada como candidata válida. Rode novamente e confira os diagnósticos dos lotes acima.');
+  }
+  console.log(`  ${analyzed.length} matérias seguem para o editor-chefe.`);
 
   console.log('4/5 Montando a newsletter...');
   let edition;
