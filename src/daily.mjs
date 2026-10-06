@@ -182,6 +182,7 @@ function logAnalysisProgress(event) {
       `${event.approved} aprovadas`,
       `${event.classified} classificadas`,
       `${event.invalidCategory} sem categoria`,
+      `${event.strictMismatch || 0} fora do foco estrito`,
       `${event.belowScore} abaixo de ${config.llmMinScore}`,
       `${event.missing} ausentes`
     ];
@@ -197,6 +198,11 @@ function logAnalysisProgress(event) {
 
   if (event.status === 'rescue') {
     console.log(`  Nenhuma matéria passou do corte ${event.threshold}; usando ${event.count} classificadas pelo Ollama como resgate para o editor-chefe.`);
+    return;
+  }
+
+  if (event.status === 'category-rescue') {
+    console.log(`  ${event.category}: +${event.count} candidata(s) de reserva (mínimo ${event.floor.toFixed(1)}) para padronizar a seção; total ${event.total}.`);
   }
 }
 
