@@ -4,7 +4,7 @@ import { spawn } from 'node:child_process';
 import { categories, config } from './config.mjs';
 import { fetchAllFeeds } from './services/rss.mjs';
 import { analyzeArticles, curateNewsletter, ensureOllama } from './services/ollama.mjs';
-import { renderDailyPdf } from './services/pdf.mjs';
+import { renderHtmlPdf } from './services/html-pdf.mjs';
 import { renderNewsletterHtml } from './template.mjs';
 
 function dateKey(date = new Date()) {
@@ -16,23 +16,51 @@ function dateKey(date = new Date()) {
   return `${get('year')}-${get('month')}-${get('day')}`;
 }
 
+function curatedId(value) {
+  const raw = value && typeof value === 'object'
+    ? value.id ?? value.articleId ?? value.article_id ?? value.newsId ?? value.news_id
+    : value;
+  const number = Number(raw);
+  return Number.isFinite(number) ? number : null;
+}
+
 function normalizeNewsletter(curated, articles, editionDate) {
   const byId = new Map(articles.map(article => [Number(article.id), article]));
   const used = new Set();
-  const requestedLead = byId.get(Number(curated?.leadId));
+  const requestedLeadId = curatedId(curated?.leadId ?? curated?.lead ?? curated?.headlineId ?? curated?.mancheteId);
+  const requestedLead = requestedLeadId != null ? byId.get(requestedLeadId) : null;
   const lead = requestedLead || articles[0] || null;
   if (lead) used.add(lead.id);
 
+  let backfilled = 0;
   const sections = categories.map(category => {
     const requested = Array.isArray(curated?.sections?.[category.slug]) ? curated.sections[category.slug] : [];
     const selected = [];
 
-    for (const rawId of requested) {
-      const article = byId.get(Number(rawId));
+    for (const rawValue of requested) {
+      const id = curatedId(rawValue);
+      if (id == null) continue;
+      const article = byId.get(id);
       if (!article || article.category !== category.slug || used.has(article.id)) continue;
       used.add(article.id);
       selected.push(article);
       if (selected.length >= config.itemsPerCategory) break;
+    }
+
+    // O editor-chefe pode ser conservador demais ou devolver uma estrutura incompleta.
+    // Como todas as matérias daqui já foram aprovadas pelo Ollama, completamos a seção
+    // com as candidatas de maior score da própria categoria em vez de deixar o Daily vazio.
+    if (selected.length < config.itemsPerCategory) {
+      const candidates = articles.filter(article =>
+        article.category === category.slug && !used.has(article.id)
+      );
+
+      for (const article of candidates) {
+        used.add(article.id);
+        selected.push(article);
+        backfilled += 1;
+        if (selected.length >= config.itemsPerCategory) break;
+      }
     }
 
     return { slug: category.slug, name: category.name, articles: selected };
@@ -43,7 +71,7 @@ function normalizeNewsletter(curated, articles, editionDate) {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: 'ollama',
-    selectionMode: 'ollama',
+    selectionMode: backfilled > 0 ? 'ollama+section-backfill' : 'ollama',
     title: String(curated?.title || 'O que vale sua atenção hoje').trim().slice(0, 120),
     intro: String(curated?.intro || 'Uma seleção curta das atualizações mais relevantes em tecnologia, sem política e sem excesso de ruído.').trim().slice(0, 420),
     lead,
@@ -51,7 +79,8 @@ function normalizeNewsletter(curated, articles, editionDate) {
     stats: {
       stories: chosen.length,
       sources: new Set(chosen.map(article => article.source)).size,
-      candidates: articles.length
+      candidates: articles.length,
+      backfilled
     }
   };
 }
@@ -82,6 +111,10 @@ function fallbackNewsletter(articles, editionDate) {
       candidates: articles.length
     }
   };
+}
+
+function sectionReport(edition) {
+  return edition.sections.map(section => `${section.name}: ${section.articles.length}`).join(' | ');
 }
 
 async function openFile(filePath) {
@@ -175,13 +208,20 @@ async function main() {
     edition = fallbackNewsletter(analyzed, editionDate);
   }
   if (!edition.lead) throw new Error('Não foi possível escolher uma manchete para a edição.');
+  console.log(`  ${sectionReport(edition)}`);
+  if (edition.stats?.backfilled) {
+    console.log(`  ${edition.stats.backfilled} vaga(s) de seção completadas automaticamente com candidatas já aprovadas pelo Ollama.`);
+  }
 
-  console.log('5/5 Gerando HTML, JSON e PDF...');
+  console.log('5/5 Gerando HTML, JSON e PDF visual...');
   const editionDir = path.join(config.outputDir, editionDate);
   await fs.mkdir(editionDir, { recursive: true });
   const logoDataUri = await loadLogoDataUri();
   const html = renderNewsletterHtml(edition, logoDataUri);
-  const pdf = await renderDailyPdf(edition);
+
+  // O PDF é impresso pelo Chromium a partir do MESMO HTML da newsletter.
+  // Assim ele preserva identidade visual, imagens, tipografia, cores e links clicáveis.
+  const pdf = await renderHtmlPdf(html);
 
   const htmlPath = path.join(editionDir, 'index.html');
   const jsonPath = path.join(editionDir, 'edition.json');
