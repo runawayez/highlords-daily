@@ -1,0 +1,103 @@
+version: 1
+preset: vanilla
+
+categories:
+  - slug: ia
+    name: IA
+    description: Inteligência artificial, modelos, agentes, machine learning e produtos cujo assunto principal seja IA.
+    aliases:
+      - ai
+      - artificial intelligence
+      - inteligência artificial
+
+  - slug: desenvolvimento
+    name: Desenvolvimento
+    description: Programação, linguagens, frameworks, APIs, bancos de dados, GitHub, QA, testes, DevOps, cloud e ferramentas para desenvolvedores.
+    aliases:
+      - development
+      - dev
+      - programação
+      - software development
+      - qa
+      - devops
+
+  - slug: mobile-gadgets
+    name: Mobile & Gadgets
+    description: Smartphones, tablets, relógios, fones, smart home, acessórios, wearables e eletrônicos de consumo.
+    aliases:
+      - mobile
+      - gadgets
+      - mobile gadgets
+      - celulares
+      - smartphones
+      - wearables
+
+  - slug: hardware
+    name: Hardware
+    description: CPUs, GPUs, PCs, notebooks, monitores, periféricos, memória, armazenamento, chips e semicondutores.
+    aliases:
+      - pc hardware
+      - componentes
+      - cpu
+      - gpu
+      - chips
+
+  - slug: software-internet
+    name: Software & Internet
+    description: Sistemas operacionais, aplicativos, browsers, serviços digitais, segurança, privacidade, web, redes e plataformas.
+    aliases:
+      - software
+      - internet
+      - software internet
+      - software e internet
+      - security
+      - segurança
+      - privacidade
+
+  - slug: games
+    name: Games
+    description: Jogos, consoles, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, estúdios, engines e lançamentos.
+    aliases:
+      - game
+      - gaming
+      - jogos
+      - videogames
+
+  - slug: futebol
+    name: Futebol
+    description: Clubes, campeonatos, partidas, transferências, seleções, mercado da bola e os principais acontecimentos do futebol brasileiro e internacional.
+    aliases:
+      - football
+      - soccer
+      - brasileirão
+      - brasileirao
+      - champions league
+      - futebol internacional
+
+  - slug: economia
+    name: Economia
+    description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo.
+    aliases:
+      - economics
+      - economy
+      - mercados
+      - markets
+      - finanças
+      - financas
+      - finance
+      - negócios
+      - negocios
+      - business
+
+  - slug: futuro
+    name: Futuro
+    description: Robótica, computação quântica, VR/AR, computação espacial, novas interfaces, protótipos e tecnologias emergentes.
+    aliases:
+      - future
+      - emerging tech
+      - tecnologias emergentes
+      - tecnologia emergente
+      - robótica
+      - robotica
+      - computação quântica
+      - computacao quantica
