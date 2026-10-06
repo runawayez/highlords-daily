@@ -73,8 +73,11 @@ export async function ensureOllama() {
   }
 }
 
-const taxonomy = categories.map(category => `- ${category.slug}: ${category.name} — ${category.description}`).join('\n');
+const taxonomy = categories
+  .map(category => `- ${category.slug}: ${category.name} — ${category.description}`)
+  .join('\n');
 const validSlugs = new Set(categories.map(category => category.slug));
+const validSlugList = categories.map(category => category.slug).join(', ');
 
 function key(value = '') {
   return String(value)
@@ -89,18 +92,12 @@ function key(value = '') {
 
 const categoryAliases = new Map();
 for (const category of categories) {
-  categoryAliases.set(key(category.slug), category.slug);
-  categoryAliases.set(key(category.name), category.slug);
+  const aliases = [category.slug, category.name, ...(category.aliases || [])];
+  for (const alias of aliases) {
+    const normalized = key(alias);
+    if (normalized) categoryAliases.set(normalized, category.slug);
+  }
 }
-[
-  ['ai', 'ia'], ['inteligencia artificial', 'ia'], ['artificial intelligence', 'ia'],
-  ['development', 'desenvolvimento'], ['dev', 'desenvolvimento'], ['programacao', 'desenvolvimento'], ['software development', 'desenvolvimento'],
-  ['mobile', 'mobile-gadgets'], ['gadgets', 'mobile-gadgets'], ['mobile gadgets', 'mobile-gadgets'], ['celulares', 'mobile-gadgets'], ['smartphones', 'mobile-gadgets'],
-  ['hardware', 'hardware'], ['pc hardware', 'hardware'], ['componentes', 'hardware'],
-  ['software', 'software-internet'], ['internet', 'software-internet'], ['software internet', 'software-internet'], ['software e internet', 'software-internet'], ['security', 'software-internet'], ['seguranca', 'software-internet'],
-  ['game', 'games'], ['gaming', 'games'], ['jogos', 'games'],
-  ['future', 'futuro'], ['emerging tech', 'futuro'], ['tecnologias emergentes', 'futuro'], ['tecnologia emergente', 'futuro']
-].forEach(([alias, slug]) => categoryAliases.set(key(alias), slug));
 
 function normalizeCategory(value) {
   const raw = value && typeof value === 'object'
@@ -138,8 +135,7 @@ function rowsFrom(value) {
     }
   }
   if ('id' in value && ('category' in value || 'categoria' in value || 'score' in value)) return [value];
-  const objectRows = Object.values(value).filter(item => item && typeof item === 'object' && ('id' in item || 'category' in item || 'categoria' in item));
-  return objectRows;
+  return Object.values(value).filter(item => item && typeof item === 'object' && ('id' in item || 'category' in item || 'categoria' in item));
 }
 
 function textField(row, names, fallback = '') {
@@ -156,45 +152,33 @@ function tagsField(row) {
   return [];
 }
 
-const analysisSystem = `Você é o editor do Highlords Daily, uma newsletter diária brasileira de tecnologia.
+const exampleSlug = categories[0]?.slug || 'geral';
+const analysisSystem = `Você é o editor do Highlords Daily, uma newsletter diária brasileira configurável.
 Analise TODAS as matérias recebidas e devolva somente JSON válido.
 
 IMPORTANTE:
-- a lista já vem de feeds de tecnologia; na dúvida entre duas categorias, escolha a categoria mais próxima em vez de rejeitar;
-- use category null SOMENTE quando a matéria estiver claramente fora do escopo;
+- as categorias editoriais abaixo são a fonte de verdade desta newsletter;
+- os campos focus enviados junto de cada matéria são somente pistas sobre a fonte, nunca uma obrigação de classificação;
+- na dúvida entre duas categorias válidas, escolha a categoria cujo assunto central melhor representa a matéria;
+- use category null SOMENTE quando a matéria claramente não pertencer a nenhuma categoria configurada;
 - devolva EXATAMENTE um item para cada id recebido, inclusive os rejeitados;
-- category deve ser SOMENTE um destes slugs exatos: ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, futuro; ou null;
-- nunca use os nomes bonitos das categorias no campo category.
-
-ESCOPO:
-- aceite tecnologia, IA, desenvolvimento, mobile/gadgets, hardware, software/internet, games e tecnologias emergentes;
-- rejeite política partidária, eleições, geopolítica, guerras, crime, tragédias, celebridades, esportes, fofoca e economia sem ligação tecnológica clara;
-- regulação pode entrar quando o impacto técnico, de produto ou de plataforma for relevante;
-- ciência pode entrar quando houver aplicação tecnológica clara;
+- category deve ser SOMENTE um destes slugs exatos: ${validSlugList}; ou null;
+- nunca use os nomes bonitos das categorias no campo category;
 - não invente fatos e use somente o material fornecido.
 
-CATEGORIAS FIXAS:
+CATEGORIAS CONFIGURADAS:
 ${taxonomy}
 
-CLASSIFICAÇÃO:
-- smartphone/aparelho => mobile-gadgets;
-- Android/iOS como software => software-internet;
-- CPU/GPU/componente => hardware;
-- SDK da OpenAI, modelo ou agente => ia;
-- GitHub, linguagem, framework, QA, DevOps => desenvolvimento;
-- jogo, console, Steam, engine de game => games;
-- robótica experimental, quântica, protótipos e novas interfaces => futuro.
-
 EDITORIAL:
-- score de 0 a 10 mede valor para a newsletter, combinando novidade, impacto, utilidade, relevância técnica e interesse;
-- uma matéria tecnológica normal e válida pode ficar entre 4 e 7; reserve 8 a 10 para grandes destaques;
+- score de 0 a 10 mede valor para esta newsletter, combinando novidade, impacto, utilidade, relevância para o leitor e interesse editorial;
+- uma matéria válida e comum pode ficar entre 4 e 7; reserve 8 a 10 para grandes destaques;
 - fora do escopo deve receber category null e score 0;
 - headline deve ser curta, natural, informativa e SEMPRE em PT-BR;
 - summary deve ter 1 ou 2 frases curtas e SEMPRE em PT-BR;
-- tags: 2 a 6 termos curtos.
+- tags: 2 a 6 termos curtos e específicos.
 
 Retorne exatamente:
-{"items":[{"id":1,"category":"ia","score":7.2,"headline":"string","summary":"string","tags":["tag"]}]}`;
+{"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"headline":"string","summary":"string","tags":["tag"]}]}`;
 
 function parseBatch(parsed, batch) {
   const rows = rowsFrom(parsed);
@@ -258,6 +242,7 @@ async function analyzeBatch(batch) {
   const payload = JSON.stringify(batch.map(article => ({
     id: article.id,
     source: article.source,
+    focus: article.focus,
     title: article.originalTitle,
     excerpt: article.excerpt,
     publishedAt: article.publishedAt
@@ -343,25 +328,35 @@ export async function curateNewsletter(articles, editionDate) {
     tags: article.tags
   }));
 
+  const emptySections = Object.fromEntries(categories.map(category => [category.slug, []]));
+  const responseExample = {
+    title: 'string',
+    intro: 'string',
+    leadId: 123,
+    sections: emptySections
+  };
+
   const system = `Você é o editor-chefe do Highlords Daily.
 Monte uma newsletter curta, calma e realmente útil usando SOMENTE os IDs fornecidos.
 
 REGRAS:
 - escolha 1 manchete principal entre as matérias mais importantes;
 - escolha no máximo ${config.itemsPerCategory} matérias por categoria;
-- as sete seções são fixas, mas podem ficar vazias se não houver notícia boa;
+- existem ${categories.length} seções configuradas e elas devem aparecer como chaves em sections;
+- uma seção pode ficar vazia se não houver candidata válida para ela;
 - não use a manchete novamente nas seções;
 - não repita a mesma história ou assunto;
-- prefira impacto, utilidade, novidade e relevância técnica a clickbait;
+- prefira impacto, utilidade, novidade e relevância a clickbait;
 - equilibre fontes quando houver alternativas equivalentes;
 - escreva título e introdução SEMPRE em português brasileiro;
 - título editorial curto; introdução de no máximo 2 frases;
 - não invente informações.
 
-Categorias: ${categories.map(category => `${category.slug} (${category.name})`).join(', ')}.
+Categorias configuradas:
+${taxonomy}
 
-Retorne SOMENTE JSON válido:
-{"title":"string","intro":"string","leadId":123,"sections":{"ia":[],"desenvolvimento":[],"mobile-gadgets":[],"hardware":[],"software-internet":[],"games":[],"futuro":[]}}`;
+Retorne SOMENTE JSON válido no formato:
+${JSON.stringify(responseExample)}`;
 
   return chatJson(
     system,
