@@ -1,6 +1,6 @@
 import { categories, config } from './config.mjs';
 
-const categoryLabels = new Map(categories.map(category => [category.slug, category.name]));
+const defaultCategoryLabels = new Map(categories.map(category => [category.slug, category.name]));
 
 function escapeHtml(value = '') {
   return String(value).replace(/[&<>'"]/g, char => ({
@@ -17,20 +17,69 @@ function safeUrl(value = '') {
   }
 }
 
+function defaultUi() {
+  if (config.language.toLowerCase().startsWith('pt')) {
+    return {
+      brandTagline: 'INFORMAÇÃO SEM RUÍDO',
+      dailyEdition: 'Edição diária',
+      leadLabel: 'MANCHETE DA EDIÇÃO',
+      readArticle: 'Abrir matéria',
+      highlightSingular: 'destaque',
+      highlightPlural: 'destaques',
+      storySingular: 'matéria',
+      storyPlural: 'matérias',
+      sourceSingular: 'fonte',
+      sourcePlural: 'fontes',
+      candidateSingular: 'candidata aprovada',
+      candidatePlural: 'candidatas aprovadas',
+      localAiCuration: 'Curadoria por IA local'
+    };
+  }
+
+  return {
+    brandTagline: 'INFORMATION WITHOUT NOISE',
+    dailyEdition: 'Daily edition',
+    leadLabel: 'EDITION HEADLINE',
+    readArticle: 'Open article',
+    highlightSingular: 'highlight',
+    highlightPlural: 'highlights',
+    storySingular: 'story',
+    storyPlural: 'stories',
+    sourceSingular: 'source',
+    sourcePlural: 'sources',
+    candidateSingular: 'approved candidate',
+    candidatePlural: 'approved candidates',
+    localAiCuration: 'Local AI curation'
+  };
+}
+
+function editionUi(edition) {
+  return { ...defaultUi(), ...(edition?.ui || {}) };
+}
+
+function categoryMap(edition) {
+  const map = new Map(defaultCategoryLabels);
+  for (const section of edition?.sections || []) {
+    if (section?.slug && section?.name) map.set(section.slug, section.name);
+  }
+  return map;
+}
+
+function countLabel(value, singular, plural) {
+  const number = Number(value || 0);
+  return `${number} ${number === 1 ? singular : plural}`;
+}
+
 function formatDate(dateKey) {
   const [year, month, day] = String(dateKey).split('-').map(Number);
   const date = new Date(Date.UTC(year, month - 1, day, 12));
-  return new Intl.DateTimeFormat('pt-BR', {
+  return new Intl.DateTimeFormat(config.language, {
     timeZone: config.timeZone,
     weekday: 'long', day: '2-digit', month: 'long', year: 'numeric'
   }).format(date);
 }
 
-function curatorLabel() {
-  return 'Curadoria por IA local';
-}
-
-function storyCard(article, { lead = false } = {}) {
+function storyCard(article, { lead = false, ui = defaultUi(), labels = defaultCategoryLabels } = {}) {
   if (!article) return '';
   const hasImage = Boolean(article.imageUrl);
   const image = hasImage
@@ -39,7 +88,7 @@ function storyCard(article, { lead = false } = {}) {
   const tags = Array.isArray(article.tags) && article.tags.length
     ? `<div class="tags">${article.tags.slice(0, 5).map(tag => `<span>${escapeHtml(tag)}</span>`).join('')}</div>`
     : '';
-  const category = categoryLabels.get(article.category) || String(article.category || '').replace(/-/g, ' ');
+  const category = labels.get(article.category) || String(article.category || '').replace(/-/g, ' ');
 
   return `<article class="story-card ${lead ? 'lead-card' : ''} ${hasImage ? '' : 'no-image'}">
     ${image}
@@ -48,29 +97,32 @@ function storyCard(article, { lead = false } = {}) {
       <h${lead ? '2' : '3'}><a href="${escapeHtml(safeUrl(article.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(article.headline || article.originalTitle)}</a></h${lead ? '2' : '3'}>
       <p>${escapeHtml(article.summary || article.excerpt || '')}</p>
       ${tags}
-      <a class="read-link" href="${escapeHtml(safeUrl(article.link))}" target="_blank" rel="noopener noreferrer">Abrir matéria ↗</a>
+      <a class="read-link" href="${escapeHtml(safeUrl(article.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(ui.readArticle)} ↗</a>
     </div>
   </article>`;
 }
 
-function sectionMarkup(section, index) {
-  const stories = section.articles.map(article => storyCard(article)).join('');
+function sectionMarkup(section, index, ui, labels) {
+  const stories = section.articles.map(article => storyCard(article, { ui, labels })).join('');
   const gridClass = section.articles.length === 1 ? 'section-grid single' : 'section-grid';
+  const highlightLabel = section.articles.length === 1 ? ui.highlightSingular : ui.highlightPlural;
 
   return `<section class="newsletter-section" id="${escapeHtml(section.slug)}">
-    <div class="section-title"><span class="section-number">${String(index + 1).padStart(2, '0')}</span><h2>${escapeHtml(section.name)}</h2><span class="section-count">${section.articles.length} destaque${section.articles.length === 1 ? '' : 's'}</span></div>
+    <div class="section-title"><span class="section-number">${String(index + 1).padStart(2, '0')}</span><h2>${escapeHtml(section.name)}</h2><span class="section-count">${section.articles.length} ${escapeHtml(highlightLabel)}</span></div>
     <div class="${gridClass}">${stories}</div>
   </section>`;
 }
 
 export function renderNewsletterHtml(edition, logoDataUri = '') {
   const visibleSections = edition.sections.filter(section => Array.isArray(section.articles) && section.articles.length > 0);
+  const ui = editionUi(edition);
+  const labels = categoryMap(edition);
   const nav = visibleSections.map(section => `<a href="#${escapeHtml(section.slug)}">${escapeHtml(section.name)}</a>`).join('');
   const logo = logoDataUri ? `<img class="logo" src="${logoDataUri}" alt="Highlords Daily">` : '<div class="logo-fallback">HL</div>';
-  const sections = visibleSections.map(sectionMarkup).join('');
+  const sections = visibleSections.map((section, index) => sectionMarkup(section, index, ui, labels)).join('');
 
   return `<!doctype html>
-<html lang="pt-BR">
+<html lang="${escapeHtml(config.language)}">
 <head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1">
@@ -83,12 +135,12 @@ export function renderNewsletterHtml(edition, logoDataUri = '') {
 </head>
 <body>
 <main class="shell">
-  <header class="masthead"><div class="masthead-row"><div class="brand">${logo}<div><div class="brand-name">Highlords Daily</div><div class="brand-tag">INFORMAÇÃO SEM RUÍDO</div></div></div><div class="edition-date">${escapeHtml(formatDate(edition.editionDate))}</div></div></header>
-  <section class="hero"><div class="eyebrow">Edição diária</div><h1>${escapeHtml(edition.title)}</h1><p class="hero-intro">${escapeHtml(edition.intro)}</p><div class="stats"><span class="stat">${edition.stats.stories} matérias</span><span class="stat">${edition.stats.sources} fontes</span><span class="stat">${edition.stats.candidates} candidatas aprovadas</span><span class="stat">${escapeHtml(curatorLabel())}</span></div></section>
+  <header class="masthead"><div class="masthead-row"><div class="brand">${logo}<div><div class="brand-name">Highlords Daily</div><div class="brand-tag">${escapeHtml(ui.brandTagline)}</div></div></div><div class="edition-date">${escapeHtml(formatDate(edition.editionDate))}</div></div></header>
+  <section class="hero"><div class="eyebrow">${escapeHtml(ui.dailyEdition)}</div><h1>${escapeHtml(edition.title)}</h1><p class="hero-intro">${escapeHtml(edition.intro)}</p><div class="stats"><span class="stat">${escapeHtml(countLabel(edition.stats.stories, ui.storySingular, ui.storyPlural))}</span><span class="stat">${escapeHtml(countLabel(edition.stats.sources, ui.sourceSingular, ui.sourcePlural))}</span><span class="stat">${escapeHtml(countLabel(edition.stats.candidates, ui.candidateSingular, ui.candidatePlural))}</span><span class="stat">${escapeHtml(ui.localAiCuration)}</span></div></section>
   ${nav ? `<nav class="index">${nav}</nav>` : ''}
-  <section class="lead-wrap"><div class="lead-label">MANCHETE DA EDIÇÃO</div>${storyCard(edition.lead,{lead:true})}</section>
+  <section class="lead-wrap"><div class="lead-label">${escapeHtml(ui.leadLabel)}</div>${storyCard(edition.lead,{lead:true,ui,labels})}</section>
   ${sections}
-  <footer class="footer"><span><strong>Highlords Daily</strong> · ${escapeHtml(curatorLabel())}</span><span>${escapeHtml(edition.editionDate)}</span></footer>
+  <footer class="footer"><span><strong>Highlords Daily</strong> · ${escapeHtml(ui.localAiCuration)}</span><span>${escapeHtml(edition.editionDate)}</span></footer>
 </main>
 </body>
 </html>`;
