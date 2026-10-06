@@ -18,6 +18,12 @@ function clean(value = '') {
     .trim();
 }
 
+function curationLabel(mode) {
+  if (mode === 'ollama') return 'IA local';
+  if (mode === 'rules') return 'algorítmica sem LLM';
+  return 'ranking';
+}
+
 function formatEditionDate(value) {
   const [year, month, day] = String(value || '').split('-').map(Number);
   if (!year || !month || !day) return clean(value);
@@ -199,7 +205,7 @@ export async function renderDailyPdf(edition) {
       .font('Helvetica')
       .fontSize(8.5)
       .fillColor(COLORS.muted)
-      .text(`${edition.stats?.stories || 0} matérias  |  ${edition.stats?.sources || 0} fontes  |  curadoria ${edition.curatedBy === 'ollama' ? 'IA local' : 'ranking'}`);
+      .text(`${edition.stats?.stories || 0} matérias  |  ${edition.stats?.sources || 0} fontes  |  curadoria ${curationLabel(edition.curatedBy)}`);
 
     doc.moveDown(1.2);
     drawRule(doc);
