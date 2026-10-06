@@ -29,8 +29,8 @@ if errorlevel 1 (
   timeout /t 3 /nobreak >nul
 )
 
-if not exist node_modules (
-  echo Instalando dependencias na primeira execucao...
+if not exist node_modules\yaml\package.json (
+  echo Instalando ou atualizando dependencias...
   call npm.cmd install
   if errorlevel 1 goto :error
 )
