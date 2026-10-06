@@ -112,16 +112,16 @@ feeds:
 
 `focus` é apenas uma **dica**. A classificação final continua sendo feita pelo Ollama.
 
-Se uma fonte fornecer apenas um logo ou imagem genérica no lugar da imagem de cada matéria, é possível desativar suas imagens:
+Se o RSS de uma fonte fornecer apenas logo ou arte genérica, use `images: page` para ignorar essa imagem e buscar a `og:image` diretamente na página da matéria:
 
 ```yaml
   - name: Minha Fonte
     url: https://exemplo.com/feed/
     focus: [economia]
-    images: false
+    images: page
 ```
 
-Nesse caso o layout usa o placeholder visual do Highlords. O coletor também elimina imagens idênticas repetidas pela mesma fonte, evitando cards com logos genéricos duplicados.
+Para desativar imagens totalmente naquela fonte, use `images: false`. O coletor também elimina imagens idênticas repetidas pela mesma fonte, evitando cards duplicados com logos genéricos.
 
 ## Fontes Vanilla
 
