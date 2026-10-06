@@ -113,7 +113,7 @@ export const config = {
   outputDir: path.resolve(process.env.OUTPUT_DIR || './output'),
   lookbackHours: Math.max(12, numberEnv('LOOKBACK_HOURS', 48)),
   maxItemsPerFeed: Math.max(3, numberEnv('MAX_ITEMS_PER_FEED', 12)),
-  maxCandidates: Math.max(20, numberEnv('MAX_CANDIDATES', 72)),
+  maxCandidates: Math.max(20, numberEnv('MAX_CANDIDATES', 96)),
   aiBatchSize: Math.max(4, Math.min(16, numberEnv('AI_BATCH_SIZE', 10))),
   itemsPerCategory: Math.max(1, Math.min(3, numberEnv('ITEMS_PER_CATEGORY', 2))),
   llmMinScore: Math.max(0, Math.min(10, numberEnv('LLM_MIN_SCORE', 4.5))),
