@@ -1,8 +1,8 @@
 version: 1
 preset: vanilla
 
-# focus é apenas uma dica para a LLM e para a distribuição de candidatas.
-# A classificação final continua sendo decidida pelo Ollama.
+# focus é uma dica para a LLM e para a distribuição de candidatas.
+# strict_focus: true impede que uma fonte vertical vaze para categorias fora do seu escopo.
 # images: page ignora a arte do RSS e busca a imagem da página da matéria.
 # images: false desativa imagens para uma fonte específica.
 feeds:
@@ -42,62 +42,84 @@ feeds:
     url: https://www.rockpapershotgun.com/feed
     focus: [games]
 
-  # Futebol — fontes brasileiras e uma fonte internacional para ampliar a pluralidade.
+  # Futebol — futebol de associação/soccer.
   - name: ge
     url: https://ge.globo.com/rss/ge
     focus: [futebol, esportes]
+    strict_focus: true
+    images: page
 
   - name: Trivela
     url: https://trivela.com.br/feed/
     focus: [futebol]
+    strict_focus: true
+    images: page
 
   - name: Placar
     url: https://placar.com.br/feed/
     focus: [futebol]
+    strict_focus: true
+    images: page
 
   - name: UOL Esporte
     url: https://rss.uol.com.br/feed/esporte.xml
     focus: [futebol, esportes]
+    strict_focus: true
+    images: page
 
   - name: BBC Sport Football
     url: https://feeds.bbci.co.uk/sport/football/rss.xml
     focus: [futebol]
+    strict_focus: true
+    images: page
 
-  # Esportes — cobertura geral para basquete, F1, tênis, vôlei, lutas e outras modalidades.
+  # Esportes — NFL, basquete, F1, tênis, vôlei, lutas e outras modalidades.
   - name: BBC Sport
     url: https://feeds.bbci.co.uk/sport/rss.xml
     focus: [esportes]
+    strict_focus: true
+    images: page
 
   - name: ESPN Top Headlines
     url: https://www.espn.com/espn/rss/news
-    focus: [esportes, futebol]
+    focus: [esportes]
+    strict_focus: true
+    images: page
 
-  # Economia — mistura de mercado, macroeconomia, negócios e cobertura geral.
+  # Economia — mercado, macroeconomia e negócios.
   - name: InfoMoney
     url: https://www.infomoney.com.br/feed/
     focus: [economia]
+    strict_focus: true
 
   - name: MoneyTimes
     url: https://www.moneytimes.com.br/feed/
     focus: [economia]
+    strict_focus: true
 
   - name: Exame
     url: https://exame.com/feed/
     focus: [economia]
+    strict_focus: true
 
   - name: Seu Dinheiro
     url: https://www.seudinheiro.com/feed/
     focus: [economia]
+    strict_focus: true
 
   - name: Brazil Journal
     url: https://braziljournal.com/feed/
     focus: [economia]
+    strict_focus: true
 
   - name: UOL Economia
     url: https://rss.uol.com.br/feed/economia.xml
     focus: [economia]
+    strict_focus: true
+    images: page
 
   - name: Agência Brasil Economia
     url: https://agenciabrasil.ebc.com.br/rss/economia/feed.xml
     focus: [economia]
+    strict_focus: true
     images: page
