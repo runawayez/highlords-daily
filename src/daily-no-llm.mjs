@@ -1,9 +1,9 @@
 import fs from 'node:fs/promises';
 import path from 'node:path';
-import { config } from './config.mjs';
+import { config, noLlmFeeds } from './config.mjs';
 import { fetchAllFeeds } from './services/rss.mjs';
 import { analyzeWithRules, buildRulesNewsletter } from './services/rules.mjs';
-import { renderDailyPdf } from './services/pdf.mjs';
+import { renderHtmlPdf } from './services/html-pdf.mjs';
 import { renderNewsletterHtml } from './template.mjs';
 
 function dateKey(date = new Date()) {
@@ -26,9 +26,7 @@ async function loadLogoDataUri() {
 }
 
 function sectionReport(edition) {
-  return edition.sections
-    .map(section => `${section.name}: ${section.articles.length}`)
-    .join(' | ');
+  return edition.sections.map(section => `${section.name}: ${section.articles.length}`).join(' | ');
 }
 
 async function main() {
@@ -36,18 +34,18 @@ async function main() {
   console.log('\nHIGH LORDS DAILY — MODO SEM LLM');
   console.log(`Edição: ${editionDate}\n`);
 
-  console.log('1/4 Coletando feeds...');
+  console.log('1/4 Coletando fontes em português...');
   const { articles, errors } = await fetchAllFeeds(({ index, total, feed }) => {
     process.stdout.write(`  [${index}/${total}] ${feed}\n`);
-  });
+  }, noLlmFeeds);
   console.log(`  ${articles.length} matérias recentes encontradas.`);
   if (errors.length) {
     console.log(`  ${errors.length} fonte(s) falharam e foram ignoradas:`);
     errors.forEach(error => console.log(`  - ${error}`));
   }
-  if (!articles.length) throw new Error('Nenhuma matéria recente foi encontrada nos feeds.');
+  if (!articles.length) throw new Error('Nenhuma matéria recente foi encontrada nos feeds em português.');
 
-  console.log('2/4 Aplicando classificação, filtros, score e deduplicação...');
+  console.log('2/4 Aplicando idioma, qualidade, categoria, score e deduplicação...');
   const { approved, rejected } = analyzeWithRules(articles);
   console.log(`  ${approved.length} aprovadas | ${rejected.length} rejeitadas.`);
   if (!approved.length) throw new Error('Nenhuma matéria passou pela curadoria sem LLM.');
@@ -56,14 +54,14 @@ async function main() {
   const edition = buildRulesNewsletter(approved, editionDate);
   console.log(`  ${sectionReport(edition)}`);
 
-  console.log('4/4 Gerando HTML, JSON e PDF...');
+  console.log('4/4 Gerando newsletter visual em HTML, JSON e PDF...');
   const editionDir = path.join(config.outputDir, editionDate, 'no-llm');
   await fs.mkdir(editionDir, { recursive: true });
   await fs.mkdir(config.outputDir, { recursive: true });
 
   const logoDataUri = await loadLogoDataUri();
   const html = renderNewsletterHtml(edition, logoDataUri);
-  const pdf = await renderDailyPdf(edition);
+  const pdf = await renderHtmlPdf(html);
   const diagnostics = {
     editionDate,
     mode: 'rules',
@@ -75,6 +73,7 @@ async function main() {
       return acc;
     }, {}),
     selected: edition.stats.stories,
+    sources: noLlmFeeds.map(feed => feed.name),
     generatedAt: edition.generatedAt
   };
 
