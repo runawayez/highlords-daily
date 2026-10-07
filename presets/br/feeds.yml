@@ -6,7 +6,7 @@ feeds:
   # Tecnologia, desenvolvimento, mobile, hardware, software, games e futuro.
   - name: Tecnoblog
     url: https://tecnoblog.net/feed/
-    focus: [ia, mobile-gadgets, hardware, software-internet, futuro]
+    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, futuro]
 
   - name: Canaltech
     url: https://canaltech.com.br/rss/
@@ -39,11 +39,13 @@ feeds:
     focus: [desenvolvimento, software-internet, hardware]
     strict_focus: true
 
-  # Comunidade brasileira de tecnologia/desenvolvimento com RSS oficial.
+  # TabNews é excelente como fonte textual, mas os previews Open Graph são cards
+  # gerados com texto, não imagens editoriais. No Vanilla REQUIRE_IMAGES=true,
+  # por isso ele fica disponível apenas para quem optar por aceitar matérias sem imagem.
   - name: TabNews
     url: https://www.tabnews.com.br/recentes/rss
     focus: [ia, desenvolvimento, software-internet, futuro]
-    images: page
+    images: false
 
   - name: Adrenaline
     url: https://www.adrenaline.com.br/feed/
