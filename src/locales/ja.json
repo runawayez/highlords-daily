@@ -1,0 +1,19 @@
+{
+  "brandTagline": "ノイズのない情報",
+  "dailyEdition": "日刊",
+  "leadLabel": "本日のトップニュース",
+  "readArticle": "記事を読む",
+  "highlightSingular": "注目記事",
+  "highlightPlural": "注目記事",
+  "storySingular": "記事",
+  "storyPlural": "記事",
+  "sourceSingular": "情報源",
+  "sourcePlural": "情報源",
+  "candidateSingular": "採用候補",
+  "candidatePlural": "採用候補",
+  "localAiCuration": "ローカルAIによる編集",
+  "archiveTitle": "バックナンバー",
+  "latest": "最新号",
+  "fallbackTitle": "今日注目すべきニュース",
+  "fallbackIntro": "今日の注目ニュースを厳選してお届けします。"
+}

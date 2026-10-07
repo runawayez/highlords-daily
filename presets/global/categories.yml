@@ -4,45 +4,56 @@ preset: global
 categories:
   - slug: ia
     name: IA
+    labels: {"en": "AI", "es": "IA", "fr": "IA", "de": "KI", "ja": "AI", "zh": "人工智能", "ar": "الذكاء الاصطناعي", "pt": "IA"}
     description: Inteligência artificial, modelos, agentes, machine learning e produtos cujo assunto principal seja IA.
     aliases: [ai, artificial intelligence, inteligência artificial]
   - slug: desenvolvimento
     name: Desenvolvimento
+    labels: {"en": "Development", "es": "Desarrollo", "fr": "Développement", "de": "Entwicklung", "ja": "開発", "zh": "开发", "ar": "التطوير", "pt": "Desenvolvimento"}
     description: Programação, linguagens, frameworks, APIs, bancos de dados, GitHub, QA, testes, DevOps, cloud e ferramentas para desenvolvedores.
     aliases: [development, dev, programação, software development, qa, devops]
   - slug: mobile-gadgets
     name: Mobile & Gadgets
+    labels: {"en": "Mobile & Gadgets", "es": "Móviles y dispositivos", "fr": "Mobile et gadgets", "de": "Mobilgeräte", "ja": "モバイル・ガジェット", "zh": "移动设备", "ar": "الأجهزة المحمولة", "pt": "Mobile & Gadgets"}
     description: Smartphones, tablets, relógios, fones, smart home, acessórios, wearables e eletrônicos de consumo.
     aliases: [mobile, gadgets, mobile gadgets, celulares, smartphones, wearables]
   - slug: hardware
     name: Hardware
+    labels: {"en": "Hardware", "es": "Hardware", "fr": "Matériel", "de": "Hardware", "ja": "ハードウェア", "zh": "硬件", "ar": "الأجهزة", "pt": "Hardware"}
     description: CPUs, GPUs, PCs, notebooks, monitores, periféricos, memória, armazenamento, chips e semicondutores.
     aliases: [pc hardware, componentes, cpu, gpu, chips]
   - slug: software-internet
     name: Software & Internet
+    labels: {"en": "Software & Internet", "es": "Software e Internet", "fr": "Logiciels et Internet", "de": "Software und Internet", "ja": "ソフトウェア・インターネット", "zh": "软件与互联网", "ar": "البرمجيات والإنترنت", "pt": "Software & Internet"}
     description: Sistemas operacionais, aplicativos, browsers, serviços digitais, segurança, privacidade, web, redes e plataformas. Streaming entra aqui apenas quando o assunto central for a tecnologia/plataforma, não o conteúdo de um filme ou série.
     aliases: [software, internet, software internet, software e internet, security, segurança, privacidade]
   - slug: games
     name: Games
+    labels: {"en": "Games", "es": "Videojuegos", "fr": "Jeux vidéo", "de": "Videospiele", "ja": "ゲーム", "zh": "游戏", "ar": "ألعاب الفيديو", "pt": "Games"}
     description: Videogames e jogos interativos, consoles, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, estúdios, engines e lançamentos. NÃO inclui filmes, séries, TV ou notícias de atores e diretores, mesmo quando estiverem em serviços de streaming.
     aliases: [game, gaming, jogos, videogames, video games]
   - slug: filmes-series
     name: Filmes e Séries
+    labels: {"en": "Movies & Series", "es": "Cine y series", "fr": "Films et séries", "de": "Filme und Serien", "ja": "映画・ドラマ", "zh": "电影与剧集", "ar": "الأفلام والمسلسلات", "pt": "Filmes e Séries"}
     description: Cinema, filmes, séries, televisão e conteúdo audiovisual de streaming, incluindo atores, atrizes, diretores, trailers, críticas, temporadas, episódios, premiações e lançamentos. NÃO inclui videogames nem notícias puramente técnicas sobre plataformas de streaming.
     aliases: [filmes, filme, cinema, series, séries, tv, television, movies, movie, films, film, streaming entertainment]
   - slug: futebol
     name: Futebol
+    labels: {"en": "Football (soccer)", "es": "Fútbol", "fr": "Football", "de": "Fußball", "ja": "サッカー", "zh": "足球", "ar": "كرة القدم", "pt": "Futebol"}
     description: "Futebol de associação (soccer) exclusivamente: clubes, campeonatos, partidas, transferências, seleções, jogadores e jogadoras, mercado da bola e acontecimentos do futebol brasileiro e internacional. NÃO inclui futebol americano, NFL ou NCAA."
     aliases: [soccer, association football, brasileirão, brasileirao, champions league, futebol internacional]
   - slug: esportes
     name: Esportes
+    labels: {"en": "Sports", "es": "Deportes", "fr": "Sports", "de": "Sport", "ja": "スポーツ", "zh": "体育", "ar": "الرياضة", "pt": "Esportes"}
     description: Esportes que NÃO sejam futebol de associação, incluindo basquete, futebol americano/NFL, Fórmula 1, tênis, vôlei, atletismo, lutas, ciclismo, rugby, esportes olímpicos e outras modalidades. Notícias de Brasileirão, Libertadores, clubes e seleções de soccer pertencem a Futebol.
     aliases: [sports, esporte, american football, nfl, ncaa football, super bowl, basquete, basketball, formula 1, f1, tênis, tenis, tennis, vôlei, volei, volleyball, mma, ufc, rugby, atletismo, olympics, olimpíadas, olimpiadas]
   - slug: economia
     name: Economia
+    labels: {"en": "Economy", "es": "Economía", "fr": "Économie", "de": "Wirtschaft", "ja": "経済", "zh": "经济", "ar": "الاقتصاد", "pt": "Economia"}
     description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo. NÃO inclui eleições, Justiça Eleitoral ou política institucional quando o impacto econômico não for o assunto central.
     aliases: [economics, economy, mercados, markets, finanças, financas, finance, negócios, negocios, business]
   - slug: futuro
     name: Futuro
+    labels: {"en": "Science & Future", "es": "Ciencia y futuro", "fr": "Sciences et avenir", "de": "Wissenschaft und Zukunft", "ja": "科学・未来", "zh": "科学与未来", "ar": "العلم والمستقبل", "pt": "Futuro"}
     description: Robótica, computação quântica, VR/AR, computação espacial, novas interfaces, protótipos e tecnologias emergentes.
     aliases: [future, emerging tech, tecnologias emergentes, tecnologia emergente, robótica, robotica, computação quântica, computacao quantica]

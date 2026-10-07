@@ -1,0 +1,19 @@
+{
+  "brandTagline": "INFORMACIÓN SIN RUIDO",
+  "dailyEdition": "Edición diaria",
+  "leadLabel": "TITULAR DEL DÍA",
+  "readArticle": "Leer noticia",
+  "highlightSingular": "destacado",
+  "highlightPlural": "destacados",
+  "storySingular": "noticia",
+  "storyPlural": "noticias",
+  "sourceSingular": "fuente",
+  "sourcePlural": "fuentes",
+  "candidateSingular": "candidata aprobada",
+  "candidatePlural": "candidatas aprobadas",
+  "localAiCuration": "Selección con IA local",
+  "archiveTitle": "Archivo de ediciones",
+  "latest": "Última edición",
+  "fallbackTitle": "Lo que merece tu atención hoy",
+  "fallbackIntro": "Una selección breve de las noticias que merecen tu atención hoy."
+}

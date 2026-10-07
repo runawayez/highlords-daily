@@ -1,0 +1,15 @@
+version: 1
+preset: custom
+categories:
+  - id: science
+    slug: science
+    name: Science
+    labels: {en: Science, pt: Ciência, ja: 科学, ar: العلم}
+    description: Research and discoveries supported by evidence.
+    aliases: [science, ciência, 科学]
+  - id: local
+    slug: local
+    name: Local
+    labels: {en: Local, pt: Regional, ja: 地域, ar: محلي}
+    description: Events relevant to residents of the configured region.
+    aliases: [local, regional]

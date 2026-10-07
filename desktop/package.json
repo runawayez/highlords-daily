@@ -1,6 +1,6 @@
 {
   "name": "highlords-daily-desktop",
-  "version": "0.1.0",
+  "version": "5.0.0",
   "private": true,
   "type": "module",
   "main": "main.mjs",
@@ -44,5 +44,8 @@
         "AppImage"
       ]
     }
+  },
+  "optionalDependencies": {
+    "nodemailer": "^10.0.16"
   }
 }

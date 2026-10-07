@@ -1,0 +1,19 @@
+{
+  "brandTagline": "信息，无需噪音",
+  "dailyEdition": "每日版",
+  "leadLabel": "今日头条",
+  "readArticle": "阅读原文",
+  "highlightSingular": "精选",
+  "highlightPlural": "精选",
+  "storySingular": "新闻",
+  "storyPlural": "新闻",
+  "sourceSingular": "来源",
+  "sourcePlural": "来源",
+  "candidateSingular": "入选候选",
+  "candidatePlural": "入选候选",
+  "localAiCuration": "本地AI编辑",
+  "archiveTitle": "往期归档",
+  "latest": "最新一期",
+  "fallbackTitle": "今天值得关注的新闻",
+  "fallbackIntro": "精选今天最值得关注的新闻。"
+}

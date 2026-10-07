@@ -1,0 +1,73 @@
+[
+  {
+    "name": "BBC News",
+    "url": "https://feeds.bbci.co.uk/news/rss.xml",
+    "country": "GB",
+    "coverage": [
+      "GB",
+      "GLOBAL"
+    ],
+    "language": "en-GB",
+    "publisher_group": "BBC",
+    "focus": []
+  },
+  {
+    "name": "DW Deutsch",
+    "url": "https://rss.dw.com/rdf/rss-de-all",
+    "country": "DE",
+    "coverage": [
+      "DE",
+      "GLOBAL"
+    ],
+    "language": "de-DE",
+    "publisher_group": "DW",
+    "focus": []
+  },
+  {
+    "name": "NHK News",
+    "url": "https://www.nhk.or.jp/rss/news/cat0.xml",
+    "country": "JP",
+    "coverage": [
+      "JP"
+    ],
+    "language": "ja-JP",
+    "publisher_group": "NHK",
+    "focus": []
+  },
+  {
+    "name": "NPR News",
+    "url": "https://feeds.npr.org/1001/rss.xml",
+    "country": "US",
+    "coverage": [
+      "US",
+      "GLOBAL"
+    ],
+    "language": "en-US",
+    "publisher_group": "NPR",
+    "focus": []
+  },
+  {
+    "name": "RTVE Noticias",
+    "url": "https://www.rtve.es/rss/noticias.xml",
+    "country": "ES",
+    "coverage": [
+      "ES",
+      "GLOBAL"
+    ],
+    "language": "es-ES",
+    "publisher_group": "RTVE",
+    "focus": []
+  },
+  {
+    "name": "France 24",
+    "url": "https://www.france24.com/fr/rss",
+    "country": "FR",
+    "coverage": [
+      "FR",
+      "GLOBAL"
+    ],
+    "language": "fr-FR",
+    "publisher_group": "France24",
+    "focus": []
+  }
+]

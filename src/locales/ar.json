@@ -1,0 +1,19 @@
+{
+  "brandTagline": "معلومات بلا ضجيج",
+  "dailyEdition": "العدد اليومي",
+  "leadLabel": "الخبر الرئيسي",
+  "readArticle": "اقرأ الخبر",
+  "highlightSingular": "خبر بارز",
+  "highlightPlural": "أخبار بارزة",
+  "storySingular": "خبر",
+  "storyPlural": "أخبار",
+  "sourceSingular": "مصدر",
+  "sourcePlural": "مصادر",
+  "candidateSingular": "خبر مرشح",
+  "candidatePlural": "أخبار مرشحة",
+  "localAiCuration": "تحرير بالذكاء الاصطناعي المحلي",
+  "archiveTitle": "أرشيف الأعداد",
+  "latest": "أحدث عدد",
+  "fallbackTitle": "ما يستحق اهتمامك اليوم",
+  "fallbackIntro": "مجموعة مختارة من الأخبار التي تستحق اهتمامك اليوم."
+}

@@ -1,0 +1,18 @@
+{
+  "language": "en-US",
+  "region": "GLOBAL",
+  "coverage": [
+    "GLOBAL"
+  ],
+  "sourceLanguages": [],
+  "timeZone": "UTC",
+  "editorialContext": "Global",
+  "maxItemsPerFeed": 20,
+  "maxCandidates": 160,
+  "llmMinScore": 4.0,
+  "bundledTaxonomy": true,
+  "plugins": [
+    "00-esports-routing.plugin.mjs",
+    "editorial-ranking.plugin.mjs"
+  ]
+}

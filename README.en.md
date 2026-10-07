@@ -20,6 +20,15 @@ AI runs locally through **Ollama**. No external AI API is required.
 
 The default **Vanilla/BR** preset remains ready to use: `pt-BR`, Brazil context and Brazilian sources. The engine itself is universal: locale, region, timezone, categories, feeds, editorial profile, visual identity and exporters are configurable without changing JavaScript.
 
+
+## Regional engine and automation (v5)
+
+Region, source languages and output language are independent. Version 5 adds bounded feed concurrency, persistent caches, metrics, resumable runs, regional source discovery, multilingual UI and SMTP/Telegram/Discord delivery.
+
+Install with `npm ci`, start Ollama, then run `npm run doctor` and `npm run daily`. See [docs/ENGINE.md](docs/ENGINE.md) for publication profiles, source research, scheduling and recovery. The operational guide is currently in Portuguese.
+
+Commands: `npm run sources:discover`, `npm run config:show`, `npm run benchmark`, `npm run schedule -- --time 07:00`, `npm run deliver`. Commands routed through `src/cli/run.mjs` support `--help`.
+
 ---
 
 ## Installation and diagnostics

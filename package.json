@@ -1,6 +1,6 @@
 {
   "name": "highlords-daily",
-  "version": "4.0.0",
+  "version": "5.0.0",
   "private": true,
   "type": "module",
   "description": "Local-first universal daily newsletter engine powered by RSS/Atom and Ollama, with configurable locale, editorial profiles, memory and multi-format exports.",
@@ -25,20 +25,28 @@
     "url": "https://github.com/runawayez/highlords-daily/issues"
   },
   "scripts": {
-    "daily": "node src/daily.mjs",
+    "daily": "node src/cli/run.mjs daily",
     "setup": "node src/cli/setup.mjs",
     "feeds:check": "node src/cli/feeds-check.mjs",
     "feeds:discover": "node src/cli/feeds-discover.mjs",
-    "pdf:rerender": "node src/cli/pdf-rerender.mjs",
+    "pdf:rerender": "node src/cli/run.mjs pdf",
     "reset:local": "node src/cli/reset-local.mjs",
-    "schedule": "node src/cli/schedule.mjs",
-    "schedule:remove": "node src/cli/schedule.mjs --remove",
+    "schedule": "node src/cli/run.mjs schedule",
+    "schedule:remove": "node src/cli/run.mjs schedule --remove",
     "desktop": "npm --prefix desktop start",
-    "desktop:install": "npm --prefix desktop install",
+    "desktop:install": "npm --prefix desktop ci",
     "desktop:build": "npm --prefix desktop run dist",
     "check": "node scripts/check.mjs",
     "test": "node --test",
-    "doctor": "node src/cli/doctor.mjs"
+    "doctor": "node src/cli/run.mjs doctor",
+    "sources:discover": "node src/cli/run.mjs sources",
+    "locale:generate": "node src/cli/run.mjs locale",
+    "deliver": "node src/cli/run.mjs deliver",
+    "config:show": "node src/cli/run.mjs config",
+    "cache:prune": "node src/cli/run.mjs cache",
+    "benchmark": "node scripts/benchmark.mjs",
+    "format": "prettier --write \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\"",
+    "format:check": "prettier --check \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\""
   },
   "engines": {
     "node": ">=22.5.0"
@@ -47,5 +55,11 @@
     "puppeteer-core": "^24.31.0",
     "rss-parser": "^3.13.0",
     "yaml": "^2.6.1"
+  },
+  "optionalDependencies": {
+    "nodemailer": "^10.0.16"
+  },
+  "devDependencies": {
+    "prettier": "^3.9.9"
   }
 }

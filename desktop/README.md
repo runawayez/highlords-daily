@@ -4,7 +4,7 @@ Optional Electron shell for people who prefer a GUI over editing `.env` manually
 
 ```bash
 cd desktop
-npm install
+npm ci
 npm start
 ```
 

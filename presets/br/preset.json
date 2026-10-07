@@ -1,0 +1,19 @@
+{
+  "language": "pt-BR",
+  "region": "BR",
+  "coverage": [
+    "BR"
+  ],
+  "sourceLanguages": [],
+  "timeZone": "America/Sao_Paulo",
+  "editorialContext": "Brasil",
+  "maxItemsPerFeed": 20,
+  "maxCandidates": 160,
+  "llmMinScore": 4.0,
+  "bundledTaxonomy": true,
+  "plugins": [
+    "00-esports-routing.plugin.mjs",
+    "editorial-ranking.plugin.mjs"
+  ],
+  "routing": "routing.mjs"
+}

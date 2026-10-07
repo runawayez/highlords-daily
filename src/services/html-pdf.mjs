@@ -1,11 +1,11 @@
-import { findBrowser } from './browser.mjs';
-import fsp from 'node:fs/promises';
-import path from 'node:path';
-import { pathToFileURL } from 'node:url';
-import puppeteer from 'puppeteer-core';
+import { findBrowser } from "./browser.mjs";
+import fsp from "node:fs/promises";
+import path from "node:path";
+import { pathToFileURL } from "node:url";
+import puppeteer from "puppeteer-core";
 
 const PDF_VIEWPORT_WIDTH = 1120;
-const PDF_VIEWPORT_HEIGHT = Math.round(PDF_VIEWPORT_WIDTH * 297 / 210);
+const PDF_VIEWPORT_HEIGHT = Math.round((PDF_VIEWPORT_WIDTH * 297) / 210);
 const A4_WIDTH_CSS_PX = (210 / 25.4) * 96;
 const A4_HEIGHT_CSS_PX = (297 / 25.4) * 96;
 const BASE_PDF_SCALE = A4_WIDTH_CSS_PX / PDF_VIEWPORT_WIDTH;
@@ -16,15 +16,17 @@ async function waitForImages(page, timeoutMs = 15000) {
   await Promise.race([
     page.evaluate(async () => {
       const images = [...document.images];
-      await Promise.all(images.map(image => {
-        if (image.complete) return Promise.resolve();
-        return new Promise(resolve => {
-          image.addEventListener('load', resolve, { once: true });
-          image.addEventListener('error', resolve, { once: true });
-        });
-      }));
+      await Promise.all(
+        images.map((image) => {
+          if (image.complete) return Promise.resolve();
+          return new Promise((resolve) => {
+            image.addEventListener("load", resolve, { once: true });
+            image.addEventListener("error", resolve, { once: true });
+          });
+        }),
+      );
     }),
-    new Promise(resolve => setTimeout(resolve, timeoutMs))
+    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
   ]);
 }
 
@@ -42,36 +44,47 @@ function expectedStoryImageCount(html) {
 
 async function assertStoryImagesLoaded(page, expected) {
   const state = await page.evaluate(() => {
-    const images = [...document.querySelectorAll('.story-image img')];
+    const images = [...document.querySelectorAll(".story-image img")];
     return {
       total: images.length,
       failed: images
-        .filter(image => !image.complete || image.naturalWidth < 1 || image.naturalHeight < 1)
-        .map(image => image.currentSrc || image.src || '(sem src)')
+        .filter(
+          (image) =>
+            !image.complete ||
+            image.naturalWidth < 1 ||
+            image.naturalHeight < 1,
+        )
+        .map((image) => image.currentSrc || image.src || "(sem src)"),
     };
   });
 
   if (state.total !== expected || state.failed.length) {
-    const detail = state.failed.slice(0, 3).join(', ');
+    const detail = state.failed.slice(0, 3).join(", ");
     throw new Error(
-      `Falha ao carregar imagens no PDF: ${state.total}/${expected} imagens editoriais presentes${detail ? `; falhas: ${detail}` : ''}.`
+      `Falha ao carregar imagens no PDF: ${state.total}/${expected} imagens editoriais presentes${detail ? `; falhas: ${detail}` : ""}.`,
     );
   }
 }
 
 async function loadNewsletterPage(page, html, baseDir) {
   if (!baseDir) {
-    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.setContent(html, { waitUntil: "networkidle0", timeout: 30000 });
     return async () => {};
   }
 
   const absoluteDir = path.resolve(baseDir);
   await fsp.mkdir(absoluteDir, { recursive: true });
-  const tempPath = path.join(absoluteDir, `.highlords-pdf-${process.pid}-${Date.now()}.html`);
-  await fsp.writeFile(tempPath, html, 'utf8');
+  const tempPath = path.join(
+    absoluteDir,
+    `.highlords-pdf-${process.pid}-${Date.now()}.html`,
+  );
+  await fsp.writeFile(tempPath, html, "utf8");
 
   try {
-    await page.goto(pathToFileURL(tempPath).href, { waitUntil: 'networkidle0', timeout: 30000 });
+    await page.goto(pathToFileURL(tempPath).href, {
+      waitUntil: "networkidle0",
+      timeout: 30000,
+    });
   } catch (error) {
     await fsp.unlink(tempPath).catch(() => {});
     throw error;
@@ -119,36 +132,39 @@ async function preparePdfLayout(page) {
       .newsletter-section:last-of-type {
         padding-bottom: 18px !important;
       }
-    `
+    `,
   });
 }
 
 async function layoutMetrics(page) {
   return page.evaluate(() => {
-    const shell = document.querySelector('.shell');
+    const shell = document.querySelector(".shell");
     const shellRect = shell?.getBoundingClientRect();
     return {
-      contentHeight: Math.ceil(Math.max(
-        shellRect?.bottom || 0,
-        document.body?.scrollHeight || 0,
-        document.documentElement?.scrollHeight || 0
-      ))
+      contentHeight: Math.ceil(
+        Math.max(
+          shellRect?.bottom || 0,
+          document.body?.scrollHeight || 0,
+          document.documentElement?.scrollHeight || 0,
+        ),
+      ),
     };
   });
 }
 
 function adaptivePdfScale({ contentHeight }) {
-  if (!Number.isFinite(contentHeight) || contentHeight <= 0) return BASE_PDF_SCALE;
+  if (!Number.isFinite(contentHeight) || contentHeight <= 0)
+    return BASE_PDF_SCALE;
 
   const printedHeight = contentHeight * BASE_PDF_SCALE;
   const pages = Math.max(1, Math.ceil(printedHeight / A4_HEIGHT_CSS_PX));
   if (pages <= 1) return BASE_PDF_SCALE;
 
-  const remainder = printedHeight - ((pages - 1) * A4_HEIGHT_CSS_PX);
+  const remainder = printedHeight - (pages - 1) * A4_HEIGHT_CSS_PX;
   const remainderRatio = remainder / A4_HEIGHT_CSS_PX;
   if (remainderRatio > TINY_LAST_PAGE_RATIO) return BASE_PDF_SCALE;
 
-  const targetScale = (((pages - 1) * A4_HEIGHT_CSS_PX) - 6) / contentHeight;
+  const targetScale = ((pages - 1) * A4_HEIGHT_CSS_PX - 6) / contentHeight;
   const minimumScale = BASE_PDF_SCALE * (1 - MAX_AUTO_SHRINK);
   if (targetScale < minimumScale) return BASE_PDF_SCALE;
   return Math.min(BASE_PDF_SCALE, targetScale * 0.998);
@@ -160,12 +176,12 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
     executablePath,
     headless: true,
     args: [
-      '--no-sandbox',
-      '--disable-setuid-sandbox',
-      '--disable-dev-shm-usage',
-      '--font-render-hinting=none',
-      '--allow-file-access-from-files'
-    ]
+      "--no-sandbox",
+      "--disable-setuid-sandbox",
+      "--disable-dev-shm-usage",
+      "--font-render-hinting=none",
+      "--allow-file-access-from-files",
+    ],
   });
 
   let cleanup = async () => {};
@@ -174,10 +190,10 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
     await page.setViewport({
       width: PDF_VIEWPORT_WIDTH,
       height: PDF_VIEWPORT_HEIGHT,
-      deviceScaleFactor: 1
+      deviceScaleFactor: 1,
     });
 
-    await page.emulateMediaType('screen');
+    await page.emulateMediaType("screen");
     cleanup = await loadNewsletterPage(page, html, baseDir);
     await Promise.all([waitForImages(page), waitForFonts(page)]);
     await assertStoryImagesLoaded(page, expectedStoryImageCount(html));
@@ -187,12 +203,12 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
     const scale = adaptivePdfScale(metrics);
 
     return await page.pdf({
-      format: 'A4',
+      format: "A4",
       printBackground: true,
       preferCSSPageSize: false,
       displayHeaderFooter: false,
       scale,
-      margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
+      margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },
     });
   } finally {
     await cleanup();

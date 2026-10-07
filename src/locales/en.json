@@ -1,0 +1,19 @@
+{
+  "brandTagline": "INFORMATION WITHOUT NOISE",
+  "dailyEdition": "Daily edition",
+  "leadLabel": "EDITION HEADLINE",
+  "readArticle": "Open article",
+  "highlightSingular": "highlight",
+  "highlightPlural": "highlights",
+  "storySingular": "story",
+  "storyPlural": "stories",
+  "sourceSingular": "source",
+  "sourcePlural": "sources",
+  "candidateSingular": "approved candidate",
+  "candidatePlural": "approved candidates",
+  "localAiCuration": "Local AI curation",
+  "archiveTitle": "Edition archive",
+  "latest": "Latest edition",
+  "fallbackTitle": "What deserves your attention today",
+  "fallbackIntro": "A concise selection of the stories most worth your attention today, without the noise."
+}

@@ -1,0 +1,16 @@
+# Paths are relative to this profile file. Output language is independent of region.
+preset: global
+language: pt-BR
+region: JP
+coverage: [JP, GLOBAL]
+sourceLanguages: [ja, en]
+timeZone: Asia/Tokyo
+editorialContext: Japan and its impact on residents
+publicationName: Highlords Daily Japan
+publicationSlug: highlords-japan
+feedsFile: ../data/profiles/japan/feeds.yml
+dataDir: ../data/profiles/japan
+outputDir: ../output/japan
+feedConcurrency: 4
+maxCandidates: 96
+autoOpen: false

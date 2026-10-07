@@ -20,6 +20,15 @@ A IA roda localmente pelo **Ollama**. Nenhuma API externa de IA é necessária.
 
 O preset padrão **Vanilla/BR** continua pronto para uso: `pt-BR`, contexto Brasil e fontes brasileiras. O engine, porém, é universal: idioma, país/contexto, timezone, categorias, feeds, perfil editorial, identidade visual e exportadores são configuráveis sem alterar o JavaScript.
 
+
+## Motor regional e automação (v5)
+
+Região, idiomas das fontes e idioma da edição são independentes. A versão 5 inclui coleta concorrente, caches persistentes, métricas, checkpoints, catálogo regional, UI multilíngue e entrega SMTP/Telegram/Discord.
+
+Comece com `npm ci`, inicie Ollama e execute `npm run doctor` e `npm run daily`. Consulte [docs/ENGINE.md](docs/ENGINE.md) para instalação, perfis por publicação, pesquisa de fontes, agendamento e recuperação.
+
+Comandos: `npm run sources:discover`, `npm run config:show`, `npm run benchmark`, `npm run schedule -- --time 07:00`, `npm run deliver`. Use `--help` nos comandos via `src/cli/run.mjs` para opções.
+
 ---
 
 ## Instalação e verificação

@@ -1,0 +1,19 @@
+{
+  "brandTagline": "L’INFORMATION SANS BRUIT",
+  "dailyEdition": "Édition quotidienne",
+  "leadLabel": "À LA UNE",
+  "readArticle": "Lire l’article",
+  "highlightSingular": "temps fort",
+  "highlightPlural": "temps forts",
+  "storySingular": "article",
+  "storyPlural": "articles",
+  "sourceSingular": "source",
+  "sourcePlural": "sources",
+  "candidateSingular": "article retenu",
+  "candidatePlural": "articles retenus",
+  "localAiCuration": "Sélection par IA locale",
+  "archiveTitle": "Archives des éditions",
+  "latest": "Dernière édition",
+  "fallbackTitle": "Ce qui mérite votre attention aujourd’hui",
+  "fallbackIntro": "Une sélection concise des informations qui méritent votre attention."
+}

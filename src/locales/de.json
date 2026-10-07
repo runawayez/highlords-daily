@@ -1,0 +1,19 @@
+{
+  "brandTagline": "INFORMATION OHNE RAUSCHEN",
+  "dailyEdition": "Tagesausgabe",
+  "leadLabel": "SCHLAGZEILE DES TAGES",
+  "readArticle": "Artikel öffnen",
+  "highlightSingular": "Highlight",
+  "highlightPlural": "Highlights",
+  "storySingular": "Artikel",
+  "storyPlural": "Artikel",
+  "sourceSingular": "Quelle",
+  "sourcePlural": "Quellen",
+  "candidateSingular": "ausgewählter Kandidat",
+  "candidatePlural": "ausgewählte Kandidaten",
+  "localAiCuration": "Auswahl durch lokale KI",
+  "archiveTitle": "Ausgabenarchiv",
+  "latest": "Neueste Ausgabe",
+  "fallbackTitle": "Was heute Ihre Aufmerksamkeit verdient",
+  "fallbackIntro": "Eine kurze Auswahl der wichtigsten Nachrichten des Tages."
+}
