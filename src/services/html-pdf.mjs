@@ -1,11 +1,13 @@
 import fs from 'node:fs';
+import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
 const PDF_VIEWPORT_WIDTH = 1120;
-const PDF_VIEWPORT_HEIGHT = 1600;
-const PDF_SCALE = 0.64;
+const PDF_VIEWPORT_HEIGHT = Math.round(PDF_VIEWPORT_WIDTH * 297 / 210);
+const A4_WIDTH_CSS_PX = (210 / 25.4) * 96;
+const PDF_SCALE = A4_WIDTH_CSS_PX / PDF_VIEWPORT_WIDTH;
 
 function browserCandidates() {
   const candidates = [
@@ -47,7 +49,7 @@ function findBrowser() {
   return found;
 }
 
-async function waitForImages(page, timeoutMs = 12000) {
+async function waitForImages(page, timeoutMs = 15000) {
   await Promise.race([
     page.evaluate(async () => {
       const images = [...document.images];
@@ -71,11 +73,61 @@ async function waitForFonts(page) {
   } catch {}
 }
 
-function withBase(html, baseDir) {
-  if (!baseDir) return html;
-  const href = pathToFileURL(`${path.resolve(baseDir)}${path.sep}`).href;
-  const base = `<base href="${href}">`;
-  return String(html).includes('<head>') ? String(html).replace('<head>', `<head>\n${base}`) : `${base}${html}`;
+function expectedStoryImageCount(html) {
+  return (String(html).match(/class=["']story-image["']/g) || []).length;
+}
+
+async function assertStoryImagesLoaded(page, expected) {
+  const state = await page.evaluate(() => {
+    const images = [...document.querySelectorAll('.story-image img')];
+    return {
+      total: images.length,
+      failed: images
+        .filter(image => !image.complete || image.naturalWidth < 1 || image.naturalHeight < 1)
+        .map(image => image.currentSrc || image.src || '(sem src)')
+    };
+  });
+
+  if (state.total !== expected || state.failed.length) {
+    const detail = state.failed.slice(0, 3).join(', ');
+    throw new Error(
+      `Falha ao carregar imagens no PDF: ${state.total}/${expected} imagens editoriais presentes${detail ? `; falhas: ${detail}` : ''}.`
+    );
+  }
+}
+
+async function loadNewsletterPage(page, html, baseDir) {
+  if (!baseDir) {
+    await page.setContent(html, { waitUntil: 'networkidle0', timeout: 30000 });
+    return async () => {};
+  }
+
+  const absoluteDir = path.resolve(baseDir);
+  await fsp.mkdir(absoluteDir, { recursive: true });
+  const tempPath = path.join(absoluteDir, `.highlords-pdf-${process.pid}-${Date.now()}.html`);
+  await fsp.writeFile(tempPath, html, 'utf8');
+
+  try {
+    await page.goto(pathToFileURL(tempPath).href, { waitUntil: 'networkidle0', timeout: 30000 });
+  } catch (error) {
+    await fsp.unlink(tempPath).catch(() => {});
+    throw error;
+  }
+
+  return async () => {
+    await fsp.unlink(tempPath).catch(() => {});
+  };
+}
+
+async function applyPdfOverrides(page) {
+  await page.addStyleTag({
+    content: `
+      @page { size: A4; margin: 0; }
+      html, body { margin: 0 !important; padding: 0 !important; }
+      .lead-wrap, .newsletter-section { break-inside: avoid-page !important; page-break-inside: avoid !important; }
+      .section-title { break-after: avoid-page !important; page-break-after: avoid !important; }
+    `
+  });
 }
 
 export async function renderHtmlPdf(html, { baseDir } = {}) {
@@ -83,34 +135,43 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
   const browser = await puppeteer.launch({
     executablePath,
     headless: true,
-    args: ['--no-sandbox', '--disable-setuid-sandbox', '--disable-dev-shm-usage', '--font-render-hinting=none', '--allow-file-access-from-files']
+    args: [
+      '--no-sandbox',
+      '--disable-setuid-sandbox',
+      '--disable-dev-shm-usage',
+      '--font-render-hinting=none',
+      '--allow-file-access-from-files'
+    ]
   });
 
+  let cleanup = async () => {};
   try {
     const page = await browser.newPage();
-
-    // The newsletter is designed around a ~1060 px desktop canvas. Rendering
-    // the PDF as print media made Chromium apply the narrow/mobile rules of the
-    // template on an A4 page, collapsing grids and changing the composition.
-    // Keep the screen layout, then scale that stable desktop canvas into A4.
     await page.setViewport({
       width: PDF_VIEWPORT_WIDTH,
       height: PDF_VIEWPORT_HEIGHT,
       deviceScaleFactor: 1
     });
+
+    // The HTML edition is the source of truth. Keep screen media and load a
+    // real temporary file inside the edition directory so relative assets/
+    // resolve exactly as they do when index.html is opened in the browser.
     await page.emulateMediaType('screen');
-    await page.setContent(withBase(html, baseDir), { waitUntil: 'domcontentloaded', timeout: 30000 });
+    cleanup = await loadNewsletterPage(page, html, baseDir);
     await Promise.all([waitForImages(page), waitForFonts(page)]);
+    await assertStoryImagesLoaded(page, expectedStoryImageCount(html));
+    await applyPdfOverrides(page);
 
     return await page.pdf({
       format: 'A4',
       printBackground: true,
-      preferCSSPageSize: true,
+      preferCSSPageSize: false,
       displayHeaderFooter: false,
       scale: PDF_SCALE,
       margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
     });
   } finally {
+    await cleanup();
     await browser.close();
   }
 }
