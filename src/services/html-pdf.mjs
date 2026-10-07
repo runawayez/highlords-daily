@@ -7,7 +7,10 @@ import puppeteer from 'puppeteer-core';
 const PDF_VIEWPORT_WIDTH = 1120;
 const PDF_VIEWPORT_HEIGHT = Math.round(PDF_VIEWPORT_WIDTH * 297 / 210);
 const A4_WIDTH_CSS_PX = (210 / 25.4) * 96;
-const PDF_SCALE = A4_WIDTH_CSS_PX / PDF_VIEWPORT_WIDTH;
+const A4_HEIGHT_CSS_PX = (297 / 25.4) * 96;
+const BASE_PDF_SCALE = A4_WIDTH_CSS_PX / PDF_VIEWPORT_WIDTH;
+const MAX_AUTO_SHRINK = 0.06;
+const TINY_LAST_PAGE_RATIO = 0.18;
 
 function browserCandidates() {
   const candidates = [
@@ -123,11 +126,65 @@ async function applyPdfOverrides(page) {
   await page.addStyleTag({
     content: `
       @page { size: A4; margin: 0; }
-      html, body { margin: 0 !important; padding: 0 !important; }
-      .lead-wrap, .newsletter-section { break-inside: avoid-page !important; page-break-inside: avoid !important; }
-      .section-title { break-after: avoid-page !important; page-break-after: avoid !important; }
+      html, body {
+        margin: 0 !important;
+        padding: 0 !important;
+        background: #fff !important;
+      }
+      .shell {
+        margin: 0 auto !important;
+        box-shadow: none !important;
+      }
+      .lead-wrap, .newsletter-section {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+      }
+      .section-title {
+        break-after: avoid-page !important;
+        page-break-after: avoid !important;
+      }
+      .footer {
+        break-inside: avoid-page !important;
+        page-break-inside: avoid !important;
+        margin-top: 0 !important;
+      }
     `
   });
+}
+
+async function layoutMetrics(page) {
+  return page.evaluate(() => {
+    const shell = document.querySelector('.shell');
+    const footer = document.querySelector('.footer');
+    const shellRect = shell?.getBoundingClientRect();
+    const footerRect = footer?.getBoundingClientRect();
+    return {
+      contentHeight: Math.ceil(Math.max(
+        shellRect?.bottom || 0,
+        document.body?.scrollHeight || 0,
+        document.documentElement?.scrollHeight || 0
+      )),
+      footerHeight: Math.ceil(footerRect?.height || 0)
+    };
+  });
+}
+
+function adaptivePdfScale({ contentHeight }) {
+  if (!Number.isFinite(contentHeight) || contentHeight <= 0) return BASE_PDF_SCALE;
+
+  const printedHeight = contentHeight * BASE_PDF_SCALE;
+  const pages = Math.max(1, Math.ceil(printedHeight / A4_HEIGHT_CSS_PX));
+  if (pages <= 1) return BASE_PDF_SCALE;
+
+  const remainder = printedHeight - ((pages - 1) * A4_HEIGHT_CSS_PX);
+  const remainderRatio = remainder / A4_HEIGHT_CSS_PX;
+  if (remainderRatio > TINY_LAST_PAGE_RATIO) return BASE_PDF_SCALE;
+
+  const targetScale = (((pages - 1) * A4_HEIGHT_CSS_PX) - 4) / contentHeight;
+  const minimumScale = BASE_PDF_SCALE * (1 - MAX_AUTO_SHRINK);
+  if (targetScale < minimumScale) return BASE_PDF_SCALE;
+
+  return Math.min(BASE_PDF_SCALE, targetScale * 0.998);
 }
 
 export async function renderHtmlPdf(html, { baseDir } = {}) {
@@ -162,12 +219,18 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
     await assertStoryImagesLoaded(page, expectedStoryImageCount(html));
     await applyPdfOverrides(page);
 
+    // Chromium can otherwise create a nearly empty trailing page when only the
+    // footer spills a few pixels past the previous A4 page. Shrink by at most
+    // 6% only when that last page is tiny; normal editions keep the base scale.
+    const metrics = await layoutMetrics(page);
+    const scale = adaptivePdfScale(metrics);
+
     return await page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: false,
       displayHeaderFooter: false,
-      scale: PDF_SCALE,
+      scale,
       margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
     });
   } finally {
