@@ -29,12 +29,13 @@
     "setup": "node src/cli/setup.mjs",
     "feeds:check": "node src/cli/feeds-check.mjs",
     "feeds:discover": "node src/cli/feeds-discover.mjs",
+    "pdf:rerender": "node src/cli/pdf-rerender.mjs",
     "schedule": "node src/cli/schedule.mjs",
     "schedule:remove": "node src/cli/schedule.mjs --remove",
     "desktop": "npm --prefix desktop start",
     "desktop:install": "npm --prefix desktop install",
     "desktop:build": "npm --prefix desktop run dist",
-    "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/plugins.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs && node --check src/services/memory.mjs && node --check src/services/image-quality.mjs && node --check src/services/image-cache.mjs && node --check src/services/archive.mjs && node --check src/exporters/markdown.mjs && node --check src/exporters/email.mjs && node --check src/exporters/social.mjs && node --check src/cli/setup.mjs && node --check src/cli/feeds-check.mjs && node --check src/cli/feeds-discover.mjs && node --check src/cli/schedule.mjs"
+    "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/plugins.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs && node --check src/services/memory.mjs && node --check src/services/image-quality.mjs && node --check src/services/image-cache.mjs && node --check src/services/archive.mjs && node --check src/exporters/markdown.mjs && node --check src/exporters/email.mjs && node --check src/exporters/social.mjs && node --check src/cli/setup.mjs && node --check src/cli/feeds-check.mjs && node --check src/cli/feeds-discover.mjs && node --check src/cli/pdf-rerender.mjs && node --check src/cli/schedule.mjs"
   },
   "engines": {
     "node": ">=22.5.0"
