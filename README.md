@@ -65,7 +65,7 @@ A interface desktop continua experimental; `npm run desktop:install` instala sua
 Pré-requisitos:
 
 - Git
-- Node.js 22.5+
+- Node.js 22.12+
 - Ollama
 - Google Chrome ou Microsoft Edge
 
@@ -84,7 +84,7 @@ O launcher verifica o ambiente, instala dependências quando necessário, inicia
 
 ### macOS / Linux
 
-Instale Git, Node.js 22.5+, Ollama, `curl` e Chrome/Chromium/Edge.
+Instale Git, Node.js 22.12+, Ollama, `curl` e Chrome/Chromium/Edge.
 
 ```bash
 git clone https://github.com/runawayez/highlords-daily.git
@@ -440,7 +440,7 @@ memória + arquivo navegável + plugins
 
 Veja `.env.example`. Os valores Vanilla funcionam sem criar `.env`.
 
-O projeto requer Node.js 22.5+ e utiliza `package-lock.json` para instalações reproduzíveis. Os launchers instalam dependências automaticamente quando necessário.
+O projeto requer Node.js 22.12+ e utiliza `package-lock.json` para instalações reproduzíveis. Os launchers instalam dependências automaticamente quando necessário.
 
 ## Privacidade
 

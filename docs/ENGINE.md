@@ -4,7 +4,7 @@ O preset BR continua funcionando sem configuração. Região editorial, idiomas 
 
 ## Instalação
 
-Requisitos: Node.js 22.5 ou superior, Ollama e um modelo local. Chrome, Chromium ou Edge só são necessários para PDF. Para idiomas com outros alfabetos, instale fontes com os glifos correspondentes; Noto Sans e as famílias Noto CJK/Arabic são opções compatíveis.
+Requisitos: Node.js 22.12 ou superior, Ollama e um modelo local. Chrome, Chromium ou Edge só são necessários para PDF. Para idiomas com outros alfabetos, instale fontes com os glifos correspondentes; Noto Sans e as famílias Noto CJK/Arabic são opções compatíveis.
 
 ```bash
 git clone https://github.com/runawayez/highlords-daily.git

@@ -62,7 +62,7 @@ The desktop interface remains experimental; `npm run desktop:install` installs i
 
 ### Windows
 
-Requirements: Git, Node.js 22.5+, Ollama and Google Chrome or Microsoft Edge.
+Requirements: Git, Node.js 22.12+, Ollama and Google Chrome or Microsoft Edge.
 
 ```powershell
 git clone https://github.com/runawayez/highlords-daily.git
@@ -74,7 +74,7 @@ The launcher checks the environment, installs dependencies when needed, starts O
 
 ### macOS / Linux
 
-Install Git, Node.js 22.5+, Ollama, `curl`, and Chrome/Chromium/Edge.
+Install Git, Node.js 22.12+, Ollama, `curl`, and Chrome/Chromium/Edge.
 
 ```bash
 git clone https://github.com/runawayez/highlords-daily.git

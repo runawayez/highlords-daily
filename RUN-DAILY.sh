@@ -49,9 +49,9 @@ printf '========================================\n'
 
 step 'Verificando ambiente...'
 
-command -v node >/dev/null 2>&1 || fail 'Node.js nao encontrado. Instale Node.js 22.5 ou superior.'
-if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>22||(a===22&&b>=5)?0:1)' >/dev/null 2>&1; then
-  fail "Node.js $(node -p 'process.versions.node') encontrado, mas o projeto requer 22.5 ou superior."
+command -v node >/dev/null 2>&1 || fail 'Node.js nao encontrado. Instale Node.js 22.12 ou superior.'
+if ! node -e 'const [a,b]=process.versions.node.split(".").map(Number);process.exit(a>22||(a===22&&b>=12)?0:1)' >/dev/null 2>&1; then
+  fail "Node.js $(node -p 'process.versions.node') encontrado, mas o projeto requer 22.12 ou superior."
 fi
 ok 'Node.js' "$(node -p 'process.versions.node')"
 

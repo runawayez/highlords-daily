@@ -99,12 +99,12 @@ try {
 
   $node = Get-Command node -ErrorAction SilentlyContinue
   if (-not $node) {
-    throw 'Node.js nao encontrado. Instale Node.js 22.5 ou superior e execute novamente.'
+    throw 'Node.js nao encontrado. Instale Node.js 22.12 ou superior e execute novamente.'
   }
   $nodeVersionText = (& node -p "process.versions.node").Trim()
   try { $nodeVersion = [version]$nodeVersionText } catch { throw "Nao foi possivel identificar a versao do Node.js: $nodeVersionText" }
-  if ($nodeVersion -lt [version]'22.5.0') {
-    throw "Node.js $nodeVersionText encontrado, mas o Highlords Daily requer Node.js 22.5 ou superior."
+  if ($nodeVersion -lt [version]'22.12.0') {
+    throw "Node.js $nodeVersionText encontrado, mas o Highlords Daily requer Node.js 22.12 ou superior."
   }
   Write-Ok 'Node.js' $nodeVersionText
 

@@ -13,8 +13,8 @@ async function check(label, action) {
 
 await check("Node.js", () => {
   const [major, minor] = process.versions.node.split(".").map(Number);
-  if (major < 22 || (major === 22 && minor < 5))
-    throw new Error("Instale Node.js 22.5 ou superior.");
+  if (major < 22 || (major === 22 && minor < 12))
+    throw new Error("Instale Node.js 22.12 ou superior.");
   return process.versions.node;
 });
 let settings;
