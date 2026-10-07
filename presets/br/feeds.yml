@@ -3,97 +3,160 @@ preset: br
 
 # Vanilla Brazil-first. Use your own regional preset for another country/context.
 feeds:
+  # Tecnologia, desenvolvimento, mobile, hardware, software, games e futuro.
   - name: Tecnoblog
     url: https://tecnoblog.net/feed/
     focus: [ia, mobile-gadgets, hardware, software-internet, futuro]
+
   - name: Canaltech
     url: https://canaltech.com.br/rss/
     focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
+
   - name: TecMundo
     url: https://www.tecmundo.com.br/rss
     focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
+
   - name: Olhar Digital
     url: https://olhardigital.com.br/feed/
     focus: [ia, mobile-gadgets, hardware, software-internet, filmes-series, futuro]
+
+  - name: g1 · Tecnologia
+    url: http://g1.globo.com/dynamo/tecnologia/rss2.xml
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, futuro]
+
+  - name: MacMagazine
+    url: https://macmagazine.com.br/feed/
+    focus: [mobile-gadgets, hardware, software-internet, futuro]
+    strict_focus: true
+
   - name: iMasters
     url: https://imasters.com.br/feed
     focus: [ia, desenvolvimento, software-internet, futuro]
     strict_focus: true
+
   - name: Diolinux
     url: https://diolinux.com.br/feed
     focus: [desenvolvimento, software-internet, hardware]
     strict_focus: true
+
   - name: Adrenaline
     url: https://www.adrenaline.com.br/feed/
     focus: [hardware, mobile-gadgets, games]
     strict_focus: true
+
   - name: GameVicio
     url: https://www.gamevicio.com/rss/
     focus: [games]
     strict_focus: true
     images: page
+
+  # Futebol — futebol de associação/soccer.
   - name: ge
     url: https://ge.globo.com/rss/ge
     focus: [futebol, esportes]
     strict_focus: true
     images: page
+
   - name: Trivela
     url: https://trivela.com.br/feed/
     focus: [futebol]
     strict_focus: true
     images: page
+
   - name: Placar
     url: https://placar.com.br/feed/
     focus: [futebol]
     strict_focus: true
     images: page
+
   - name: UOL Esporte
     url: https://rss.uol.com.br/feed/esporte.xml
     focus: [futebol, esportes]
     strict_focus: true
     images: page
+
+  - name: Gazeta Esportiva · Futebol Internacional
+    url: https://www.gazetaesportiva.com/futebol/futebol-internacional/feed/
+    focus: [futebol]
+    strict_focus: true
+    images: page
+
+  - name: Gazeta Esportiva · Seleção Brasileira
+    url: https://www.gazetaesportiva.com/times/brasil/feed/
+    focus: [futebol]
+    strict_focus: true
+    images: page
+
+  # Outros esportes — F1, basquete, tênis, vôlei, lutas, esportes olímpicos etc.
   - name: Grande Prêmio
     url: https://www.grandepremio.com.br/feed/
     focus: [esportes]
     strict_focus: true
     images: page
+
   - name: Olimpíada Todo Dia
     url: https://www.olimpiadatododia.com.br/feed/
     focus: [esportes]
     strict_focus: true
     images: page
+
   - name: Agência Brasil Esportes
     url: https://agenciabrasil.ebc.com.br/rss/esportes/feed.xml
     focus: [esportes]
     strict_focus: true
     images: page
+
+  - name: Gazeta Esportiva · Tênis
+    url: https://www.gazetaesportiva.com/mais-esportes/tenis/feed/
+    focus: [esportes]
+    strict_focus: true
+    images: page
+
+  - name: Gazeta Esportiva · F1
+    url: https://www.gazetaesportiva.com/motor/formula-1/feed/
+    focus: [esportes]
+    strict_focus: true
+    images: page
+
+  # Economia — mercado, macroeconomia e negócios no contexto do leitor brasileiro.
   - name: InfoMoney
     url: https://www.infomoney.com.br/feed/
     focus: [economia]
     strict_focus: true
+
   - name: MoneyTimes
     url: https://www.moneytimes.com.br/feed/
     focus: [economia]
     strict_focus: true
+
   - name: Exame
     url: https://exame.com/feed/
     focus: [economia]
     strict_focus: true
+
   - name: Seu Dinheiro
     url: https://www.seudinheiro.com/feed/
     focus: [economia]
     strict_focus: true
+
   - name: Brazil Journal
     url: https://braziljournal.com/feed/
     focus: [economia]
     strict_focus: true
+
   - name: UOL Economia
     url: https://rss.uol.com.br/feed/economia.xml
     focus: [economia]
     strict_focus: true
     images: page
+
   - name: Agência Brasil Economia
     url: https://agenciabrasil.ebc.com.br/rss/economia/feed.xml
     focus: [economia]
     strict_focus: true
     images: page
+
+  - name: g1 · Economia
+    url: https://g1.globo.com/dynamo/economia/rss2.xml
+    focus: [economia]
+    strict_focus: true
