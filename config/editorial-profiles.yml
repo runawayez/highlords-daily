@@ -12,9 +12,9 @@ profiles:
 
   tech-heavy:
     name: Tech Heavy
-    description: Prioriza IA, desenvolvimento, hardware, software, mobile, games e tecnologias emergentes.
+    description: Prioriza IA, desenvolvimento, hardware, software, mobile, games, eSports e tecnologias emergentes.
     tone: técnico sem ser hermético
-    priority_categories: [ia, desenvolvimento, hardware, software-internet, mobile-gadgets, games, futuro]
+    priority_categories: [ia, desenvolvimento, hardware, software-internet, mobile-gadgets, games, esports, futuro]
     items_per_category: 2
     max_items_per_source: 3
     max_items_per_source_per_section: 1
@@ -30,9 +30,9 @@ profiles:
 
   gaming:
     name: Gaming
-    description: Prioriza games, hardware, plataformas, estúdios e tecnologia relacionada a jogos.
+    description: Prioriza games, eSports, hardware, plataformas, estúdios e tecnologia relacionada a jogos.
     tone: informativo e entusiasmado sem clickbait
-    priority_categories: [games, hardware, mobile-gadgets, software-internet]
+    priority_categories: [games, esports, hardware, mobile-gadgets, software-internet]
     items_per_category: 2
     max_items_per_source: 3
     max_items_per_source_per_section: 1

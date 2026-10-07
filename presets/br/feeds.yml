@@ -10,11 +10,11 @@ feeds:
 
   - name: Canaltech
     url: https://canaltech.com.br/rss/
-    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
+    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, futuro]
 
   - name: TecMundo
     url: https://www.tecmundo.com.br/rss
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, futuro]
 
   - name: Olhar Digital
     url: https://olhardigital.com.br/feed/
@@ -41,19 +41,19 @@ feeds:
 
   - name: Adrenaline
     url: https://www.adrenaline.com.br/feed/
-    focus: [hardware, mobile-gadgets, games]
+    focus: [hardware, mobile-gadgets, games, esports]
     strict_focus: true
 
   - name: GameVicio
     url: https://www.gamevicio.com/rss/
-    focus: [games]
+    focus: [games, esports]
     strict_focus: true
     images: page
 
   # Futebol — futebol de associação/soccer.
   - name: ge
     url: https://ge.globo.com/rss/ge
-    focus: [futebol, esportes]
+    focus: [futebol, esportes, games, esports]
     strict_focus: true
     images: page
 
@@ -115,6 +115,13 @@ feeds:
   - name: Gazeta Esportiva · F1
     url: https://www.gazetaesportiva.com/motor/formula-1/feed/
     focus: [esportes]
+    strict_focus: true
+    images: page
+
+  # eSports — cenário competitivo, campeonatos, equipes e jogadores profissionais.
+  - name: Mais Esports
+    url: https://maisesports.com.br/feed/
+    focus: [games, esports]
     strict_focus: true
     images: page
 
