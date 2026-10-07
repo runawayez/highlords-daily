@@ -34,7 +34,7 @@ async function chatJson(system, user, timeout = 120000) {
         { role: 'system', content: system },
         { role: 'user', content: user }
       ],
-      options: { temperature: 0.08 }
+      options: { temperature: 0.06 }
     }),
     signal: AbortSignal.timeout(timeout)
   });
@@ -105,8 +105,7 @@ function topicKey(value = '') {
 
 const categoryAliases = new Map();
 for (const category of categories) {
-  const aliases = [category.slug, category.name, ...(category.aliases || [])];
-  for (const alias of aliases) {
+  for (const alias of [category.slug, category.name, ...(category.aliases || [])]) {
     const normalized = key(alias);
     if (normalized) categoryAliases.set(normalized, category.slug);
   }
@@ -139,8 +138,7 @@ function normalizeScore(value) {
 function rowsFrom(value) {
   if (Array.isArray(value)) return value;
   if (!value || typeof value !== 'object') return [];
-  const direct = ['items', 'results', 'articles', 'noticias', 'news', 'data', 'analyses', 'analises'];
-  for (const name of direct) {
+  for (const name of ['items', 'results', 'articles', 'noticias', 'news', 'data', 'analyses', 'analises']) {
     if (Array.isArray(value[name])) return value[name];
     if (value[name] && typeof value[name] === 'object') {
       const nested = Object.values(value[name]).filter(item => item && typeof item === 'object');
@@ -165,62 +163,80 @@ function tagsField(row) {
   return [];
 }
 
+function forcedCategory(article) {
+  if (!article?.editorialGuardrail || !article?.strictFocus || !Array.isArray(article.focus) || article.focus.length !== 1) return null;
+  return validSlugs.has(article.focus[0]) ? article.focus[0] : null;
+}
+
 const exampleSlug = categories[0]?.slug || 'geral';
 const analysisSystem = `Você é o editor do ${publication.name}, uma newsletter diária local e configurável.
 Analise TODAS as matérias recebidas e devolva somente JSON válido.
 ${localeBrief}
 IMPORTANTE:
-- as categorias editoriais abaixo são a fonte de verdade desta newsletter;
+- os ids recebidos são LOCAIS deste lote e sempre formam uma sequência curta começando em 1; copie cada id exatamente como foi recebido;
+- devolva EXATAMENTE um item para cada id recebido, inclusive rejeitados;
+- as categorias abaixo são a fonte de verdade;
 - focus é uma pista editorial sobre a fonte;
-- quando strictFocus for true, a categoria escolhida DEVE obrigatoriamente estar dentro de focus; se nenhuma categoria de focus servir, use category null;
-- quando strictFocus for false, escolha livremente entre as categorias configuradas;
-- FUTEBOL significa exclusivamente futebol de associação/soccer. NFL, NCAA football, American football, quarterback, Super Bowl e similares pertencem a ESPORTES, nunca a FUTEBOL;
-- não classifique automaticamente a palavra inglesa "football" como futebol: determine pelo contexto se é soccer ou futebol americano;
-- use category null SOMENTE quando a matéria claramente não pertencer a nenhuma categoria configurada;
-- devolva EXATAMENTE um item para cada id recebido, inclusive os rejeitados;
-- category deve ser SOMENTE um destes slugs exatos: ${validSlugList}; ou null;
-- headline, summary e topicKey devem descrever EXCLUSIVAMENTE a matéria daquele mesmo id;
-- topicKey deve ser uma chave curta e estável do ASSUNTO central, sem floreio, útil para detectar duas matérias que falam do mesmo acontecimento. Exemplos: "nvidia-rtx-5070-ti-preco-eua", "openai-novo-modelo", "flamengo-transferencia-jogador";
-- duas matérias sobre o mesmo acontecimento devem receber topicKey igual ou muito parecido, mesmo que os títulos sejam diferentes;
-- não invente fatos e use somente o material fornecido.
+- quando strictFocus for true, category deve estar dentro de focus; se nenhuma servir, use null;
+- eSports significa cenário COMPETITIVO de videogames: CBLOL, VCT, IEM, Major de CS2, Worlds, equipes e jogadores profissionais. Notícias gerais de jogos pertencem a Games;
+- Futebol significa exclusivamente soccer. NFL, NCAA football, quarterback e Super Bowl pertencem a Esportes;
+- category deve ser SOMENTE um destes slugs: ${validSlugList}; ou null;
+- headline, summary e topicKey devem falar EXCLUSIVAMENTE da matéria daquele id;
+- duas matérias sobre o mesmo acontecimento devem receber topicKey igual ou muito parecido;
+- não invente fatos.
 
 CATEGORIAS CONFIGURADAS:
 ${taxonomy}
 
 EDITORIAL:
-- score de 0 a 10 mede valor para esta newsletter, combinando novidade, impacto, utilidade, relevância para o leitor e interesse editorial;
-- considere o perfil editorial acima ao atribuir score, mas não distorça a relevância factual;
-- uma matéria válida e comum pode ficar entre 4 e 7; reserve 8 a 10 para grandes destaques;
-- fora do escopo deve receber category null e score 0;
-- headline deve ser curta, natural e informativa no locale ${config.language};
-- summary deve ter 1 ou 2 frases curtas no locale ${config.language};
-- tags: 2 a 6 termos curtos e específicos no idioma da edição.
+- score 0–10 combina novidade, impacto, utilidade, relevância e interesse editorial;
+- notícia válida e comum pode ficar entre 4 e 7; reserve 8–10 para grandes destaques;
+- fora do escopo recebe category null e score 0;
+- headline curta e natural em ${config.language};
+- summary com 1 ou 2 frases curtas;
+- tags com 2 a 6 termos específicos.
 
-Retorne exatamente:
+Retorne SOMENTE:
 {"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"topicKey":"assunto-central","headline":"string","summary":"string","tags":["tag"]}]}`;
+
+function payloadForBatch(batch) {
+  return JSON.stringify(batch.map((article, index) => ({
+    id: index + 1,
+    source: article.source,
+    focus: article.focus,
+    strictFocus: Boolean(article.strictFocus),
+    editorialGuardrail: article.editorialGuardrail || null,
+    title: article.originalTitle,
+    excerpt: article.excerpt,
+    publishedAt: article.publishedAt
+  })));
+}
 
 function parseBatch(parsed, batch) {
   const rows = rowsFrom(parsed);
-  const byId = new Map(batch.map(article => [Number(article.id), article]));
+  const byLocalId = new Map(batch.map((article, index) => [index + 1, article]));
   const approved = [];
   const classified = [];
-  const seen = new Set();
+  const seenLocalIds = new Set();
+  const matchedArticleIds = new Set();
   let invalidId = 0;
   let invalidCategory = 0;
   let strictMismatch = 0;
   let belowScore = 0;
 
   for (const row of rows) {
-    const id = normalizeId(row?.id ?? row?.articleId ?? row?.article_id ?? row?.noticiaId ?? row?.noticia_id);
-    const article = byId.get(id);
+    const localId = normalizeId(row?.id ?? row?.articleId ?? row?.article_id ?? row?.noticiaId ?? row?.noticia_id);
+    const article = byLocalId.get(localId);
     if (!article) {
       invalidId += 1;
       continue;
     }
-    if (seen.has(id)) continue;
-    seen.add(id);
+    if (seenLocalIds.has(localId)) continue;
+    seenLocalIds.add(localId);
+    matchedArticleIds.add(article.id);
 
-    const category = normalizeCategory(row?.category ?? row?.categoria ?? row?.section ?? row?.secao ?? row?.slug);
+    const lockedCategory = forcedCategory(article);
+    const category = lockedCategory || normalizeCategory(row?.category ?? row?.categoria ?? row?.section ?? row?.secao ?? row?.slug);
     const score = normalizeScore(row?.score ?? row?.relevance ?? row?.relevancia ?? row?.rating ?? row?.nota);
     if (!category) {
       invalidCategory += 1;
@@ -253,51 +269,102 @@ function parseBatch(parsed, batch) {
   return {
     approved,
     classified,
+    matchedArticleIds: [...matchedArticleIds],
     stats: {
       rows: rows.length,
-      matched: seen.size,
-      missing: Math.max(0, batch.length - seen.size),
+      matched: matchedArticleIds.size,
+      missing: Math.max(0, batch.length - matchedArticleIds.size),
       invalidId,
       invalidCategory,
       strictMismatch,
-      belowScore
+      belowScore,
+      recovered: 0
+    }
+  };
+}
+
+async function analyzeBatchOnce(batch, extraInstruction = '') {
+  const system = extraInstruction ? `${analysisSystem}\n\n${extraInstruction}` : analysisSystem;
+  const parsed = await chatJson(system, payloadForBatch(batch), 150000);
+  return parseBatch(parsed, batch);
+}
+
+function betterResult(current, candidate) {
+  if (candidate.stats.matched !== current.stats.matched) return candidate.stats.matched > current.stats.matched ? candidate : current;
+  if (candidate.classified.length !== current.classified.length) return candidate.classified.length > current.classified.length ? candidate : current;
+  return candidate.stats.invalidId < current.stats.invalidId ? candidate : current;
+}
+
+function mergeBatchResults(base, extra, batch) {
+  const classified = new Map(base.classified.map(article => [article.id, article]));
+  const approved = new Map(base.approved.map(article => [article.id, article]));
+  for (const article of extra.classified) classified.set(article.id, article);
+  for (const article of extra.approved) approved.set(article.id, article);
+
+  const matched = new Set([...base.matchedArticleIds, ...extra.matchedArticleIds]);
+  return {
+    approved: [...approved.values()],
+    classified: [...classified.values()],
+    matchedArticleIds: [...matched],
+    stats: {
+      rows: base.stats.rows + extra.stats.rows,
+      matched: matched.size,
+      missing: Math.max(0, batch.length - matched.size),
+      invalidId: base.stats.invalidId + extra.stats.invalidId,
+      invalidCategory: base.stats.invalidCategory + extra.stats.invalidCategory,
+      strictMismatch: base.stats.strictMismatch + extra.stats.strictMismatch,
+      belowScore: [...classified.values()].filter(article => Number(article.score) < config.llmMinScore).length,
+      recovered: Number(base.stats.recovered || 0) + Number(extra.stats.matched || 0)
     }
   };
 }
 
 async function analyzeBatch(batch) {
-  const payload = JSON.stringify(batch.map(article => ({
-    id: article.id,
-    source: article.source,
-    focus: article.focus,
-    strictFocus: Boolean(article.strictFocus),
-    title: article.originalTitle,
-    excerpt: article.excerpt,
-    publishedAt: article.publishedAt
-  })));
-
-  let parsed = await chatJson(analysisSystem, payload, 150000);
-  let result = parseBatch(parsed, batch);
+  let result = await analyzeBatchOnce(batch);
   let retried = false;
+  let microRetried = false;
 
-  if (result.stats.matched < Math.max(1, Math.ceil(batch.length / 2))) {
+  if (result.stats.missing > 0 || result.stats.invalidId > 0) {
     retried = true;
-    parsed = await chatJson(
-      `${analysisSystem}\n\nATENÇÃO EXTRA: sua resposta anterior não cobriu todos os IDs. Não omita nenhum item. Repita cada id exatamente uma vez e nunca misture o conteúdo entre IDs.`,
-      payload,
-      150000
+    const retry = await analyzeBatchOnce(
+      batch,
+      `ATENÇÃO AO SCHEMA: este lote possui exatamente ${batch.length} matérias e os únicos ids válidos são ${batch.map((_, index) => index + 1).join(', ')}. Devolva cada um exatamente uma vez.`
     );
-    const retryResult = parseBatch(parsed, batch);
-    if (retryResult.stats.matched >= result.stats.matched) result = retryResult;
+    result = betterResult(result, retry);
   }
 
-  return { ...result, retried };
+  if (result.stats.missing > 0) {
+    const matched = new Set(result.matchedArticleIds);
+    const missingArticles = batch.filter(article => !matched.has(article.id));
+    for (let offset = 0; offset < missingArticles.length; offset += 3) {
+      microRetried = true;
+      const chunk = missingArticles.slice(offset, offset + 3);
+      try {
+        const recovered = await analyzeBatchOnce(
+          chunk,
+          `RECUPERAÇÃO: responda TODOS os ${chunk.length} itens. Os ids válidos são somente ${chunk.map((_, index) => index + 1).join(', ')}.`
+        );
+        result = mergeBatchResults(result, recovered, batch);
+      } catch {}
+    }
+  }
+
+  return { ...result, retried, microRetried };
+}
+
+function addUnique(target, article, ids) {
+  if (!article || ids.has(article.id)) return false;
+  target.push(article);
+  ids.add(article.id);
+  return true;
 }
 
 export async function analyzeArticles(articles, onProgress = () => {}) {
   const selected = articles.slice(0, config.maxCandidates);
   const analyzed = [];
   const classified = [];
+  const analyzedIds = new Set();
+  const classifiedIds = new Set();
   const totalBatches = Math.ceil(selected.length / config.aiBatchSize);
   let failedBatches = 0;
 
@@ -306,8 +373,8 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
     onProgress({ status: 'start', batch: batchNumber, totalBatches, total: selected.length });
     try {
       const result = await analyzeBatch(batch);
-      analyzed.push(...result.approved);
-      classified.push(...result.classified);
+      for (const article of result.approved) addUnique(analyzed, article, analyzedIds);
+      for (const article of result.classified) addUnique(classified, article, classifiedIds);
       onProgress({
         status: 'done',
         batch: batchNumber,
@@ -315,7 +382,7 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
         approved: result.approved.length,
         classified: result.classified.length,
         ...result.stats,
-        retried: result.retried
+        retried: result.retried || result.microRetried
       });
     } catch (error) {
       failedBatches += 1;
@@ -328,35 +395,38 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
       .filter(article => article.score > 0)
       .sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
       .slice(0, Math.min(30, classified.length));
-    if (rescue.length) {
-      onProgress({ status: 'rescue', count: rescue.length, threshold: config.llmMinScore });
-      analyzed.push(...rescue);
-    }
+    for (const article of rescue) addUnique(analyzed, article, analyzedIds);
+    if (rescue.length) onProgress({ status: 'rescue', count: rescue.length, threshold: config.llmMinScore });
   }
 
   const rescueFloor = Math.max(0, config.llmMinScore - 1);
   const targetPerCategory = config.itemsPerCategory + 1;
-  const selectedIds = new Set(analyzed.map(article => article.id));
 
   for (const category of categories) {
     let count = analyzed.filter(article => article.category === category.slug).length;
-    if (count >= targetPerCategory) continue;
+    if (count < targetPerCategory) {
+      const extras = classified
+        .filter(article => article.category === category.slug && !analyzedIds.has(article.id) && Number(article.score) >= rescueFloor)
+        .sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
 
-    const extras = classified
-      .filter(article => article.category === category.slug && !selectedIds.has(article.id) && Number(article.score) >= rescueFloor)
-      .sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-
-    let added = 0;
-    for (const article of extras) {
-      analyzed.push(article);
-      selectedIds.add(article.id);
-      count += 1;
-      added += 1;
-      if (count >= targetPerCategory) break;
+      let added = 0;
+      for (const article of extras) {
+        if (count >= targetPerCategory) break;
+        if (addUnique(analyzed, article, analyzedIds)) {
+          count += 1;
+          added += 1;
+        }
+      }
+      if (added) onProgress({ status: 'category-rescue', category: category.name, count: added, floor: rescueFloor, total: count });
     }
 
-    if (added) {
-      onProgress({ status: 'category-rescue', category: category.name, count: added, floor: rescueFloor, total: count });
+    if (count === 0) {
+      const bestCoverageCandidate = classified
+        .filter(article => article.category === category.slug && !analyzedIds.has(article.id) && Number(article.score) > 0)
+        .sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))[0];
+      if (bestCoverageCandidate && addUnique(analyzed, bestCoverageCandidate, analyzedIds)) {
+        onProgress({ status: 'category-rescue', category: category.name, count: 1, floor: 0, total: 1 });
+      }
     }
   }
 
@@ -372,11 +442,38 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
   });
 }
 
+function editorPool(articles, limit = 96) {
+  const selected = [];
+  const ids = new Set();
+  const perCategory = Math.max(2, config.itemsPerCategory + 1);
+
+  for (const category of categories) {
+    const candidates = articles
+      .filter(article => article.category === category.slug)
+      .sort((a, b) => Number(b.sectionScore ?? b.score ?? 0) - Number(a.sectionScore ?? a.score ?? 0)
+        || Number(b.frontPageScore ?? 0) - Number(a.frontPageScore ?? 0)
+        || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))
+      .slice(0, perCategory);
+    for (const article of candidates) addUnique(selected, article, ids);
+  }
+
+  const overall = [...articles].sort((a, b) => Number(b.frontPageScore ?? b.score ?? 0) - Number(a.frontPageScore ?? a.score ?? 0)
+    || Number(b.sectionScore ?? b.score ?? 0) - Number(a.sectionScore ?? a.score ?? 0)
+    || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+  for (const article of overall) {
+    if (selected.length >= limit) break;
+    addUnique(selected, article, ids);
+  }
+  return selected.slice(0, limit);
+}
+
 export async function curateNewsletter(articles, editionDate) {
-  const compact = articles.slice(0, 80).map(article => ({
+  const compact = editorPool(articles).map(article => ({
     id: article.id,
     category: article.category,
     score: article.score,
+    sectionScore: article.sectionScore,
+    frontPageScore: article.frontPageScore,
     source: article.source,
     publishedAt: article.publishedAt,
     topicKey: article.topicKey,
@@ -414,21 +511,18 @@ export async function curateNewsletter(articles, editionDate) {
 Monte uma newsletter curta, calma e realmente útil usando SOMENTE os IDs fornecidos.
 ${localeBrief}
 REGRAS:
-- escolha 1 manchete principal entre as matérias mais importantes;
+- escolha 1 manchete principal entre as matérias mais importantes, dando preferência ao maior frontPageScore quando disponível;
 - escolha no máximo ${config.itemsPerCategory} matérias por categoria;
 - sempre que existirem candidatas suficientes, preencha ${config.itemsPerCategory} matérias em cada categoria;
-- existem ${categories.length} seções configuradas e elas devem aparecer como chaves em sections;
-- uma seção só deve ficar incompleta quando realmente não houver candidatas suficientes para ela;
+- existem ${categories.length} seções configuradas e TODAS devem aparecer como chaves em sections;
+- uma seção só fica incompleta quando realmente não houver candidatas válidas;
 - não use a manchete novamente nas seções;
 - não repita a mesma história, acontecimento ou topicKey;
-- Futebol significa soccer/futebol de associação; NFL e futebol americano pertencem a Esportes;
+- Games é videogame em geral; eSports é competição profissional/organizada de videogames;
+- Futebol é soccer; NFL e futebol americano pertencem a Esportes;
 - prefira impacto, utilidade, novidade e relevância a clickbait;
-- considere o perfil ${profile.name}; quando duas matérias tiverem qualidade equivalente, favoreça as categorias prioritárias do perfil;
 - equilibre fontes quando houver alternativas equivalentes;
-- escreva title e intro no locale ${config.language}, naturais para ${config.editorialContext};
-- em sectionTitles, devolva um nome de seção natural no idioma da edição para CADA slug configurado, preservando o significado editorial;
-- em ui, traduza/localize TODOS os rótulos para ${config.language}; mantenha brandTagline curto e em caixa adequada ao idioma;
-- título editorial curto; introdução de no máximo 2 frases;
+- escreva title, intro, sectionTitles e ui em ${config.language}, naturais para ${config.editorialContext};
 - não invente informações.
 
 Categorias configuradas:

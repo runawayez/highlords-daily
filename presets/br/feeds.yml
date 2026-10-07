@@ -39,6 +39,12 @@ feeds:
     focus: [desenvolvimento, software-internet, hardware]
     strict_focus: true
 
+  # Comunidade brasileira de tecnologia/desenvolvimento com RSS oficial.
+  - name: TabNews
+    url: https://www.tabnews.com.br/recentes/rss
+    focus: [ia, desenvolvimento, software-internet, futuro]
+    images: page
+
   - name: Adrenaline
     url: https://www.adrenaline.com.br/feed/
     focus: [hardware, mobile-gadgets, games, esports]
@@ -47,6 +53,25 @@ feeds:
   - name: GameVicio
     url: https://www.gamevicio.com/rss/
     focus: [games, esports]
+    strict_focus: true
+    images: page
+
+  - name: Flow Games
+    url: https://flowgames.gg/feed/
+    focus: [games, esports]
+    strict_focus: true
+    images: page
+
+  # Filmes e séries — veículos brasileiros especializados em entretenimento.
+  - name: CinePOP
+    url: https://cinepop.com.br/feed/
+    focus: [filmes-series]
+    strict_focus: true
+    images: page
+
+  - name: Pipoca Moderna
+    url: https://pipocamoderna.com.br/feed/
+    focus: [filmes-series]
     strict_focus: true
     images: page
 
