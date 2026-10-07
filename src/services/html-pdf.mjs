@@ -13,21 +13,28 @@ const MAX_AUTO_SHRINK = 0.08;
 const TINY_LAST_PAGE_RATIO = 0.28;
 
 async function waitForImages(page, timeoutMs = 15000) {
-  await Promise.race([
-    page.evaluate(async () => {
-      const images = [...document.images];
-      await Promise.all(
-        images.map((image) => {
-          if (image.complete) return Promise.resolve();
-          return new Promise((resolve) => {
-            image.addEventListener("load", resolve, { once: true });
-            image.addEventListener("error", resolve, { once: true });
-          });
-        }),
-      );
-    }),
-    new Promise((resolve) => setTimeout(resolve, timeoutMs)),
-  ]);
+  let timer;
+  try {
+    await Promise.race([
+      page.evaluate(async () => {
+        const images = [...document.images];
+        await Promise.all(
+          images.map((image) => {
+            if (image.complete) return Promise.resolve();
+            return new Promise((resolve) => {
+              image.addEventListener("load", resolve, { once: true });
+              image.addEventListener("error", resolve, { once: true });
+            });
+          }),
+        );
+      }),
+      new Promise((resolve) => {
+        timer = setTimeout(resolve, timeoutMs);
+      }),
+    ]);
+  } finally {
+    clearTimeout(timer);
+  }
 }
 
 async function waitForFonts(page) {
@@ -113,11 +120,12 @@ async function preparePdfLayout(page) {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
       }
-      .newsletter-section,
-      .section-grid {
+      .newsletter-section {
         break-inside: auto !important;
         page-break-inside: auto !important;
       }
+      .section-start,
+      .section-grid,
       .story-card {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;

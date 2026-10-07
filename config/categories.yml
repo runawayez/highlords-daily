@@ -38,6 +38,11 @@ categories:
     name: Esportes
     description: Esportes que NÃO sejam futebol de associação, incluindo basquete, futebol americano/NFL, Fórmula 1, tênis, vôlei, atletismo, lutas, ciclismo, rugby, esportes olímpicos e outras modalidades. Notícias de Brasileirão, Libertadores, clubes e seleções de soccer pertencem a Futebol.
     aliases: [sports, esporte, american football, nfl, ncaa football, super bowl, basquete, basketball, formula 1, f1, tênis, tenis, tennis, vôlei, volei, volleyball, mma, ufc, rugby, atletismo, olympics, olimpíadas, olimpiadas]
+  - slug: esports
+    name: eSports
+    labels: {"en": "eSports", "es": "eSports", "fr": "eSport", "de": "E-Sport", "ja": "eスポーツ", "zh": "电子竞技", "ar": "الرياضات الإلكترونية", "pt": "eSports"}
+    description: Esportes eletrônicos e cenário competitivo de videogames, incluindo campeonatos, equipes, jogadores profissionais, organizações, patrocínios, investimentos, direitos de transmissão, transferências, resultados e mercado competitivo de League of Legends/CBLOL, VALORANT/VCT, Counter-Strike 2, Dota 2, Rainbow Six, Free Fire, EA Sports FC/eFootball, jogos de luta e outros títulos. NÃO inclui lançamentos, reviews, trailers, patches ou notícias gerais de games sem contexto competitivo.
+    aliases: [esports, e-sports, e sports, esportes eletrônicos, esportes eletronicos, competitive gaming, cblol, vct, esports world cup]
   - slug: economia
     name: Economia
     description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo. NÃO inclui eleições, Justiça Eleitoral ou política institucional quando o impacto econômico não for o assunto central.

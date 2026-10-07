@@ -50,7 +50,7 @@ categories:
   - slug: esports
     name: eSports
     labels: {"en": "eSports", "es": "eSports", "fr": "eSport", "de": "E-Sport", "ja": "eスポーツ", "zh": "电子竞技", "ar": "الرياضات الإلكترونية", "pt": "eSports"}
-    description: Esportes eletrônicos e cenário competitivo de videogames, incluindo campeonatos, equipes, jogadores profissionais, organizações, resultados e mercado competitivo de League of Legends/CBLOL, VALORANT/VCT, Counter-Strike 2, Dota 2, Rainbow Six, Free Fire, EA Sports FC/eFootball, jogos de luta e outros títulos. NÃO inclui lançamentos, reviews, trailers, patches ou notícias gerais de games sem contexto competitivo.
+    description: Esportes eletrônicos e cenário competitivo de videogames, incluindo campeonatos, equipes, jogadores profissionais, organizações, patrocínios, investimentos, direitos de transmissão, transferências, resultados e mercado competitivo de League of Legends/CBLOL, VALORANT/VCT, Counter-Strike 2, Dota 2, Rainbow Six, Free Fire, EA Sports FC/eFootball, jogos de luta e outros títulos. NÃO inclui lançamentos, reviews, trailers, patches ou notícias gerais de games sem contexto competitivo.
     aliases: [esports, e-sports, e sports, esportes eletrônicos, esportes eletronicos, competitive gaming, cblol, vct, esports world cup]
   - slug: economia
     name: Economia

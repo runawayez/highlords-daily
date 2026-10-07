@@ -1,3 +1,4 @@
+import { isEsports } from "../../src/editorial/esports.mjs";
 import { categories } from "../../src/config.mjs";
 import { normalizeText as searchText } from "../../src/utils/text.mjs";
 const categorySlugs = new Set(categories.map((category) => category.slug));
@@ -47,6 +48,9 @@ export function applyEditorialGuardrails(article) {
     !["und", "pt", "en"].includes(article.language.split("-")[0])
   )
     return article;
+  if (canForceCategory(article, "esports") && isEsports(article)) {
+    return routeToCategory(article, "esports", "clear-esports-signal");
+  }
   const text = searchText(`${article.originalTitle} ${article.excerpt}`);
   const isEconomy = economySignal.test(text);
   const isFilmSeries =

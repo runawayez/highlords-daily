@@ -148,6 +148,9 @@ feeds:
   # eSports — cenário competitivo, campeonatos, equipes e jogadores profissionais.
   - name: Mais Esports
     url: https://maisesports.com.br/feed/
+    language: pt-BR
+    country: BR
+    coverage: [BR, GLOBAL]
     focus: [games, esports]
     strict_focus: true
     images: page
@@ -194,3 +197,24 @@ feeds:
     url: https://g1.globo.com/dynamo/economia/rss2.xml
     focus: [economia]
     strict_focus: true
+
+  # Dedicated competitive scene and esports industry sources.
+  - name: Dust2 Brasil
+    url: https://www.dust2.com.br/rss
+    language: pt-BR
+    country: BR
+    coverage: [BR, GLOBAL]
+    publisher_group: Dust2
+    focus: [esports]
+    strict_focus: true
+    images: page
+
+  - name: Esports Insider
+    url: https://esportsinsider.com/feed
+    language: en
+    country: GB
+    coverage: [GLOBAL]
+    publisher_group: Esports Insider
+    focus: [esports]
+    strict_focus: true
+    images: page

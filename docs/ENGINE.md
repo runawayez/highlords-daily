@@ -190,3 +190,17 @@ A taxonomia legada mantém slugs para compatibilidade. O plugin editorial Vanill
 Os testes locais cobrem Unicode, concorrência, TTL/corrupção de cache, locks, retomada, falha de PDF, fuso, perfis, schemas, descoberta e entrega simulada. A integração completa usa RSS japonês e Ollama HTTP simulados para gerar edição árabe com imagens, histórico, caches e reexecução idempotente.
 
 Não foram validados aqui um modelo Ollama real, renderização Chromium, entregas a provedores reais, instalação nativa de tarefas no Windows/macOS nem instaladores Electron. CI verifica Node 22/24 em Windows, Linux e macOS; isso não substitui a validação gráfica ou operacional nos sistemas de destino.
+
+## Ajustes editoriais e PDF (5.0.1)
+
+O cabeçalho de cada categoria acompanha a primeira linha de cards, e linhas seguintes podem continuar em outra página. A abertura mostra a introdução sem repetir um título grande com a data.
+
+Para reaplicar o template à edição já salva, sem coletar notícias ou chamar Ollama:
+
+```powershell
+npm.cmd run pdf:rerender -- --refresh-template
+```
+
+O comando preserva matérias e imagens de `edition.json`, atualiza HTML/PDF e não altera o histórico. Sem a opção, continua convertendo o HTML existente. Para gerar outra seleção no mesmo dia, `npm.cmd run daily -- --force` continua respeitando o histórico: notícias já publicadas podem ser excluídas.
+
+BR, Global e configuração legada incluem eSports separado de Games. Dust2 Brasil e Esports Insider fornecem feeds dedicados, com metadados de idioma e cobertura. A seleção segue os filtros de atualidade, imagem e relevância; uma categoria sem candidatas aprovadas não é preenchida artificialmente. Perfis que usam seus próprios arquivos de fontes/categorias precisam incluir essas entradas explicitamente.

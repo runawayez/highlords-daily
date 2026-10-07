@@ -1,6 +1,6 @@
 {
   "name": "highlords-daily",
-  "version": "5.0.0",
+  "version": "5.0.1",
   "private": true,
   "type": "module",
   "description": "Local-first universal daily newsletter engine powered by RSS/Atom and Ollama, with configurable locale, editorial profiles, memory and multi-format exports.",
