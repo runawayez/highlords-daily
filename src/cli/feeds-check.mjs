@@ -26,10 +26,10 @@ for (const feed of feeds) {
   results.push(row);
 
   if (!jsonMode) {
-    const status = row.ok ? 'OK ' : 'ERR';
+    const status = !row.ok ? 'ERR  ' : row.recentWithImage > 0 ? 'OK   ' : 'EMPTY';
     const count = `${row.recentWithImage} válidas`;
     const rejected = row.imageRejected ? ` · ${row.imageRejected} sem imagem` : '';
-    console.log(`${status}  ${feed.name.padEnd(32)} ${count}${rejected} · ${elapsedMs}ms${row.error ? ` · ${row.error}` : ''}`);
+    console.log(`${status} ${feed.name.padEnd(44)} ${count}${rejected} · ${elapsedMs}ms${row.error ? ` · ${row.error}` : ''}`);
   }
 }
 
@@ -51,13 +51,20 @@ if (jsonMode) {
   console.log(JSON.stringify({ preset: editorial.preset, results, categoryCoverage }, null, 2));
 } else {
   const healthy = results.filter(row => row.ok && row.recentWithImage > 0).length;
-  console.log(`\n${healthy}/${results.length} fontes retornaram matérias elegíveis.`);
+  const empty = results.filter(row => row.ok && row.recentWithImage === 0).length;
+  const broken = results.filter(row => !row.ok).length;
+  console.log(`\n${healthy}/${results.length} fontes retornaram matérias elegíveis · ${empty} vazias · ${broken} com erro.`);
   console.log('\nCobertura potencial por categoria:');
+  console.log('(A contagem abaixo mede matérias vindas de fontes capazes de alimentar a categoria; a classificação final é feita depois.)');
   for (const row of categoryCoverage) {
-    const status = row.healthySources > 0 ? 'OK ' : 'WARN';
-    console.log(`${status}  ${row.name.padEnd(22)} ${row.healthySources}/${row.configuredSources} fontes ativas · ${row.recentCandidates} candidatas recentes`);
+    const status = row.healthySources > 0 ? 'OK  ' : 'WARN';
+    console.log(`${status} ${row.name.padEnd(22)} ${row.healthySources}/${row.configuredSources} fontes ativas · ${row.recentCandidates} matérias no pool potencial`);
   }
   console.log('');
 }
 
-if (results.every(row => !row.ok)) process.exitCode = 1;
+const exitCode = results.every(row => !row.ok) ? 1 : 0;
+// O fetch nativo do Node pode manter sockets HTTP keep-alive abertos no Windows.
+// O diagnóstico já terminou neste ponto; encerre explicitamente para devolver o prompt.
+await new Promise(resolve => setTimeout(resolve, 25));
+process.exit(exitCode);
