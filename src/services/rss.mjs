@@ -176,7 +176,18 @@ function extractImage(item, baseUrl) {
 
 async function resolveArticleImage(article, imageMode) {
   if (imageMode === 'off') return null;
-  return resolveBestArticleImage(article, article.imageUrl, { forcePage: imageMode === 'page' });
+
+  // Em modo `page`, priorize a imagem editorial da própria matéria, mas não
+  // descarte um item só porque o HTML da página bloqueou/omitiu og:image.
+  // Se a busca na página falhar, valide e use a imagem originalmente exposta
+  // pelo RSS/Atom como fallback.
+  if (imageMode === 'page') {
+    const pageImage = await resolveBestArticleImage(article, article.imageUrl, { forcePage: true });
+    if (pageImage) return pageImage;
+    return resolveBestArticleImage(article, article.imageUrl, { forcePage: false });
+  }
+
+  return resolveBestArticleImage(article, article.imageUrl, { forcePage: false });
 }
 
 async function enrichImages(articles, imageMode) {
@@ -210,7 +221,7 @@ async function fetchFeed(feed) {
         link,
         publishedAt: published.toISOString(),
         excerpt: excerpt.slice(0, 1400),
-        imageUrl: feed.imageMode === 'auto' ? extractImage(item, link || feed.url) : null
+        imageUrl: feed.imageMode === 'off' ? null : extractImage(item, link || feed.url)
       };
     })
     .filter(article => article.link && new Date(article.publishedAt).getTime() >= cutoff)
