@@ -1,3 +1,6 @@
+import { envValue } from './core/src/utils/env.mjs';
+import { parseEnv } from 'node:util';
+import { hasOllamaModel } from './core/src/utils/ollama-model.mjs';
 import { app, BrowserWindow, ipcMain, shell } from 'electron';
 import fs from 'node:fs/promises';
 import fsSync from 'node:fs';
@@ -14,26 +17,11 @@ const projectRoot = () => app.isPackaged ? path.join(app.getAppPath(), 'core') :
 const workspace = () => app.isPackaged ? app.getPath('userData') : projectRoot();
 const envPath = () => path.join(workspace(), '.env');
 
-function parseEnv(raw = '') {
-  const data = {};
-  for (const line of String(raw).split(/\r?\n/)) {
-    const match = line.match(/^\s*([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)\s*$/);
-    if (!match) continue;
-    let value = match[2].trim();
-    if ((value.startsWith('"') && value.endsWith('"')) || (value.startsWith("'") && value.endsWith("'"))) value = value.slice(1, -1);
-    data[match[1]] = value;
-  }
-  return data;
-}
 
 async function loadEnv() {
   try { return parseEnv(await fs.readFile(envPath(), 'utf8')); } catch { return {}; }
 }
 
-function envValue(value) {
-  const text = String(value ?? '');
-  return /^[A-Za-z0-9_./:\\#-]+$/.test(text) ? text : JSON.stringify(text);
-}
 
 async function saveEnv(changes) {
   const current = await loadEnv();
@@ -59,8 +47,11 @@ async function ensureOllama(env) {
     ollamaProcess = spawn('ollama', ['serve'], { detached: false, windowsHide: true, stdio: ['ignore', 'pipe', 'pipe'] });
     ollamaProcess.stdout?.on('data', chunk => win?.webContents.send('daily:log', chunk.toString()));
     ollamaProcess.stderr?.on('data', chunk => win?.webContents.send('daily:log', chunk.toString()));
+    let startError;
+    ollamaProcess.on('error', error => { startError = error; });
     for (let i = 0; i < 30 && !tags; i += 1) {
       await new Promise(resolve => setTimeout(resolve, 1000));
+      if (startError) throw new Error(`Não foi possível iniciar Ollama: ${startError.message}`);
       tags = await apiReady(host);
     }
   }
@@ -68,9 +59,9 @@ async function ensureOllama(env) {
 
   const model = env.OLLAMA_MODEL || 'qwen3:4b';
   const names = Array.isArray(tags.models) ? tags.models.map(item => item.name) : [];
-  if (!names.some(name => name === model || name.startsWith(`${model}:`) || name.startsWith(model))) {
+  if (!hasOllamaModel(names, model)) {
     await new Promise((resolve, reject) => {
-      const pull = spawn('ollama', ['pull', model], { windowsHide: true });
+      const pull = spawn('ollama', ['pull', model], { windowsHide: true, env: { ...process.env, OLLAMA_HOST: host } });
       pull.stdout.on('data', chunk => win?.webContents.send('daily:log', chunk.toString()));
       pull.stderr.on('data', chunk => win?.webContents.send('daily:log', chunk.toString()));
       pull.on('exit', code => code === 0 ? resolve() : reject(new Error(`ollama pull falhou (${code})`)));
@@ -92,7 +83,7 @@ function packagedEnv(base) {
     OUTPUT_DIR: base.OUTPUT_DIR || path.join(workspace(), 'output'),
     DATA_DIR: base.DATA_DIR || path.join(workspace(), 'data'),
     MEMORY_FILE: base.MEMORY_FILE || path.join(workspace(), 'data', 'highlords.sqlite'),
-    PLUGINS_DIR: base.PLUGINS_DIR || path.join(workspace(), 'plugins')
+    PLUGINS_DIR: base.PLUGINS_DIR || path.join(root, 'plugins')
   };
 }
 
@@ -105,7 +96,7 @@ async function generate() {
     const host = await ensureOllama(localEnv);
     const env = packagedEnv({ ...localEnv, OLLAMA_HOST: host });
     const script = path.join(projectRoot(), 'src', 'daily.mjs');
-    const executable = app.isPackaged ? process.execPath : process.execPath;
+    const executable = process.execPath;
     const childEnv = { ...process.env, ...env, ELECTRON_RUN_AS_NODE: '1' };
 
     const code = await new Promise((resolve, reject) => {

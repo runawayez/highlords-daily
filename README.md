@@ -22,6 +22,33 @@ O preset padrão **Vanilla/BR** continua pronto para uso: `pt-BR`, contexto Bras
 
 ---
 
+## Instalação e verificação
+
+O launcher é o caminho mais simples e instala as versões do `package-lock.json` com `npm ci`.
+Para instalar manualmente, a partir da pasta do projeto:
+
+```bash
+npm ci
+npm run setup
+npm run doctor
+npm run daily
+```
+
+No PowerShell, use `npm.cmd` no lugar de `npm` se a política de execução bloquear `npm.ps1`.
+O setup é opcional: o preset BR funciona sem `.env`.
+`npm run doctor` valida Node.js, configuração, navegador e modelo Ollama sem iniciar serviços nem baixar arquivos.
+Se Ollama estiver parado, execute `ollama serve`; se faltar o modelo, execute `ollama pull qwen3:4b`
+(ou o nome configurado em `OLLAMA_MODEL`). Chrome, Chromium ou Edge precisam estar instalados para gerar PDF.
+
+Para atualizar, execute `git pull --ff-only` e `npm ci`. Sua configuração `.env`, histórico em `data/`
+e edições em `output/` ficam fora do Git. Faça backup dessas pastas antes de trocar de computador.
+
+Para contribuir: `npm ci`, `npm run check` e `npm test`. O CI executa as verificações em Windows, macOS
+ e Linux com Node.js 22 e 24. Os testes usam dados locais e não precisam de Ollama ou feeds ativos.
+A interface desktop continua experimental; `npm run desktop:install` instala suas dependências separadamente.
+
+---
+
 ## Quick Start
 
 ### Windows

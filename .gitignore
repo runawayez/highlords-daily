@@ -4,3 +4,9 @@ output/
 data/
 npm-debug.log*
 .DS_Store
+desktop/core/
+desktop/dist/
+coverage/
+*.log
+.env.*
+!.env.example

@@ -5,7 +5,7 @@
   "type": "module",
   "main": "main.mjs",
   "scripts": {
-    "start": "electron .",
+    "start": "npm run prepare:core && electron .",
     "prepare:core": "node prepare-core.mjs",
     "dist": "npm run prepare:core && electron-builder"
   },
@@ -29,8 +29,20 @@
       "styles.css",
       "core/**/*"
     ],
-    "win": { "target": ["nsis"] },
-    "mac": { "target": ["dmg"] },
-    "linux": { "target": ["AppImage"] }
+    "win": {
+      "target": [
+        "nsis"
+      ]
+    },
+    "mac": {
+      "target": [
+        "dmg"
+      ]
+    },
+    "linux": {
+      "target": [
+        "AppImage"
+      ]
+    }
   }
 }

@@ -1,4 +1,4 @@
-import fs from 'node:fs';
+import { findBrowser } from './browser.mjs';
 import fsp from 'node:fs/promises';
 import path from 'node:path';
 import { pathToFileURL } from 'node:url';
@@ -11,46 +11,6 @@ const A4_HEIGHT_CSS_PX = (297 / 25.4) * 96;
 const BASE_PDF_SCALE = A4_WIDTH_CSS_PX / PDF_VIEWPORT_WIDTH;
 const MAX_AUTO_SHRINK = 0.08;
 const TINY_LAST_PAGE_RATIO = 0.28;
-
-function browserCandidates() {
-  const candidates = [
-    process.env.BROWSER_PATH,
-    process.env.PUPPETEER_EXECUTABLE_PATH,
-    '/usr/bin/google-chrome',
-    '/usr/bin/google-chrome-stable',
-    '/usr/bin/chromium',
-    '/usr/bin/chromium-browser',
-    '/snap/bin/chromium'
-  ];
-
-  if (process.platform === 'win32') {
-    const programFiles = [process.env.PROGRAMFILES, process.env['PROGRAMFILES(X86)'], process.env.LOCALAPPDATA].filter(Boolean);
-    for (const root of programFiles) {
-      candidates.push(
-        path.join(root, 'Google', 'Chrome', 'Application', 'chrome.exe'),
-        path.join(root, 'Microsoft', 'Edge', 'Application', 'msedge.exe')
-      );
-    }
-  }
-
-  if (process.platform === 'darwin') {
-    candidates.push(
-      '/Applications/Google Chrome.app/Contents/MacOS/Google Chrome',
-      '/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge',
-      '/Applications/Chromium.app/Contents/MacOS/Chromium',
-      path.join(process.env.HOME || '', 'Applications', 'Google Chrome.app', 'Contents', 'MacOS', 'Google Chrome'),
-      path.join(process.env.HOME || '', 'Applications', 'Microsoft Edge.app', 'Contents', 'MacOS', 'Microsoft Edge')
-    );
-  }
-
-  return [...new Set(candidates.filter(Boolean))];
-}
-
-function findBrowser() {
-  const found = browserCandidates().find(candidate => fs.existsSync(candidate));
-  if (!found) throw new Error('Chrome/Chromium/Edge não encontrado. Instale um navegador compatível ou defina BROWSER_PATH no arquivo .env.');
-  return found;
-}
 
 async function waitForImages(page, timeoutMs = 15000) {
   await Promise.race([

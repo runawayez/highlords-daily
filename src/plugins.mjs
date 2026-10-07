@@ -13,7 +13,7 @@ export async function loadPlugins() {
   }
 
   const plugins = [];
-  for (const entry of entries) {
+  for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (!entry.isFile() || !entry.name.endsWith('.plugin.mjs')) continue;
     const file = path.join(config.pluginsDir, entry.name);
     try {

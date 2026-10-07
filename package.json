@@ -36,7 +36,9 @@
     "desktop": "npm --prefix desktop start",
     "desktop:install": "npm --prefix desktop install",
     "desktop:build": "npm --prefix desktop run dist",
-    "check": "node --check src/daily.mjs && node --check src/config.mjs && node --check src/template.mjs && node --check src/plugins.mjs && node --check src/services/rss.mjs && node --check src/services/ollama.mjs && node --check src/services/html-pdf.mjs && node --check src/services/memory.mjs && node --check src/services/image-quality.mjs && node --check src/services/image-cache.mjs && node --check src/services/archive.mjs && node --check src/exporters/markdown.mjs && node --check src/exporters/email.mjs && node --check src/exporters/social.mjs && node --check src/cli/setup.mjs && node --check src/cli/feeds-check.mjs && node --check src/cli/feeds-discover.mjs && node --check src/cli/pdf-rerender.mjs && node --check src/cli/reset-local.mjs && node --check src/cli/schedule.mjs && node --check plugins/00-esports-routing.plugin.mjs && node --check plugins/editorial-ranking.plugin.mjs"
+    "check": "node scripts/check.mjs",
+    "test": "node --test",
+    "doctor": "node src/cli/doctor.mjs"
   },
   "engines": {
     "node": ">=22.5.0"

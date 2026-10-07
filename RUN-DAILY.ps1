@@ -57,7 +57,8 @@ function Test-OllamaModel([string]$Endpoint, [string]$Model) {
   try {
     $data = Invoke-RestMethod "$Endpoint/api/tags" -TimeoutSec 5
     $names = @($data.models | ForEach-Object { $_.name })
-    return [bool]($names | Where-Object { $_ -eq $Model -or $_ -like "${Model}:*" -or $_ -like "${Model}*" } | Select-Object -First 1)
+    $expected = if ($Model.Contains(':')) { $Model } else { "${Model}:latest" }
+    return [bool]($names | Where-Object { $_ -eq $expected -or ($_ -eq $Model -and -not $Model.Contains(':')) } | Select-Object -First 1)
   } catch {
     return $false
   }
@@ -126,8 +127,8 @@ try {
 
   if (-not (Test-Path 'node_modules\yaml\package.json') -or -not (Test-Path 'node_modules\rss-parser\package.json') -or -not (Test-Path 'node_modules\puppeteer-core\package.json')) {
     Write-Step 'Instalando dependencias do projeto...'
-    & npm.cmd install
-    if ($LASTEXITCODE -ne 0) { throw "npm install falhou com codigo $LASTEXITCODE." }
+    & npm.cmd ci
+    if ($LASTEXITCODE -ne 0) { throw "npm ci falhou com codigo $LASTEXITCODE." }
   }
   Write-Ok 'Dependencias'
 

@@ -1,21 +1,9 @@
+import { escapeHtml, safeUrl } from './utils/html.mjs';
 import { categories, config, publication } from './config.mjs';
 
 const defaultCategoryLabels = new Map(categories.map(category => [category.slug, category.name]));
 
-function escapeHtml(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  })[char]);
-}
 
-function safeUrl(value = '') {
-  try {
-    const url = new URL(String(value));
-    return ['http:', 'https:'].includes(url.protocol) ? url.href : '#';
-  } catch {
-    return '#';
-  }
-}
 
 function safeMediaUrl(value = '') {
   const raw = String(value || '').trim();

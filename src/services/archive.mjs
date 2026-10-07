@@ -1,12 +1,8 @@
+import { escapeHtml } from '../utils/html.mjs';
 import fs from 'node:fs/promises';
 import path from 'node:path';
 import { config, publication } from '../config.mjs';
 
-function escapeHtml(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  })[char]);
-}
 
 function labels() {
   if (config.language.toLowerCase().startsWith('pt')) {

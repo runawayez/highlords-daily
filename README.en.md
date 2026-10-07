@@ -22,6 +22,33 @@ The default **Vanilla/BR** preset remains ready to use: `pt-BR`, Brazil context 
 
 ---
 
+## Installation and diagnostics
+
+The launcher is the simplest option and installs the locked dependencies with `npm ci`.
+For a manual installation, run these commands from the project directory:
+
+```bash
+npm ci
+npm run setup
+npm run doctor
+npm run daily
+```
+
+On PowerShell, use `npm.cmd` instead of `npm` if the execution policy blocks `npm.ps1`.
+Setup is optional: the BR preset works without `.env`.
+`npm run doctor` checks Node.js, configuration, browser and the Ollama model without starting services or downloading files.
+Start Ollama with `ollama serve` and install the configured model with `ollama pull qwen3:4b`
+(or the value of `OLLAMA_MODEL`). PDF output requires Chrome, Chromium or Edge.
+
+To update, run `git pull --ff-only` followed by `npm ci`. Local `.env`, `data/` history and `output/`
+editions are ignored by Git. Back them up before migrating to another computer.
+
+For contributions, run `npm ci`, `npm run check` and `npm test`. CI checks Windows, macOS and Linux
+on Node.js 22 and 24. Tests use local data and do not require Ollama or live feeds.
+The desktop interface remains experimental; `npm run desktop:install` installs its dependencies separately.
+
+---
+
 ## Quick Start
 
 ### Windows

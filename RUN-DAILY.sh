@@ -57,6 +57,7 @@ ok 'Node.js' "$(node -p 'process.versions.node')"
 
 command -v npm >/dev/null 2>&1 || fail 'npm nao encontrado no PATH.'
 ok 'npm'
+command -v curl >/dev/null 2>&1 || fail 'curl nao encontrado. Instale curl e execute novamente.'
 
 command -v ollama >/dev/null 2>&1 || fail 'Ollama nao encontrado. Instale em https://ollama.com e execute novamente.'
 ok 'Ollama'
@@ -83,7 +84,7 @@ ok 'Navegador' "$(basename "$BROWSER_PATH_FOUND")"
 
 if [[ ! -f node_modules/yaml/package.json || ! -f node_modules/rss-parser/package.json || ! -f node_modules/puppeteer-core/package.json ]]; then
   step 'Instalando dependencias do projeto...'
-  npm install
+  npm ci
 fi
 ok 'Dependencias'
 

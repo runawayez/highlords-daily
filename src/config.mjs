@@ -7,7 +7,9 @@ if (fs.existsSync('.env') && typeof process.loadEnvFile === 'function') {
 }
 
 function numberEnv(name, fallback) {
-  const value = Number(process.env[name]);
+  const raw = process.env[name];
+  if (raw == null || !raw.trim()) return fallback;
+  const value = Number(raw);
   return Number.isFinite(value) ? value : fallback;
 }
 
@@ -43,7 +45,7 @@ function slug(value = '') {
 
 function color(value, fallback) {
   const raw = String(value || '').trim();
-  return /^#[0-9a-f]{3,8}$/i.test(raw) ? raw : fallback;
+  return /^#(?:[0-9a-f]{3}|[0-9a-f]{4}|[0-9a-f]{6}|[0-9a-f]{8})$/i.test(raw) ? raw : fallback;
 }
 
 function imageMode(value) {

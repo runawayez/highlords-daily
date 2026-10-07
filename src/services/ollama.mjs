@@ -1,3 +1,4 @@
+import { hasOllamaModel } from '../utils/ollama-model.mjs';
 import { categories, config, profile, publication } from '../config.mjs';
 
 function safeJson(content) {
@@ -59,7 +60,7 @@ export async function ensureOllama() {
   if (!response.ok) throw new Error(`Ollama respondeu HTTP ${response.status}.`);
   const data = await response.json();
   const models = Array.isArray(data.models) ? data.models.map(model => model.name) : [];
-  const available = models.some(name => name === config.ollamaModel || name.startsWith(`${config.ollamaModel}:`) || name.startsWith(config.ollamaModel));
+  const available = hasOllamaModel(models, config.ollamaModel);
   if (!available) throw new Error(`Modelo ${config.ollamaModel} não encontrado. Execute: ollama pull ${config.ollamaModel}`);
 }
 

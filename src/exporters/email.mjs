@@ -1,15 +1,11 @@
+import { escapeHtml, safeUrl } from '../utils/html.mjs';
 import { config, publication } from '../config.mjs';
 
-function escapeHtml(value = '') {
-  return String(value).replace(/[&<>'"]/g, char => ({
-    '&': '&amp;', '<': '&lt;', '>': '&gt;', "'": '&#39;', '"': '&quot;'
-  })[char]);
-}
 
 function card(article) {
   if (!article) return '';
-  const image = article.originalImageUrl || (/^https?:\/\//i.test(article.imageUrl || '') ? article.imageUrl : '');
-  return `<article style="border-top:1px solid #ddd;padding:18px 0">${image ? `<img src="${escapeHtml(image)}" alt="" style="display:block;width:100%;max-height:360px;object-fit:cover;margin:0 0 14px">` : ''}<div style="font-size:11px;color:${publication.accentColor};font-weight:700">${escapeHtml(article.source)}</div><h3 style="font-family:Georgia,serif;font-size:22px;line-height:1.15;margin:6px 0 9px"><a href="${escapeHtml(article.link)}" style="color:#171717;text-decoration:none">${escapeHtml(article.headline || article.originalTitle)}</a></h3><p style="color:#666;font-size:14px;line-height:1.5;margin:0">${escapeHtml(article.summary || article.excerpt || '')}</p></article>`;
+  const image = safeUrl(article.originalImageUrl || article.imageUrl, '');
+  return `<article style="border-top:1px solid #ddd;padding:18px 0">${image ? `<img src="${escapeHtml(image)}" alt="" style="display:block;width:100%;max-height:360px;object-fit:cover;margin:0 0 14px">` : ''}<div style="font-size:11px;color:${publication.accentColor};font-weight:700">${escapeHtml(article.source)}</div><h3 style="font-family:Georgia,serif;font-size:22px;line-height:1.15;margin:6px 0 9px"><a href="${escapeHtml(safeUrl(article.link))}" style="color:#171717;text-decoration:none">${escapeHtml(article.headline || article.originalTitle)}</a></h3><p style="color:#666;font-size:14px;line-height:1.5;margin:0">${escapeHtml(article.summary || article.excerpt || '')}</p></article>`;
 }
 
 export function renderEmailHtml(edition) {
