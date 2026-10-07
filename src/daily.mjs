@@ -31,24 +31,27 @@ function curatedId(value) {
   return Number.isFinite(number) ? number : null;
 }
 
-function categoryCounts(articles) {
-  const counts = new Map(categories.map(category => [category.slug, 0]));
-  for (const article of articles) {
-    if (counts.has(article.category)) counts.set(article.category, counts.get(article.category) + 1);
-  }
-  return counts;
+function frontPageScore(article) {
+  const value = Number(article?.frontPageScore ?? article?.score ?? 0);
+  return Number.isFinite(value) ? value : 0;
 }
 
 function chooseLead(requestedLead, articles) {
-  const counts = categoryCounts(articles);
-  const canSpareForLead = article => article && (counts.get(article.category) || 0) > config.itemsPerCategory;
-  if (canSpareForLead(requestedLead)) return { lead: requestedLead, rebalanced: false };
+  const strongest = articles
+    .filter(Boolean)
+    .slice()
+    .sort((a, b) => frontPageScore(b) - frontPageScore(a)
+      || Number(b.sectionScore ?? b.score ?? 0) - Number(a.sectionScore ?? a.score ?? 0)
+      || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0))[0] || null;
 
-  const alternative = articles.find(canSpareForLead);
-  if (alternative) {
-    return { lead: alternative, rebalanced: Boolean(requestedLead && alternative.id !== requestedLead.id) };
+  if (!requestedLead) return { lead: strongest, rebalanced: false };
+  if (!strongest) return { lead: requestedLead, rebalanced: false };
+
+  const tolerance = 0.35;
+  if (frontPageScore(requestedLead) >= frontPageScore(strongest) - tolerance) {
+    return { lead: requestedLead, rebalanced: false };
   }
-  return { lead: requestedLead || articles[0] || null, rebalanced: false };
+  return { lead: strongest, rebalanced: strongest.id !== requestedLead.id };
 }
 
 function fallbackCopy() {
@@ -98,7 +101,10 @@ function normalizeNewsletter(curated, articles, editionDate) {
   const globalSourceCounts = new Map();
   const requestedLeadId = curatedId(curated?.leadId ?? curated?.lead ?? curated?.headlineId ?? curated?.mancheteId);
   const requestedLead = requestedLeadId != null ? byId.get(requestedLeadId) : null;
-  const { lead, rebalanced: leadRebalanced } = chooseLead(requestedLead, articles);
+  const { lead: rawLead, rebalanced: leadRebalanced } = chooseLead(requestedLead, articles);
+  const lead = rawLead
+    ? { ...rawLead, score: Number(rawLead.frontPageScore ?? rawLead.score ?? 0) }
+    : null;
   if (lead) {
     used.add(lead.id);
     globalSourceCounts.set(lead.source, 1);
@@ -129,14 +135,20 @@ function normalizeNewsletter(curated, articles, editionDate) {
       if (selected.length >= config.itemsPerCategory) break;
     }
 
-    const candidates = articles.filter(article => article.category === category.slug && !used.has(article.id));
+    const candidates = articles
+      .filter(article => article.category === category.slug && !used.has(article.id))
+      .sort((a, b) => Number(b.sectionScore ?? b.score ?? 0) - Number(a.sectionScore ?? a.score ?? 0)
+        || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
     for (const article of candidates) {
       if (selected.length >= config.itemsPerCategory) break;
       tryAdd(article, { backfill: true });
     }
 
     if (selected.length < config.itemsPerCategory && !config.sourceDiversityStrict) {
-      for (const article of articles) {
+      const relaxedCandidates = articles
+        .filter(article => article.category === category.slug && !used.has(article.id))
+        .sort((a, b) => Number(b.sectionScore ?? b.score ?? 0) - Number(a.sectionScore ?? a.score ?? 0));
+      for (const article of relaxedCandidates) {
         if (selected.length >= config.itemsPerCategory) break;
         tryAdd(article, { relaxed: true, backfill: true });
       }
@@ -168,7 +180,8 @@ function normalizeNewsletter(curated, articles, editionDate) {
       candidates: articles.length,
       backfilled,
       diversityRelaxed,
-      leadRebalanced
+      leadRebalanced,
+      leadFrontPageScore: lead ? Number(lead.frontPageScore ?? lead.score ?? 0) : null
     }
   };
 }
@@ -331,7 +344,7 @@ async function main() {
   console.log(`  ${sectionReport(edition)}`);
   if (edition.stats.backfilled) console.log(`  ${edition.stats.backfilled} vaga(s) completadas automaticamente.`);
   if (edition.stats.diversityRelaxed) console.log(`  ${edition.stats.diversityRelaxed} vaga(s) precisaram relaxar o limite de fonte para manter a quantidade.`);
-  if (edition.stats.leadRebalanced) console.log('  Manchete reequilibrada para preservar as seções.');
+  if (edition.stats.leadRebalanced) console.log('  Manchete ajustada pelo ranking de primeira página.');
 
   console.log('5/7 Baixando imagens selecionadas para a edição...');
   const editionDir = path.join(config.outputDir, editionDate);

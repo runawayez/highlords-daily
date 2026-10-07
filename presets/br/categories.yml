@@ -4,7 +4,7 @@ preset: br
 categories:
   - slug: ia
     name: IA
-    description: Inteligência artificial, modelos, agentes, machine learning e produtos cujo assunto principal seja IA.
+    description: Inteligência artificial, modelos, agentes, machine learning e produtos cujo assunto CENTRAL seja IA. Não classifique aqui filosofia, produtividade ou tecnologia genérica só porque a fonte também cobre IA.
     aliases: [ai, artificial intelligence, inteligência artificial]
   - slug: desenvolvimento
     name: Desenvolvimento
@@ -12,7 +12,7 @@ categories:
     aliases: [development, dev, programação, software development, qa, devops]
   - slug: mobile-gadgets
     name: Mobile & Gadgets
-    description: Smartphones, tablets, relógios, fones, smart home, acessórios, wearables e eletrônicos de consumo.
+    description: Smartphones, tablets, relógios, fones, smart home, acessórios, wearables e eletrônicos de consumo. Ofertas e promoções continuam nesta categoria, mas têm menor peso editorial do que lançamentos, mudanças relevantes e novidades de produto.
     aliases: [mobile, gadgets, mobile gadgets, celulares, smartphones, wearables]
   - slug: hardware
     name: Hardware
@@ -44,5 +44,5 @@ categories:
     aliases: [economics, economy, mercados, markets, finanças, financas, finance, negócios, negocios, business]
   - slug: futuro
     name: Futuro
-    description: Robótica, computação quântica, VR/AR, computação espacial, novas interfaces, protótipos e tecnologias emergentes.
-    aliases: [future, emerging tech, tecnologias emergentes, tecnologia emergente, robótica, robotica, computação quântica, computacao quantica]
+    description: Tecnologias emergentes e ciência com implicação de futuro, como robótica, computação quântica, VR/AR, computação espacial, biotecnologia, energia avançada, missões espaciais, protótipos e descobertas científicas relevantes. NÃO use a categoria para galerias de imagens, roundups semanais de astronomia ou curiosidades espaciais sem descoberta, missão ou inovação central.
+    aliases: [future, emerging tech, tecnologias emergentes, tecnologia emergente, robótica, robotica, computação quântica, computacao quantica, space technology, ciência futura]

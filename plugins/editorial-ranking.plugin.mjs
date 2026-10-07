@@ -4,7 +4,7 @@ import { config, profile } from '../src/config.mjs';
 
 const STATE_FILE = path.join(config.dataDir, 'editorial-ranking-state.json');
 const STOPWORDS = new Set([
-  'a','o','as','os','um','uma','uns','umas','de','da','do','das','dos','e','em','no','na','nos','nas','para','por','com','sem','que','como','mais','menos','sobre','apos','após','the','a','an','of','to','in','on','for','and','or','with','from','by','is','are','new','after','before','says','diz','veja','entenda','hoje'
+  'a','o','as','os','um','uma','uns','umas','de','da','do','das','dos','e','em','no','na','nos','nas','para','por','com','sem','que','como','mais','menos','sobre','apos','the','an','of','to','in','on','for','and','or','with','from','by','is','are','new','after','before','says','diz','veja','entenda','hoje'
 ]);
 
 function envNumber(name, fallback) {
@@ -18,8 +18,6 @@ function envBool(name, fallback = true) {
   return ['1', 'true', 'yes', 'on'].includes(String(value).toLowerCase());
 }
 
-// Deep scan is part of the bundled editorial engine. It runs before collection
-// because plugins are loaded before fetchAllFeeds() in daily.mjs.
 if (envBool('EDITORIAL_DEEP_SCAN', true)) {
   config.maxItemsPerFeed = Math.max(config.maxItemsPerFeed, envNumber('EDITORIAL_DEEP_ITEMS_PER_FEED', 20));
   config.maxCandidates = Math.max(config.maxCandidates, envNumber('EDITORIAL_DEEP_MAX_CANDIDATES', 160));
@@ -32,7 +30,7 @@ function normalize(value = '') {
     .replace(/[\u0300-\u036f]/g, '')
     .toLowerCase()
     .replace(/https?:\/\/\S+/g, ' ')
-    .replace(/[^a-z0-9]+/g, ' ')
+    .replace(/[^a-z0-9%+]+/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();
 }
@@ -43,6 +41,10 @@ function tokens(value = '') {
 
 function publisher(source = '') {
   return String(source).split('·')[0].trim().toLowerCase() || String(source).trim().toLowerCase();
+}
+
+function articleText(article) {
+  return normalize(`${article?.originalTitle || ''} ${article?.headline || ''} ${article?.excerpt || ''} ${article?.summary || ''}`);
 }
 
 function titleSimilarity(a, b) {
@@ -146,7 +148,7 @@ async function chatJson(system, user) {
         { role: 'system', content: system },
         { role: 'user', content: user }
       ],
-      options: { temperature: 0.05 }
+      options: { temperature: 0.04 }
     }),
     signal: AbortSignal.timeout(150000)
   });
@@ -160,10 +162,116 @@ function clamp(value) {
   return Number.isFinite(number) ? Math.max(0, Math.min(10, number)) : 0;
 }
 
+function numeric(value) {
+  if (typeof value === 'number' && Number.isFinite(value)) return value;
+  const match = String(value ?? '').replace(',', '.').match(/-?\d+(?:\.\d+)?/);
+  return match ? Number(match[0]) : null;
+}
+
+function fieldNumber(row, aliases) {
+  const containers = [row, row?.dimensions, row?.dimensoes, row?.scores, row?.notas].filter(Boolean);
+  for (const container of containers) {
+    for (const name of aliases) {
+      if (!(name in container)) continue;
+      const value = numeric(container[name]);
+      if (value != null && Number.isFinite(value)) return clamp(value);
+    }
+  }
+  return null;
+}
+
 function rowsFrom(value) {
   if (Array.isArray(value)) return value;
-  if (Array.isArray(value?.items)) return value.items;
-  return [];
+  if (!value || typeof value !== 'object') return [];
+  for (const key of ['items', 'results', 'articles', 'noticias', 'news', 'data', 'analyses', 'analises']) {
+    if (Array.isArray(value[key])) return value[key];
+  }
+  if ('id' in value) return [value];
+  return Object.values(value).filter(item => item && typeof item === 'object' && 'id' in item);
+}
+
+const AI_SIGNAL = /\b(ia|ai|inteligencia artificial|artificial intelligence|chatgpt|openai|anthropic|claude|gemini|copilot|llm|modelo de linguagem|machine learning|aprendizado de maquina|rede neural|deep learning|agente de ia|agentes de ia)\b/;
+const FILM_SIGNAL = /\b(filme|filmes|cinema|serie|series|temporada|episodio|ator|atriz|diretor|disney\+|netflix|hbo|max|prime video|globoplay|paramount\+|streaming)\b/;
+const GAME_SIGNAL = /\b(game|games|gaming|videogame|xbox|playstation|nintendo|steam|gameplay|dlc|gta|fortnite|rpg|fps)\b/;
+const SOCCER_SIGNAL = /\b(futebol|brasileirao|libertadores|copa do brasil|champions league|goleiro|zagueiro|atacante|selecao argentina|selecao brasileira|mercado da bola|soccer)\b/;
+const SPORT_SIGNAL = /\b(ufc|mma|boxe|nba|wnba|basquete|nfl|super bowl|formula 1|f1|motogp|tenis|wta|atp|volei|atletismo|badminton|natacao|ciclismo|rugby|beisebol|hockey|surf|skate)\b/;
+const DEV_SIGNAL = /\b(programacao|programador|desenvolvedor|developer|framework|api|github|git|devops|kubernetes|docker|banco de dados|database|javascript|typescript|python|java|qa|testes automatizados)\b/;
+const MOBILE_SIGNAL = /\b(smartphone|celular|iphone|android|tablet|smartwatch|wearable|fone|earbuds|galaxy|xiaomi|motorola|pixel)\b/;
+const HARDWARE_SIGNAL = /\b(cpu|gpu|placa de video|processador|chip|chips|semicondutor|memoria ram|ssd|notebook|pc gamer|monitor|ryzen|geforce|radeon)\b/;
+const ECONOMY_SIGNAL = /\b(ibovespa|selic|inflacao|pib|juros|banco central|balanca comercial|superavit|deficit|pre sal|petrobras|anp|leilao|investimento|fundo multimercado|bolsa brasileira|mercado financeiro)\b/;
+const SOFTWARE_SIGNAL = /\b(aplicativo|app|software|sistema operacional|windows|linux|browser|navegador|spotify|whatsapp|seguranca digital|privacidade|internet|plataforma digital)\b/;
+const FUTURE_SIGNAL = /\b(robotica|robo|computacao quantica|quantum|realidade virtual|realidade aumentada|vr|ar|spatial computing|biotecnologia|fusao nuclear|energia de fusao|starship|missao espacial|telescopio|descoberta cientifica|descoberta astronomica|nobel|prototipo|tecnologia emergente)\b/;
+const GENERIC_ASTRONOMY_SIGNAL = /\b(imagens astronomicas|imagem astronomica|fotos do espaco|foto do espaco|ceu da semana|astronomia da semana|saturno|lua|ceu noturno)\b/;
+const PROMO_STRONG = /\b(promocao|promocoes|oferta|ofertas|desconto|cupom|% off|off|menor preco|preco baixo|liquidacao|black friday|ct ofertas|achados)\b/;
+const COMMERCE_SIGNAL = /\b(amazon|mercado livre|magalu|kabum|shopee|aliexpress)\b/;
+const PRICE_SIGNAL = /\b(r\$|us\$|preco|por apenas|a partir de|parcelado|parcelamento)\b/;
+const LOW_NEWS_SIGNAL = /\b(agenda|jogos de hoje|onde assistir|imagens da semana|fotos da semana|rumor|rumores|pode ser cancelado|detona|reage|explica por que nao|curiosidade|lista de|melhores ofertas)\b/;
+
+function canReassign(article, slug) {
+  if (!article?.strictFocus || !Array.isArray(article.focus) || !article.focus.length) return true;
+  return article.focus.includes(slug);
+}
+
+function inferStrongCategory(text) {
+  if (FILM_SIGNAL.test(text) && !GAME_SIGNAL.test(text)) return 'filmes-series';
+  if (GAME_SIGNAL.test(text)) return 'games';
+  if (SPORT_SIGNAL.test(text) && !SOCCER_SIGNAL.test(text)) return 'esportes';
+  if (SOCCER_SIGNAL.test(text)) return 'futebol';
+  if (DEV_SIGNAL.test(text)) return 'desenvolvimento';
+  if (MOBILE_SIGNAL.test(text)) return 'mobile-gadgets';
+  if (HARDWARE_SIGNAL.test(text)) return 'hardware';
+  if (ECONOMY_SIGNAL.test(text)) return 'economia';
+  if (FUTURE_SIGNAL.test(text)) return 'futuro';
+  if (SOFTWARE_SIGNAL.test(text)) return 'software-internet';
+  if (AI_SIGNAL.test(text)) return 'ia';
+  return null;
+}
+
+function sanitizeCategories(input = []) {
+  let rejected = 0;
+  let corrected = 0;
+  const articles = [];
+
+  for (const article of input) {
+    const text = articleText(article);
+    let next = { ...article };
+
+    if (article.category === 'ia' && !AI_SIGNAL.test(text)) {
+      const inferred = inferStrongCategory(text);
+      if (inferred && inferred !== 'ia' && canReassign(article, inferred)) {
+        next.category = inferred;
+        next.editorialCategoryCorrection = `ia->${inferred}`;
+        corrected += 1;
+      } else {
+        rejected += 1;
+        continue;
+      }
+    }
+
+    if (next.category === 'futuro' && GENERIC_ASTRONOMY_SIGNAL.test(text) && !FUTURE_SIGNAL.test(text)) {
+      next.editorialQualityPenalty = Number((Number(next.editorialQualityPenalty || 0) + 1.5).toFixed(2));
+      next.editorialContentFlags = [...new Set([...(next.editorialContentFlags || []), 'generic-astronomy-roundup'])];
+    }
+
+    articles.push(next);
+  }
+
+  return { articles, rejected, corrected };
+}
+
+function heuristicPromoLevel(article) {
+  const text = articleText(article);
+  if (PROMO_STRONG.test(text)) return COMMERCE_SIGNAL.test(text) ? 9 : 8;
+  if (COMMERCE_SIGNAL.test(text) && PRICE_SIGNAL.test(text)) return 6;
+  if (COMMERCE_SIGNAL.test(text)) return 3;
+  return 0;
+}
+
+function heuristicSoftPenalty(article) {
+  const text = articleText(article);
+  let penalty = Number(article.editorialQualityPenalty || 0);
+  if (LOW_NEWS_SIGNAL.test(text)) penalty += 0.8;
+  return Math.min(2.5, penalty);
 }
 
 function recencyScore(publishedAt) {
@@ -185,47 +293,114 @@ function consensusScore(count) {
   return 4;
 }
 
-function humanScore(dimensions) {
+const DIMENSION_ALIASES = {
+  impact: ['impact', 'impacto'],
+  significance: ['significance', 'significancia', 'significância', 'historicalSignificance', 'historical_significance', 'pesoHistorico', 'peso_historico', 'importanciaHistorica', 'importancia_historica'],
+  publicInterest: ['publicInterest', 'public_interest', 'interessePublico', 'interesse_publico', 'interesse'],
+  novelty: ['novelty', 'novidade'],
+  utility: ['utility', 'utilidade'],
+  editorialValue: ['editorialValue', 'editorial_value', 'valorEditorial', 'valor_editorial', 'newsworthiness', 'relevanciaEditorial', 'relevancia_editorial'],
+  promotionalLevel: ['promotionalLevel', 'promotional_level', 'nivelPromocional', 'nivel_promocional', 'promocional', 'promotionLevel']
+};
+
+function dimensionsFromRow(row, article) {
+  const fallback = clamp(article.score);
+  const raw = {};
+  let present = 0;
+  for (const key of ['impact', 'significance', 'publicInterest', 'novelty', 'utility', 'editorialValue']) {
+    raw[key] = fieldNumber(row, DIMENSION_ALIASES[key]);
+    if (raw[key] != null) present += 1;
+  }
+
+  const valid = present >= 4;
+  const dimensions = {};
+  for (const key of ['impact', 'significance', 'publicInterest', 'novelty', 'utility', 'editorialValue']) {
+    dimensions[key] = valid ? clamp(raw[key] ?? fallback) : fallback;
+  }
+
+  const modelPromo = fieldNumber(row, DIMENSION_ALIASES.promotionalLevel);
+  dimensions.promotionalLevel = Math.max(modelPromo ?? 0, heuristicPromoLevel(article));
+  return { dimensions, valid, fieldsPresent: present };
+}
+
+function sectionBase(dimensions) {
   return (
-    clamp(dimensions.impact) * 0.28
-    + clamp(dimensions.significance) * 0.28
-    + clamp(dimensions.publicInterest) * 0.20
-    + clamp(dimensions.novelty) * 0.14
-    + clamp(dimensions.utility) * 0.10
+    dimensions.impact * 0.15
+    + dimensions.significance * 0.12
+    + dimensions.publicInterest * 0.18
+    + dimensions.novelty * 0.16
+    + dimensions.utility * 0.17
+    + dimensions.editorialValue * 0.22
   );
 }
 
-function rankScore(article, dimensions) {
-  const base = humanScore(dimensions);
+function frontPageBase(dimensions) {
+  return (
+    dimensions.impact * 0.28
+    + dimensions.significance * 0.28
+    + dimensions.publicInterest * 0.19
+    + dimensions.novelty * 0.08
+    + dimensions.utility * 0.05
+    + dimensions.editorialValue * 0.12
+  );
+}
+
+function calculateScores(article, dimensions) {
   const recency = recencyScore(article.publishedAt);
   const consensus = consensusScore(article.coverageCount);
   const cycle = article.newSinceLastEdition === false ? 5 : 10;
   const previous = clamp(article.score);
-  return clamp(base * 0.72 + recency * 0.10 + consensus * 0.08 + cycle * 0.05 + previous * 0.05);
+  const promo = clamp(dimensions.promotionalLevel);
+  const softPenalty = heuristicSoftPenalty(article);
+
+  const section = clamp(
+    sectionBase(dimensions) * 0.82
+    + recency * 0.08
+    + consensus * 0.04
+    + cycle * 0.03
+    + previous * 0.03
+    - promo * 0.20
+    - softPenalty
+  );
+
+  const frontPage = clamp(
+    frontPageBase(dimensions) * 0.82
+    + recency * 0.05
+    + consensus * 0.06
+    + cycle * 0.03
+    + previous * 0.04
+    - promo * 0.30
+    - softPenalty * 1.2
+  );
+
+  return { section, frontPage, recency, consensus, cycle, promo, softPenalty };
 }
 
-const rankingSystem = `Você é o editor de primeira página de um jornal diário. Sua tarefa NÃO é escolher categoria nem reescrever notícias: avalie a importância jornalística humana de cada matéria, em escala absoluta de 0 a 10.
+const rankingSystem = `Você é um editor experiente avaliando o valor jornalístico humano de cada matéria. NÃO escolha categoria e NÃO reescreva a notícia. Avalie cada item em escala absoluta de 0 a 10.
 
 Contexto do leitor: ${config.editorialContext}. Locale: ${config.language}. Perfil editorial: ${profile.name}.
 
-Para CADA id, dê cinco notas:
+Para CADA id devolva EXATAMENTE estas chaves em inglês:
 - impact: consequência real e alcance do acontecimento;
 - significance: raridade, peso histórico ou importância duradoura;
-- publicInterest: quanto um leitor bem informado deveria saber disso hoje, não apenas curiosidade/clickbait;
+- publicInterest: quanto um leitor bem informado deveria saber disso hoje;
 - novelty: quão novo e materialmente diferente é o acontecimento;
-- utility: utilidade prática ou capacidade de mudar uma decisão do leitor.
+- utility: utilidade prática ou capacidade de mudar uma decisão;
+- editorialValue: valor como notícia, distinguindo jornalismo relevante de curiosidade/clickbait;
+- promotionalLevel: 0 para notícia editorial sem venda; 10 para oferta, cupom, afiliado ou conteúdo essencialmente promocional.
 
-ÂNCORAS IMPORTANTES:
-- 9–10 em significance deve ser raro: despedida/aposentadoria de figura histórica, título ou recorde extraordinário, morte de figura central, grande decisão regulatória/judicial, aquisição enorme, ruptura tecnológica, crise, desastre ou descoberta científica de grande peso;
-- 7–8: desenvolvimento realmente grande ou relevante para muita gente;
-- 4–6: notícia válida porém rotineira, resultado comum de jogo, promoção de produto, atualização pequena, rumor ou agenda;
-- 0–3: detalhe menor, conteúdo promocional, curiosidade fraca ou assunto sem consequência;
-- em esportes, um placar rotineiro NÃO vira 8 só porque envolve seleção ou time famoso. Despedida, aposentadoria, título, recorde, eliminação histórica ou transferência excepcional podem ser 8–10 conforme os fatos;
-- fama de pessoa, clube, empresa ou marca não substitui importância do acontecimento;
-- não invente contexto além do headline/summary fornecidos;
-- coverageCount indica quantos veículos/publishers diferentes parecem cobrir o mesmo fato. Use isso apenas como evidência auxiliar; a fórmula final também tratará consenso separadamente.
+ÂNCORAS:
+- 9–10 em significance é raro: despedida/aposentadoria de figura histórica, título ou recorde extraordinário, morte de figura central, grande decisão regulatória/judicial, aquisição enorme, ruptura tecnológica, crise, desastre ou descoberta científica de grande peso;
+- 7–8 representa um grande desenvolvimento do dia;
+- 4–6 é notícia válida porém rotineira;
+- 0–3 é detalhe menor, curiosidade, rumor fraco, agenda ou conteúdo promocional;
+- resultado rotineiro de jogo não vira 8 por envolver time/seleção famosa; despedida, aposentadoria, título, recorde ou eliminação histórica podem virar 8–10;
+- ofertas, descontos, cupons e listas de compra devem ter promotionalLevel alto e editorialValue baixo, salvo quando o fato econômico/tecnológico central for realmente relevante;
+- fama de pessoa, empresa, clube ou marca não substitui importância do acontecimento;
+- não invente contexto além do headline/summary fornecidos.
 
-Retorne SOMENTE JSON: {"items":[{"id":1,"impact":0,"significance":0,"publicInterest":0,"novelty":0,"utility":0}]}`;
+Retorne SOMENTE JSON neste formato e repita todos os ids:
+{"items":[{"id":1,"impact":5,"significance":4,"publicInterest":6,"novelty":5,"utility":5,"editorialValue":6,"promotionalLevel":0}]}`;
 
 async function evaluateBatch(batch) {
   const payload = batch.map(article => ({
@@ -242,62 +417,103 @@ async function evaluateBatch(batch) {
   return new Map(rowsFrom(parsed).map(row => [Number(row.id), row]));
 }
 
-const globalCalibrationSystem = `Você é o editor-chefe fechando a primeira página de um jornal diário. Compare as candidatas ENTRE SI e atribua priority de 0 a 10 para a importância relativa de HOJE.
+const globalCalibrationSystem = `Você é o editor-chefe fechando um jornal diário. Compare as candidatas ENTRE SI.
 
 Contexto do leitor: ${config.editorialContext}. Locale: ${config.language}. Perfil: ${profile.name}.
 
+Para cada id atribua:
+- frontPagePriority: importância relativa para disputar a MANCHETE do dia;
+- sectionPriority: qualidade/relevância da matéria DENTRO da própria categoria.
+
 REGRAS:
-- 9–10 é excepcional e deve ficar para acontecimentos realmente históricos, transformadores ou de enorme impacto;
-- 7–8 é um grande destaque do dia;
-- 4–6 é notícia válida e relevante, mas rotineira;
-- 0–3 é pequena, promocional ou de baixo impacto;
+- frontPagePriority 9–10 é excepcional: acontecimentos históricos, transformadores ou de enorme impacto;
+- 7–8 é grande destaque do dia; 4–6 é relevante mas rotineiro; 0–3 é pequeno/promocional;
+- sectionPriority pode ser alto mesmo quando frontPagePriority é moderado: uma boa matéria de Games pode ser ótima para Games sem merecer a manchete geral;
+- ofertas, cupons, listas de compra, rumores, agendas e roundups devem perder frontPagePriority e normalmente também sectionPriority;
+- resultado rotineiro não deve liderar o jornal se houver aposentadoria, despedida histórica, título, recorde, crise, grande decisão ou descoberta claramente maior;
 - compare categorias diferentes sem favorecer esporte, tecnologia ou economia por padrão;
-- em esporte, resultado rotineiro não deve liderar o jornal se houver despedida histórica, aposentadoria, título, recorde, eliminação histórica ou outro fato claramente maior;
-- fama sozinha não basta; avalie o acontecimento;
-- use preliminaryScore, dimensions, coverageCount e publishedAt apenas como sinais auxiliares;
 - não invente fatos.
 
-Retorne SOMENTE JSON: {"items":[{"id":1,"priority":0}]}`;
+Retorne SOMENTE JSON: {"items":[{"id":1,"frontPagePriority":0,"sectionPriority":0}]}`;
+
+function calibrationValue(row, type) {
+  if (type === 'front') {
+    return fieldNumber(row, ['frontPagePriority', 'front_page_priority', 'prioridadeManchete', 'prioridade_manchete', 'priority', 'prioridade']);
+  }
+  return fieldNumber(row, ['sectionPriority', 'section_priority', 'prioridadeSecao', 'prioridade_secao', 'categoryPriority', 'category_priority']);
+}
 
 async function globalCalibrate(articles) {
   const limit = Math.max(12, Math.min(40, envNumber('EDITORIAL_GLOBAL_CALIBRATION_SIZE', 30)));
-  const shortlist = articles.slice(0, limit);
+  const shortlist = articles
+    .slice()
+    .sort((a, b) => Math.max(b.frontPageScore, b.sectionScore) - Math.max(a.frontPageScore, a.sectionScore))
+    .slice(0, limit);
   if (!shortlist.length) return articles;
 
   const payload = shortlist.map(article => ({
     id: article.id,
     category: article.category,
     headline: article.headline || article.originalTitle,
-    summary: String(article.summary || article.excerpt || '').slice(0, 320),
+    summary: String(article.summary || article.excerpt || '').slice(0, 340),
     publishedAt: article.publishedAt,
     coverageCount: article.coverageCount || 1,
-    preliminaryScore: article.score,
-    dimensions: article.importance
+    sectionScore: article.sectionScore,
+    frontPageScore: article.frontPageScore,
+    dimensions: article.importance,
+    contentFlags: article.editorialContentFlags || []
   }));
 
-  let priorities;
+  let rows;
   try {
-    const parsed = await chatJson(globalCalibrationSystem, JSON.stringify(payload));
-    priorities = new Map(rowsFrom(parsed).map(row => [Number(row.id), clamp(row.priority)]));
+    rows = rowsFrom(await chatJson(globalCalibrationSystem, JSON.stringify(payload)));
   } catch (error) {
     console.warn(`  Calibração global caiu para o ranking dimensional (${error.message || error}).`);
     return articles;
   }
 
+  const byId = new Map(rows.map(row => [Number(row.id), row]));
+  let validFront = 0;
+  for (const row of rows) if (calibrationValue(row, 'front') != null) validFront += 1;
+  if (validFront < Math.max(1, Math.ceil(shortlist.length * 0.5))) {
+    console.warn('  Calibração global retornou poucas prioridades válidas; mantendo ranking dimensional.');
+    return articles;
+  }
+
   return articles.map(article => {
-    const priority = priorities.get(Number(article.id));
-    if (priority == null) return article;
-    const score = clamp(Number(article.score || 0) * 0.72 + priority * 0.28);
+    const row = byId.get(Number(article.id));
+    if (!row) return article;
+    const frontPriority = calibrationValue(row, 'front');
+    const sectionPriority = calibrationValue(row, 'section');
+    const frontPageScore = frontPriority == null
+      ? article.frontPageScore
+      : clamp(article.frontPageScore * 0.65 + frontPriority * 0.35);
+    const sectionScore = sectionPriority == null
+      ? article.sectionScore
+      : clamp(article.sectionScore * 0.80 + sectionPriority * 0.20);
+
     return {
       ...article,
-      score: Number(score.toFixed(2)),
-      globalPriority: priority,
-      rankingSignals: { ...(article.rankingSignals || {}), globalCalibration: priority }
+      score: Number(sectionScore.toFixed(2)),
+      sectionScore: Number(sectionScore.toFixed(2)),
+      frontPageScore: Number(frontPageScore.toFixed(2)),
+      globalPriority: frontPriority,
+      sectionPriority,
+      rankingSignals: {
+        ...(article.rankingSignals || {}),
+        globalFrontPageCalibration: frontPriority,
+        globalSectionCalibration: sectionPriority
+      }
     };
-  }).sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
+  });
 }
 
-async function applyHumanRanking(articles) {
+async function applyHumanRanking(input) {
+  const sanitized = sanitizeCategories(input);
+  if (sanitized.corrected) console.log(`  Sanidade editorial: ${sanitized.corrected} categoria(s) corrigida(s) por sinal inequívoco.`);
+  if (sanitized.rejected) console.log(`  Sanidade editorial: ${sanitized.rejected} matéria(s) descartada(s) por categoria sem evidência textual.`);
+
+  const articles = sanitized.articles;
   const result = [];
   const batchSize = Math.max(8, Math.min(20, envNumber('EDITORIAL_RANKING_BATCH_SIZE', 14)));
 
@@ -312,38 +528,35 @@ async function applyHumanRanking(articles) {
 
     for (const article of batch) {
       const row = evaluated.get(Number(article.id));
-      const fallback = clamp(article.score);
-      const dimensions = row ? {
-        impact: clamp(row.impact),
-        significance: clamp(row.significance),
-        publicInterest: clamp(row.publicInterest),
-        novelty: clamp(row.novelty),
-        utility: clamp(row.utility)
-      } : {
-        impact: fallback,
-        significance: fallback,
-        publicInterest: fallback,
-        novelty: fallback,
-        utility: fallback
-      };
-      const score = rankScore(article, dimensions);
+      const parsed = dimensionsFromRow(row || {}, article);
+      const scores = calculateScores(article, parsed.dimensions);
       result.push({
         ...article,
         modelScore: article.score,
-        score: Number(score.toFixed(2)),
-        importance: dimensions,
+        score: Number(scores.section.toFixed(2)),
+        sectionScore: Number(scores.section.toFixed(2)),
+        frontPageScore: Number(scores.frontPage.toFixed(2)),
+        importance: parsed.dimensions,
         rankingSignals: {
-          recency: recencyScore(article.publishedAt),
-          consensus: consensusScore(article.coverageCount),
+          recency: scores.recency,
+          consensus: scores.consensus,
           coverageCount: article.coverageCount || 1,
-          newSinceLastEdition: article.newSinceLastEdition !== false
+          newSinceLastEdition: article.newSinceLastEdition !== false,
+          promotionalLevel: scores.promo,
+          softContentPenalty: scores.softPenalty,
+          dimensionFieldsPresent: parsed.fieldsPresent,
+          dimensionFallback: !parsed.valid
         }
       });
     }
   }
 
-  const dimensional = result.sort((a, b) => Number(b.score) - Number(a.score) || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0));
-  return globalCalibrate(dimensional);
+  const calibrated = await globalCalibrate(result);
+  return calibrated.sort((a, b) => {
+    const editorialA = Math.max(Number(a.frontPageScore || 0), Number(a.sectionScore || a.score || 0));
+    const editorialB = Math.max(Number(b.frontPageScore || 0), Number(b.sectionScore || b.score || 0));
+    return editorialB - editorialA || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+  });
 }
 
 export default {
@@ -361,10 +574,15 @@ export default {
   async afterAnalyze(payload) {
     const articles = Array.isArray(payload?.articles) ? payload.articles : [];
     if (!articles.length) return payload;
-    console.log(`  Ranking editorial humano: calibrando ${articles.length} matéria(s) por impacto, peso histórico, interesse, novidade e utilidade...`);
+    console.log(`  Ranking editorial humano: calibrando ${articles.length} matéria(s) por importância humana e valor dentro da seção...`);
     const ranked = await applyHumanRanking(articles);
-    const top = ranked.slice(0, 5).map(article => `${article.score.toFixed(2)} ${article.headline || article.originalTitle}`).join(' | ');
-    if (top) console.log(`  Top editorial: ${top}`);
+    const top = ranked
+      .slice()
+      .sort((a, b) => Number(b.frontPageScore || 0) - Number(a.frontPageScore || 0))
+      .slice(0, 5)
+      .map(article => `${Number(article.frontPageScore || 0).toFixed(2)} ${article.headline || article.originalTitle}`)
+      .join(' | ');
+    if (top) console.log(`  Top primeira página: ${top}`);
     return { ...payload, articles: ranked };
   },
 

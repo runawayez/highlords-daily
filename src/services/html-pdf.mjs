@@ -123,18 +123,6 @@ async function loadNewsletterPage(page, html, baseDir) {
 }
 
 async function preparePdfLayout(page) {
-  // Keep the footer attached to the last editorial section. This prevents
-  // Chromium from treating a tiny footer as meaningful content for a new page.
-  await page.evaluate(() => {
-    const footer = document.querySelector('.footer');
-    const sections = [...document.querySelectorAll('.newsletter-section')];
-    const lastSection = sections.at(-1);
-    if (footer && lastSection && footer.parentElement !== lastSection) {
-      lastSection.appendChild(footer);
-      footer.classList.add('pdf-footer');
-    }
-  });
-
   await page.addStyleTag({
     content: `
       @page { size: A4; margin: 0; }
@@ -152,10 +140,7 @@ async function preparePdfLayout(page) {
         break-inside: avoid-page !important;
         page-break-inside: avoid !important;
       }
-      .newsletter-section {
-        break-inside: auto !important;
-        page-break-inside: auto !important;
-      }
+      .newsletter-section,
       .section-grid {
         break-inside: auto !important;
         page-break-inside: auto !important;
@@ -168,14 +153,11 @@ async function preparePdfLayout(page) {
         break-after: avoid-page !important;
         page-break-after: avoid !important;
       }
-      .newsletter-section:last-of-type .section-grid {
-        break-after: avoid-page !important;
-        page-break-after: avoid !important;
+      .footer {
+        display: none !important;
       }
-      .pdf-footer {
-        break-inside: avoid-page !important;
-        page-break-inside: avoid !important;
-        margin-top: 0 !important;
+      .newsletter-section:last-of-type {
+        padding-bottom: 18px !important;
       }
     `
   });
@@ -184,56 +166,29 @@ async function preparePdfLayout(page) {
 async function layoutMetrics(page) {
   return page.evaluate(() => {
     const shell = document.querySelector('.shell');
-    const footer = document.querySelector('.footer');
     const shellRect = shell?.getBoundingClientRect();
-    const footerRect = footer?.getBoundingClientRect();
-    const contentHeight = Math.ceil(Math.max(
-      shellRect?.bottom || 0,
-      footerRect?.bottom || 0,
-      document.body?.scrollHeight || 0,
-      document.documentElement?.scrollHeight || 0
-    ));
     return {
-      contentHeight,
-      footerTop: Math.ceil(footerRect?.top || 0),
-      footerBottom: Math.ceil(footerRect?.bottom || 0),
-      footerHeight: Math.ceil(footerRect?.height || 0)
+      contentHeight: Math.ceil(Math.max(
+        shellRect?.bottom || 0,
+        document.body?.scrollHeight || 0,
+        document.documentElement?.scrollHeight || 0
+      ))
     };
   });
 }
 
-function adaptivePdfScale({ contentHeight, footerTop, footerBottom, footerHeight }) {
+function adaptivePdfScale({ contentHeight }) {
   if (!Number.isFinite(contentHeight) || contentHeight <= 0) return BASE_PDF_SCALE;
 
-  const pageHeightAtBaseScale = A4_HEIGHT_CSS_PX / BASE_PDF_SCALE;
-  const pages = Math.max(1, Math.ceil(contentHeight / pageHeightAtBaseScale));
+  const printedHeight = contentHeight * BASE_PDF_SCALE;
+  const pages = Math.max(1, Math.ceil(printedHeight / A4_HEIGHT_CSS_PX));
   if (pages <= 1) return BASE_PDF_SCALE;
 
-  // If the footer starts on what would be the final page and practically
-  // nothing else shares that page, fit it into the previous page when that can
-  // be achieved with a subtle shrink. This uses the footer geometry itself,
-  // instead of relying only on total document height.
-  const footerPage = footerTop > 0 ? Math.floor(footerTop / pageHeightAtBaseScale) + 1 : pages;
-  const previousPageBottom = (footerPage - 1) * pageHeightAtBaseScale;
-  const footerIsAlone = footerPage === pages
-    && footerHeight > 0
-    && footerTop >= previousPageBottom
-    && (contentHeight - footerTop) <= Math.max(footerHeight * 1.35, pageHeightAtBaseScale * TINY_LAST_PAGE_RATIO);
-
-  if (footerIsAlone && footerBottom > 0 && footerPage > 1) {
-    const targetScale = (((footerPage - 1) * A4_HEIGHT_CSS_PX) - 6) / footerBottom;
-    const minimumScale = BASE_PDF_SCALE * (1 - MAX_AUTO_SHRINK);
-    if (targetScale >= minimumScale) return Math.min(BASE_PDF_SCALE, targetScale * 0.998);
-  }
-
-  const printedHeight = contentHeight * BASE_PDF_SCALE;
-  const physicalPages = Math.max(1, Math.ceil(printedHeight / A4_HEIGHT_CSS_PX));
-  if (physicalPages <= 1) return BASE_PDF_SCALE;
-  const remainder = printedHeight - ((physicalPages - 1) * A4_HEIGHT_CSS_PX);
+  const remainder = printedHeight - ((pages - 1) * A4_HEIGHT_CSS_PX);
   const remainderRatio = remainder / A4_HEIGHT_CSS_PX;
   if (remainderRatio > TINY_LAST_PAGE_RATIO) return BASE_PDF_SCALE;
 
-  const targetScale = (((physicalPages - 1) * A4_HEIGHT_CSS_PX) - 6) / contentHeight;
+  const targetScale = (((pages - 1) * A4_HEIGHT_CSS_PX) - 6) / contentHeight;
   const minimumScale = BASE_PDF_SCALE * (1 - MAX_AUTO_SHRINK);
   if (targetScale < minimumScale) return BASE_PDF_SCALE;
   return Math.min(BASE_PDF_SCALE, targetScale * 0.998);
