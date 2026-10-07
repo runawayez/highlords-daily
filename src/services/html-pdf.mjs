@@ -3,6 +3,10 @@ import path from 'node:path';
 import { pathToFileURL } from 'node:url';
 import puppeteer from 'puppeteer-core';
 
+const PDF_VIEWPORT_WIDTH = 1120;
+const PDF_VIEWPORT_HEIGHT = 1600;
+const PDF_SCALE = 0.64;
+
 function browserCandidates() {
   const candidates = [
     process.env.BROWSER_PATH,
@@ -59,6 +63,14 @@ async function waitForImages(page, timeoutMs = 12000) {
   ]);
 }
 
+async function waitForFonts(page) {
+  try {
+    await page.evaluate(async () => {
+      if (document.fonts?.ready) await document.fonts.ready;
+    });
+  } catch {}
+}
+
 function withBase(html, baseDir) {
   if (!baseDir) return html;
   const href = pathToFileURL(`${path.resolve(baseDir)}${path.sep}`).href;
@@ -76,16 +88,26 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
 
   try {
     const page = await browser.newPage();
-    await page.setViewport({ width: 1440, height: 1900, deviceScaleFactor: 1 });
+
+    // The newsletter is designed around a ~1060 px desktop canvas. Rendering
+    // the PDF as print media made Chromium apply the narrow/mobile rules of the
+    // template on an A4 page, collapsing grids and changing the composition.
+    // Keep the screen layout, then scale that stable desktop canvas into A4.
+    await page.setViewport({
+      width: PDF_VIEWPORT_WIDTH,
+      height: PDF_VIEWPORT_HEIGHT,
+      deviceScaleFactor: 1
+    });
+    await page.emulateMediaType('screen');
     await page.setContent(withBase(html, baseDir), { waitUntil: 'domcontentloaded', timeout: 30000 });
-    await waitForImages(page);
-    await page.emulateMediaType('print');
+    await Promise.all([waitForImages(page), waitForFonts(page)]);
 
     return await page.pdf({
       format: 'A4',
       printBackground: true,
       preferCSSPageSize: true,
       displayHeaderFooter: false,
+      scale: PDF_SCALE,
       margin: { top: '0mm', right: '0mm', bottom: '0mm', left: '0mm' }
     });
   } finally {
