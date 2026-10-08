@@ -7,6 +7,7 @@ import {
   normalizeNewsletter,
   fallbackNewsletter,
 } from "./editorial/edition.mjs";
+import { curateFrontPage } from "./editorial/front-page.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { spawn } from "node:child_process";
@@ -158,11 +159,16 @@ export async function main(options = {}) {
     },
     select: async (articles, ctx) => {
       try {
-        return normalizeNewsletter(
-          await curateNewsletter(articles, ctx.editionDate),
-          articles,
-          ctx.editionDate,
-        );
+        const curated = await curateNewsletter(articles, ctx.editionDate);
+        try {
+          Object.assign(
+            curated,
+            await curateFrontPage(curated, articles, ctx.editionDate),
+          );
+        } catch (error) {
+          console.warn(`Front page fallback: ${error.message}`);
+        }
+        return normalizeNewsletter(curated, articles, ctx.editionDate);
       } catch (error) {
         console.warn(`Editor fallback: ${error.message}`);
         return fallbackNewsletter(articles, ctx.editionDate);
