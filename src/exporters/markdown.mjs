@@ -22,10 +22,7 @@ export function renderMarkdown(edition) {
   ];
 
   if (edition.topStories?.length) {
-    lines.push(
-      `## ${edition.frontPageTitle || uiCatalog().fallbackTitle}`,
-      "",
-    );
+    lines.push(`## ${edition.frontPageTitle || uiCatalog().fallbackTitle}`, "");
     for (const article of edition.topStories) lines.push(story(article, "###"));
   }
 
