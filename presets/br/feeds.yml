@@ -18,7 +18,8 @@ feeds:
 
   - name: Olhar Digital
     url: https://olhardigital.com.br/feed/
-    focus: [ia, mobile-gadgets, hardware, software-internet, filmes-series, ciencia, saude, clima-meio-ambiente, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, ciencia, saude, clima-meio-ambiente, futuro]
+    strict_focus: true
 
   - name: g1 · Tecnologia
     url: http://g1.globo.com/dynamo/tecnologia/rss2.xml
@@ -163,11 +164,6 @@ feeds:
 
   - name: MoneyTimes
     url: https://www.moneytimes.com.br/feed/
-    focus: [economia]
-    strict_focus: true
-
-  - name: Exame
-    url: https://exame.com/feed/
     focus: [economia]
     strict_focus: true
 
