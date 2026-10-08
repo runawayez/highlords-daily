@@ -12,7 +12,7 @@
   "llmMinScore": 4.0,
   "bundledTaxonomy": true,
   "plugins": [
-    "00-esports-routing.plugin.mjs",
+    "10-semantic-editorial-review.plugin.mjs",
     "editorial-ranking.plugin.mjs"
   ]
 }

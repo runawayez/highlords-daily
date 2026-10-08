@@ -1,103 +1,134 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import { isEsports } from "../src/editorial/esports.mjs";
-import esports from "../plugins/00-esports-routing.plugin.mjs";
 import { applyEditorialGuardrails } from "../presets/br/routing.mjs";
+import { applySemanticReview } from "../plugins/10-semantic-editorial-review.plugin.mjs";
 import { normalizeNewsletter } from "../src/editorial/edition.mjs";
 import { renderNewsletterHtml } from "../src/template.mjs";
 import { parse } from "yaml";
 import fs from "node:fs/promises";
 
-test("esports market and roster news survive routing without an explicit game name", () => {
+test("built-in BR routing is language-agnostic and does not classify by keywords", () => {
   const inputs = [
     {
-      originalTitle: "FURIA anuncia novo patrocinador para a próxima temporada",
-      focus: ["games", "esports"],
+      originalTitle: "Resultado da Lotofácil de hoje: números e ganhadores",
+      excerpt: "Confira o resultado do sorteio.",
+      language: "pt-BR",
+      focus: ["futuro", "economia"],
+      strictFocus: false,
     },
     {
-      originalTitle: "Astralis procura substitutos para dois jogadores",
-      focus: ["esports"],
+      originalTitle: "Resultados de la lotería nacional y números ganadores",
+      excerpt: "Sorteo celebrado en Buenos Aires.",
+      language: "es-AR",
+      focus: ["futuro"],
+      strictFocus: false,
     },
     {
-      originalTitle:
-        "Organização anuncia investimento e parceria de transmissão",
-      focus: ["esports"],
-    },
-    {
-      originalTitle: "Valve atualiza situação da BC.GAME no Major",
-      focus: ["esports"],
+      originalTitle: "新しい映画シリーズの予告編が公開",
+      excerpt: "ストリーミング作品の新シーズン。",
+      language: "ja-JP",
+      focus: ["filmes-series", "software-internet"],
+      strictFocus: true,
     },
   ];
+
   for (const input of inputs) {
-    const article = {
-      ...input,
-      strictFocus: true,
-      language: "pt-BR",
-      category: "games",
-    };
-    assert.equal(isEsports(article), true, input.originalTitle);
-    const collected = applyEditorialGuardrails(article);
-    assert.equal(collected.editorialReject, undefined);
-    assert.deepEqual(collected.focus, ["esports"]);
-    assert.equal(
-      esports.afterAnalyze({ articles: [collected] }).articles[0].category,
-      "esports",
-    );
+    const routed = applyEditorialGuardrails(input);
+    assert.equal(routed.editorialReject, undefined);
+    assert.equal(routed.editorialGuardrail, undefined);
+    assert.deepEqual(routed.focus, input.focus);
+    assert.equal(routed.strictFocus, input.strictFocus);
   }
 });
 
-test("game launches and hardware do not become esports", () => {
-  for (const originalTitle of [
-    "GTA 6 chega ao Xbox e Steam",
-    "MSI lança placa de vídeo para gamers",
-    "VALORANT recebe patch com novo mapa",
-  ]) {
-    assert.equal(
-      isEsports({
-        originalTitle,
-        focus: ["games", "esports"],
-        strictFocus: true,
-      }),
-      false,
-    );
-  }
-  const corrected = esports.afterAnalyze({
-    articles: [
+test("semantic review can reclassify and reject while enforcing strict focus", () => {
+  const result = applySemanticReview(
+    [
       {
-        originalTitle: "Novo jogo chega ao Steam",
-        category: "esports",
-        focus: ["games", "esports"],
+        id: 1,
+        category: "futuro",
+        originalTitle: "La inflación mensual vuelve a acelerarse",
+        focus: ["economia", "futuro"],
+        strictFocus: false,
+      },
+      {
+        id: 2,
+        category: "futuro",
+        originalTitle: "Resultado de lotería y números ganadores",
+        focus: ["futuro"],
+        strictFocus: false,
+      },
+      {
+        id: 3,
+        category: "games",
+        originalTitle: "Competitive roster change",
+        focus: ["games"],
+        strictFocus: true,
       },
     ],
-  }).articles;
-  assert.equal(corrected[0].category, "games");
+    [
+      {
+        id: 1,
+        action: "reclassify",
+        category: "economia",
+        confidence: 0.97,
+        reason: "Macroeconomic inflation story.",
+      },
+      {
+        id: 2,
+        action: "reject",
+        category: null,
+        confidence: 0.96,
+        reason: "Lottery result does not fit the configured taxonomy.",
+      },
+      {
+        id: 3,
+        action: "reclassify",
+        category: "esports",
+        confidence: 0.95,
+        reason: "Competitive gaming context.",
+      },
+    ],
+  );
+
+  assert.equal(result.articles.length, 1);
+  assert.equal(result.articles[0].category, "economia");
+  assert.equal(result.articles[0].semanticReview, "reclassified");
+  assert.deepEqual(result.stats, {
+    kept: 0,
+    reclassified: 1,
+    rejected: 2,
+    ignored: 0,
+  });
 });
 
-test("lottery results are rejected before LLM classification", () => {
-  for (const originalTitle of [
-    "Resultado da Lotofácil de hoje: números e ganhadores do concurso 3799",
-    "Resultado da Quina de hoje: números e ganhadores do concurso 7137",
-    "Mega-Sena: confira os números sorteados nesta quarta-feira",
-  ]) {
-    const routed = applyEditorialGuardrails({
-      originalTitle,
-      excerpt: "Confira o resultado do sorteio e o prêmio do concurso.",
-      focus: [
-        "ia",
-        "mobile-gadgets",
-        "hardware",
-        "software-internet",
-        "futuro",
-      ],
-      strictFocus: false,
-      language: "pt-BR",
-    });
-    assert.equal(routed.editorialReject, true, originalTitle);
-    assert.equal(routed.editorialGuardrail, "lottery-outside-editorial-scope");
-  }
+test("semantic review ignores low-confidence destructive changes", () => {
+  const article = {
+    id: 10,
+    category: "hardware",
+    originalTitle: "New GPU architecture announced",
+    focus: ["hardware", "futuro"],
+    strictFocus: false,
+  };
+  const result = applySemanticReview(
+    [article],
+    [
+      {
+        id: 10,
+        action: "reclassify",
+        category: "futuro",
+        confidence: 0.41,
+        reason: "Uncertain overlap with emerging technology.",
+      },
+    ],
+  );
+
+  assert.equal(result.articles[0].category, "hardware");
+  assert.equal(result.stats.kept, 1);
+  assert.equal(result.stats.ignored, 1);
 });
 
-test("bundled presets expose a separate esports category and dedicated sources", async () => {
+test("bundled presets expose esports and use semantic review by default", async () => {
   for (const preset of ["br", "global"]) {
     const categories = parse(
       await fs.readFile(
@@ -111,6 +142,13 @@ test("bundled presets expose a separate esports category and dedicated sources",
         "utf8",
       ),
     ).feeds;
+    const metadata = JSON.parse(
+      await fs.readFile(
+        new URL(`../presets/${preset}/preset.json`, import.meta.url),
+        "utf8",
+      ),
+    );
+
     assert.ok(categories.some((x) => x.slug === "esports"));
     assert.ok(
       feeds.filter(
@@ -118,6 +156,10 @@ test("bundled presets expose a separate esports category and dedicated sources",
           x.focus.length === 1 && x.focus[0] === "esports" && x.strict_focus,
       ).length >= 2,
     );
+    assert.ok(
+      metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
+    );
+    assert.ok(!metadata.plugins.includes("00-esports-routing.plugin.mjs"));
   }
 });
 
