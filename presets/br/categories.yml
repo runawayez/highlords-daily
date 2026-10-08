@@ -55,10 +55,30 @@ categories:
   - slug: economia
     name: Economia
     labels: {"en": "Economy", "es": "Economía", "fr": "Économie", "de": "Wirtschaft", "ja": "経済", "zh": "经济", "ar": "الاقتصاد", "pt": "Economia"}
-    description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo. NÃO inclui eleições, Justiça Eleitoral ou política institucional quando o impacto econômico não for o assunto central.
+    description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo. Política entra aqui somente quando o impacto econômico for o assunto central.
     aliases: [economics, economy, mercados, markets, finanças, financas, finance, negócios, negocios, business]
+  - slug: politica-sociedade
+    name: Política & Sociedade
+    labels: {"en": "Politics & Society", "es": "Política y sociedad", "fr": "Politique et société", "de": "Politik & Gesellschaft", "ja": "政治・社会", "zh": "政治与社会", "ar": "السياسة والمجتمع", "pt": "Política & Sociedade"}
+    description: Governos, eleições, instituições, legislação, Justiça, políticas públicas, direitos, segurança pública, demografia, movimentos sociais e transformações relevantes da sociedade. Economia pertence a Economia quando mercados, empresas ou impacto econômico forem o assunto central.
+    aliases: [politics, society, política, politica, sociedade, government, elections, sociedad]
+  - slug: ciencia
+    name: Ciência
+    labels: {"en": "Science", "es": "Ciencia", "fr": "Sciences", "de": "Wissenschaft", "ja": "科学", "zh": "科学", "ar": "العلوم", "pt": "Ciência"}
+    description: Pesquisa e descobertas científicas em astronomia, física, química, biologia, geociências, arqueologia e outras áreas do conhecimento. Tecnologia aplicada, protótipos e produtos emergentes pertencem a Futuro & Inovação quando a inovação tecnológica for o assunto central.
+    aliases: [science, ciencia, ciência, sciences, research, pesquisa, scientific discovery]
+  - slug: saude
+    name: Saúde
+    labels: {"en": "Health", "es": "Salud", "fr": "Santé", "de": "Gesundheit", "ja": "健康", "zh": "健康", "ar": "الصحة", "pt": "Saúde"}
+    description: Medicina, saúde pública, doenças, prevenção, tratamentos, medicamentos, pesquisas clínicas, sistemas de saúde e biotecnologia quando o impacto direto na saúde humana for central. Não classifique aqui bem-estar genérico sem relevância jornalística.
+    aliases: [health, salud, santé, saude, saúde, medicine, medicina, public health]
+  - slug: clima-meio-ambiente
+    name: Clima & Meio Ambiente
+    labels: {"en": "Climate & Environment", "es": "Clima y medio ambiente", "fr": "Climat et environnement", "de": "Klima & Umwelt", "ja": "気候・環境", "zh": "气候与环境", "ar": "المناخ والبيئة", "pt": "Clima & Meio Ambiente"}
+    description: Mudanças climáticas, eventos meteorológicos extremos, biodiversidade, ecossistemas, conservação, poluição, recursos naturais, sustentabilidade e política ambiental. Tecnologias energéticas experimentais pertencem a Futuro & Inovação quando a inovação for o foco central.
+    aliases: [climate, environment, clima, meio ambiente, environmental, sustainability, sustentabilidade]
   - slug: futuro
-    name: Futuro
-    labels: {"en": "Science & Future", "es": "Ciencia y futuro", "fr": "Sciences et avenir", "de": "Wissenschaft und Zukunft", "ja": "科学・未来", "zh": "科学与未来", "ar": "العلم والمستقبل", "pt": "Futuro"}
-    description: Tecnologias emergentes e ciência com implicação de futuro, como robótica, computação quântica, VR/AR, computação espacial, biotecnologia, energia avançada, missões espaciais, protótipos e descobertas científicas relevantes. NÃO use a categoria para galerias de imagens, roundups semanais de astronomia ou curiosidades espaciais sem descoberta, missão ou inovação central.
-    aliases: [future, emerging tech, tecnologias emergentes, tecnologia emergente, robótica, robotica, computação quântica, computacao quantica, space technology, ciência futura]
+    name: Futuro & Inovação
+    labels: {"en": "Future & Innovation", "es": "Futuro e innovación", "fr": "Futur et innovation", "de": "Zukunft & Innovation", "ja": "未来・イノベーション", "zh": "未来与创新", "ar": "المستقبل والابتكار", "pt": "Futuro & Inovação"}
+    description: Tecnologias emergentes e inovação aplicada com potencial transformador, como robótica, computação quântica, VR/AR, computação espacial, novas interfaces, energia avançada, mobilidade futura, protótipos e novas plataformas tecnológicas. Descobertas científicas sem inovação aplicada pertencem a Ciência; produtos já estabelecidos pertencem às categorias de tecnologia correspondentes.
+    aliases: [future, innovation, futuro, inovação, inovacao, emerging tech, tecnologias emergentes, robótica, robotica, computação quântica, computacao quantica]

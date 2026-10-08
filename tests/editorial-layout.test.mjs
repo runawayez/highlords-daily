@@ -7,6 +7,14 @@ import { renderNewsletterHtml } from "../src/template.mjs";
 import { parse } from "yaml";
 import fs from "node:fs/promises";
 
+const universalExpansion = [
+  "politica-sociedade",
+  "ciencia",
+  "saude",
+  "clima-meio-ambiente",
+  "futuro",
+];
+
 test("built-in BR routing is language-agnostic and does not classify by keywords", () => {
   const inputs = [
     {
@@ -128,7 +136,7 @@ test("semantic review ignores low-confidence destructive changes", () => {
   assert.equal(result.stats.ignored, 1);
 });
 
-test("bundled presets expose esports and use semantic review by default", async () => {
+test("bundled presets expose the universal taxonomy and semantic review", async () => {
   for (const preset of ["br", "global"]) {
     const categories = parse(
       await fs.readFile(
@@ -149,11 +157,41 @@ test("bundled presets expose esports and use semantic review by default", async 
       ),
     );
 
-    assert.ok(categories.some((x) => x.slug === "esports"));
+    const categorySlugs = new Set(categories.map((category) => category.slug));
+    const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
+
+    assert.equal(categorySlugs.size, 16);
+    for (const slug of universalExpansion) {
+      assert.ok(categorySlugs.has(slug), `${preset} missing ${slug}`);
+      assert.ok(
+        sourceCoverage.has(slug),
+        `${preset} has no source for ${slug}`,
+      );
+    }
+
+    for (const slug of [
+      "politica-sociedade",
+      "ciencia",
+      "saude",
+      "clima-meio-ambiente",
+    ]) {
+      const category = categories.find((item) => item.slug === slug);
+      assert.ok(category.labels.pt, `${preset}/${slug} missing pt label`);
+      assert.ok(category.labels.en, `${preset}/${slug} missing en label`);
+      assert.ok(category.labels.es, `${preset}/${slug} missing es label`);
+    }
+
+    assert.equal(
+      categories.find((category) => category.slug === "futuro").name,
+      "Futuro & Inovação",
+    );
+    assert.ok(categorySlugs.has("esports"));
     assert.ok(
       feeds.filter(
-        (x) =>
-          x.focus.length === 1 && x.focus[0] === "esports" && x.strict_focus,
+        (feed) =>
+          feed.focus.length === 1 &&
+          feed.focus[0] === "esports" &&
+          feed.strict_focus,
       ).length >= 2,
     );
     assert.ok(
@@ -193,11 +231,11 @@ test("edition keeps esports separate and template groups header with first row w
   );
   assert.ok(
     edition.sections
-      .find((x) => x.slug === "esports")
-      .articles.some((x) => x.id === 8),
+      .find((section) => section.slug === "esports")
+      .articles.some((article) => article.id === 8),
   );
-  const games = edition.sections.find((x) => x.slug === "games");
-  games.articles = articles.filter((x) => x.category === "games");
+  const games = edition.sections.find((section) => section.slug === "games");
+  games.articles = articles.filter((article) => article.category === "games");
   const html = renderNewsletterHtml(edition);
   assert.ok(!html.includes("<h1>"));
   assert.ok(html.includes('<p class="hero-intro">Texto de abertura</p>'));
