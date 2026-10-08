@@ -201,7 +201,7 @@ test("bundled presets expose the universal taxonomy and semantic review", async 
   }
 });
 
-test("edition builds a front page without duplicating stories and respects section order", () => {
+test("edition keeps configured sections and treats highlights as references", () => {
   const articles = [
     {
       id: 1,
@@ -274,7 +274,7 @@ test("edition builds a front page without duplicating stories and respects secti
       score: 7.1,
       frontPageScore: 7.5,
       source: "Hardware Wire",
-      headline: "Hardware que não deve virar seção",
+      headline: "Hardware também merece seção",
     },
   ];
 
@@ -282,7 +282,7 @@ test("edition builds a front page without duplicating stories and respects secti
     {
       title: "Edição do dia",
       intro: "Texto de abertura",
-      frontPageTitle: "O que importa hoje",
+      frontPageTitle: "Front Page",
       leadId: 1,
       topStoryIds: [2, 3, 4],
       sectionOrder: ["esports", "games"],
@@ -296,32 +296,39 @@ test("edition builds a front page without duplicating stories and respects secti
   );
 
   assert.equal(edition.lead.id, 1);
+  assert.equal(edition.topStories.length, 3);
   assert.deepEqual(
-    edition.topStories.map((article) => article.id),
-    [2, 3, 4],
+    edition.topStories.slice(0, 2).map((article) => article.id),
+    [2, 3],
   );
   assert.deepEqual(
     edition.sections.map((section) => section.slug),
-    ["esports", "games"],
+    ["ia", "hardware", "games", "esports", "economia", "ciencia"],
   );
-  assert.ok(!edition.sections.some((section) => section.slug === "hardware"));
+  assert.ok(edition.sections.some((section) => section.slug === "hardware"));
 
-  const allIds = [
-    edition.lead.id,
-    ...edition.topStories.map((article) => article.id),
-    ...edition.sections.flatMap((section) =>
+  const sectionIds = new Set(
+    edition.sections.flatMap((section) =>
       section.articles.map((article) => article.id),
     ),
-  ];
-  assert.equal(new Set(allIds).size, allIds.length);
+  );
+  for (const highlight of edition.topStories) {
+    assert.ok(sectionIds.has(highlight.id));
+    assert.notEqual(highlight.id, edition.lead.id);
+  }
+  assert.ok(sectionIds.has(edition.lead.id));
+  assert.equal(edition.stats.stories, sectionIds.size);
+  assert.notEqual(edition.frontPageTitle, "Front Page");
 
   const html = renderNewsletterHtml(edition);
   assert.ok(!html.includes("<h1>"));
+  assert.ok(!html.includes("Front Page"));
   assert.ok(html.includes('<p class="hero-intro">Texto de abertura</p>'));
   assert.ok(html.includes('id="front-page"'));
   assert.equal((html.match(/class="front-story"/g) || []).length, 3);
-  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="esports"'));
-  assert.ok(html.indexOf('id="esports"') < html.indexOf('id="games"'));
+  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="ia"'));
+  assert.ok(html.indexOf('id="hardware"') < html.indexOf('id="games"'));
+  assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
   assert.match(
     html,
     /class="section-start"><div class="section-title">[\s\S]*?<div class="section-grid(?: [^"]+)?">/,

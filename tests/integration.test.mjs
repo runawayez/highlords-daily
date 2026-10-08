@@ -119,9 +119,9 @@ test(
             };
         } else if (properties.topStoryIds)
           result = {
-            frontPageTitle: "الأهم اليوم",
+            intro:
+              "تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم، إلى جانب تطورات النقل المحلي في اليابان.",
             topStoryIds: [3, 2],
-            sectionOrder: [],
           };
         else
           result = {
@@ -222,7 +222,7 @@ test(
       );
       assert.equal(edition.language, "ar-EG");
       assert.equal(edition.stats.stories, 3);
-      assert.equal(edition.frontPageTitle, "الأهم اليوم");
+      assert.equal(edition.frontPageTitle, "ما يستحق اهتمامك اليوم");
       assert.equal(edition.topStories.length, 2);
       assert.ok(edition.lead.stableId);
       assert.equal(edition.lead.language, "ja-JP");
@@ -232,13 +232,16 @@ test(
       );
       assert.ok(html.includes('dir="rtl"'));
       assert.ok(html.includes("اقرأ الخبر"));
-      assert.ok(html.includes("أخبار من اليابان"));
-      assert.ok(html.includes("الأهم اليوم"));
+      assert.ok(
+        html.includes("تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم"),
+      );
+      assert.ok(html.includes("ما يستحق اهتمامك اليوم"));
       assert.ok(!html.includes("<h1>"));
-      // Front-page highlights are text-first; only the visual lead needs a cached image.
+      // Highlights reference stories that remain in their categories, so the
+      // three unique published stories all get their normal section image asset.
       assert.equal(
         (await fs.readdir(path.join(editionDir, "assets"))).length,
-        1,
+        3,
       );
       const metrics = JSON.parse(
         await fs.readFile(
@@ -251,7 +254,7 @@ test(
       const before = { ...calls };
       await command(args);
       assert.deepEqual(calls, before);
-      // Force with history disabled: cached analysis is reused; ranking, curation and front-page hierarchy still run.
+      // Force with history disabled: cached analysis is reused; ranking, curation and highlights still run.
       await fs.writeFile(
         profile,
         (await fs.readFile(profile, "utf8")) + "historyEnabled: false\n",
@@ -270,7 +273,7 @@ test(
       assert.equal(updated.counters.feedCacheHits, 1);
       assert.equal(updated.counters.analysisCacheHits, 3);
       assert.equal(updated.counters.dimensionCacheHits, 3);
-      assert.equal(updated.counters.imageFileCacheHits, 1);
+      assert.equal(updated.counters.imageFileCacheHits, 3);
     } finally {
       await new Promise((resolve) => server.close(resolve));
       await fs.rm(directory, { recursive: true, force: true });

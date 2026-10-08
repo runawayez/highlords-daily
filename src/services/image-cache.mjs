@@ -80,6 +80,17 @@ function registerArticle(
     );
 }
 
+function uniqueArticles(articles) {
+  const seen = new Set();
+  return articles.filter((article) => {
+    if (!article) return false;
+    const key = articleKey(article);
+    if (!key || seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
+}
+
 async function candidateImageUrls(article) {
   // Never rediscover an Open Graph/preview image for a source that explicitly
   // opted out of images (copyright, quality or editorial reasons).
@@ -245,6 +256,48 @@ function rankedReserves(context) {
   });
 }
 
+function reconcileTopStories(topStories, sections, lead) {
+  const sectionArticles = sections.flatMap((section) => section.articles || []);
+  const available = new Map(
+    sectionArticles.map((article) => [articleKey(article), article]),
+  );
+  const target = Math.min(topStories.length, sectionArticles.length, 5);
+  const selected = [];
+  const seen = new Set();
+  const seenTopics = new Set();
+  const leadKey = articleKey(lead);
+
+  const tryAdd = (article) => {
+    if (!article) return false;
+    const key = articleKey(article);
+    const topic = topicKey(article);
+    if (
+      !key ||
+      key === leadKey ||
+      seen.has(key) ||
+      (topic && seenTopics.has(topic))
+    )
+      return false;
+    selected.push(article);
+    seen.add(key);
+    if (topic) seenTopics.add(topic);
+    return true;
+  };
+
+  for (const original of topStories)
+    tryAdd(available.get(articleKey(original)));
+  for (const article of sectionArticles.slice().sort((a, b) => {
+    const score =
+      Number(b.frontPageScore ?? b.score ?? 0) -
+      Number(a.frontPageScore ?? a.score ?? 0);
+    return score || new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0);
+  })) {
+    if (selected.length >= target) break;
+    tryAdd(article);
+  }
+  return selected.slice(0, target);
+}
+
 async function enforceRequiredImages(
   edition,
   assetsDir,
@@ -252,6 +305,9 @@ async function enforceRequiredImages(
   context,
 ) {
   const reserves = rankedReserves(context);
+  // These sets track section occupancy only. The lead and highlight block are
+  // presentations of stories, not extra editorial slots, so they must not
+  // evict the same story from its configured category.
   const usedIds = new Set();
   const usedTopics = new Set();
   const failedIds = new Set();
@@ -311,13 +367,6 @@ async function enforceRequiredImages(
     return null;
   };
 
-  // Front-page highlights are intentionally text-first, so they do not need
-  // image validation. They still count as selected stories for duplicate,
-  // topic and source-diversity enforcement during any later image replacement.
-  for (const article of topStories) {
-    registerArticle(article, usedIds, usedTopics, globalCounts);
-  }
-
   let lead = await preparedFor(edition.lead);
   if (!isPreparedValid(lead)) {
     failedIds.add(articleKey(edition.lead));
@@ -331,7 +380,6 @@ async function enforceRequiredImages(
     }
     replacements += 1;
   }
-  registerArticle(lead, usedIds, usedTopics, globalCounts);
 
   const sections = [];
   for (const section of edition.sections || []) {
@@ -362,11 +410,12 @@ async function enforceRequiredImages(
     sections.push({ ...section, articles });
   }
 
-  const finalStories = [
+  const reconciledTopStories = reconcileTopStories(topStories, sections, lead);
+  const finalStories = uniqueArticles([
     lead,
-    ...topStories,
+    ...reconciledTopStories,
     ...sections.flatMap((section) => section.articles || []),
-  ].filter(Boolean);
+  ]);
   const cached = new Set(
     finalStories.filter((article) => article.imageCached).map(articleKey),
   ).size;
@@ -393,8 +442,11 @@ async function enforceRequiredImages(
     edition: {
       ...edition,
       lead,
-      topStories,
+      topStories: reconciledTopStories,
       sections,
+      sectionOrder: sections
+        .filter((section) => section.articles?.length)
+        .map((section) => section.slug),
       stats: {
         ...(edition.stats || {}),
         stories: finalStories.length,
@@ -403,6 +455,9 @@ async function enforceRequiredImages(
             (article) => article.publisherGroup || article.source,
           ),
         ).size,
+        topStories: reconciledTopStories.length,
+        visibleSections: sections.filter((section) => section.articles?.length)
+          .length,
         imageHardRule: true,
         imageReplacements: replacements,
         imageRemoved: removed,
@@ -447,6 +502,7 @@ export async function cacheEditionImages(edition, editionDir, context = {}) {
   const nextEdition = {
     ...edition,
     lead: replace(edition.lead),
+    topStories: (edition.topStories || []).map(replace),
     sections: edition.sections.map((section) => ({
       ...section,
       articles: (section.articles || []).map(replace),
