@@ -2,83 +2,72 @@ version: 1
 preset: br
 
 categories:
-  - slug: ia
-    name: IA
-    labels: {"en": "AI", "es": "IA", "fr": "IA", "de": "KI", "ja": "AI", "zh": "人工智能", "ar": "الذكاء الاصطناعي", "pt": "IA"}
-    description: Inteligência artificial, modelos, agentes, machine learning e produtos cujo assunto CENTRAL seja IA. Não classifique aqui filosofia, produtividade ou tecnologia genérica só porque a fonte também cobre IA.
-    aliases: [ai, artificial intelligence, inteligência artificial]
-  - slug: desenvolvimento
-    name: Desenvolvimento
-    labels: {"en": "Development", "es": "Desarrollo", "fr": "Développement", "de": "Entwicklung", "ja": "開発", "zh": "开发", "ar": "التطوير", "pt": "Desenvolvimento"}
-    description: Programação, linguagens, frameworks, APIs, bancos de dados, GitHub, QA, testes, DevOps, cloud e ferramentas para desenvolvedores.
-    aliases: [development, dev, programação, software development, qa, devops]
-  - slug: mobile-gadgets
-    name: Mobile & Gadgets
-    labels: {"en": "Mobile & Gadgets", "es": "Móviles y dispositivos", "fr": "Mobile et gadgets", "de": "Mobilgeräte", "ja": "モバイル・ガジェット", "zh": "移动设备", "ar": "الأجهزة المحمولة", "pt": "Mobile & Gadgets"}
-    description: Smartphones, tablets, relógios, fones, smart home, acessórios, wearables e eletrônicos de consumo. Ofertas e promoções continuam nesta categoria, mas têm menor peso editorial do que lançamentos, mudanças relevantes e novidades de produto.
-    aliases: [mobile, gadgets, mobile gadgets, celulares, smartphones, wearables]
-  - slug: hardware
-    name: Hardware
-    labels: {"en": "Hardware", "es": "Hardware", "fr": "Matériel", "de": "Hardware", "ja": "ハードウェア", "zh": "硬件", "ar": "الأجهزة", "pt": "Hardware"}
-    description: CPUs, GPUs, PCs, notebooks, monitores, periféricos, memória, armazenamento, chips e semicondutores.
-    aliases: [pc hardware, componentes, cpu, gpu, chips]
-  - slug: software-internet
-    name: Software & Internet
-    labels: {"en": "Software & Internet", "es": "Software e Internet", "fr": "Logiciels et Internet", "de": "Software und Internet", "ja": "ソフトウェア・インターネット", "zh": "软件与互联网", "ar": "البرمجيات والإنترنت", "pt": "Software & Internet"}
-    description: Sistemas operacionais, aplicativos, browsers, serviços digitais, segurança, privacidade, web, redes e plataformas. Streaming entra aqui apenas quando o assunto central for a tecnologia/plataforma, não o conteúdo de um filme ou série.
-    aliases: [software, internet, software internet, software e internet, security, segurança, privacidade]
+  - slug: tecnologia
+    name: Tecnologia
+    required: true
+    labels: {"en": "Technology", "es": "Tecnología", "fr": "Technologie", "de": "Technologie", "ja": "テクノロジー", "zh": "科技", "ar": "التكنولوجيا", "pt": "Tecnologia"}
+    description: Hardware, smartphones, gadgets, sistemas operacionais, aplicativos, serviços digitais, segurança, privacidade, web, redes, chips e eletrônicos de consumo. IA e desenvolvimento entram em IA & Desenvolvimento quando forem o assunto central.
+    aliases: [tecnologia, technology, hardware, software, internet, mobile, gadgets, smartphones, chips]
+
+  - slug: ia-desenvolvimento
+    name: IA & Desenvolvimento
+    required: true
+    labels: {"en": "AI & Development", "es": "IA y Desarrollo", "fr": "IA et Développement", "de": "KI & Entwicklung", "ja": "AI・開発", "zh": "人工智能与开发", "ar": "الذكاء الاصطناعي والتطوير", "pt": "IA & Desenvolvimento"}
+    description: Inteligência artificial, modelos, agentes, machine learning, programação, linguagens, frameworks, APIs, bancos de dados, GitHub, QA, testes, DevOps, cloud e ferramentas para desenvolvedores.
+    aliases: [ai, ia, artificial intelligence, inteligência artificial, desenvolvimento, development, dev, programação, software development, qa, devops]
+
   - slug: games
     name: Games
+    required: true
     labels: {"en": "Games", "es": "Videojuegos", "fr": "Jeux vidéo", "de": "Videospiele", "ja": "ゲーム", "zh": "游戏", "ar": "ألعاب الفيديو", "pt": "Games"}
-    description: Videogames e jogos interativos, consoles, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, estúdios, engines e lançamentos. NÃO inclui filmes, séries, TV ou notícias de atores e diretores, mesmo quando estiverem em serviços de streaming. Competições profissionais e cenário competitivo pertencem a eSports.
+    description: Videogames, consoles, PC gaming, Steam, PlayStation, Xbox, Nintendo, indies, RPGs, estúdios, engines e lançamentos. Competições profissionais e cenário competitivo pertencem a eSports.
     aliases: [game, gaming, jogos, videogames, video games]
-  - slug: filmes-series
-    name: Filmes e Séries
-    labels: {"en": "Movies & Series", "es": "Cine y series", "fr": "Films et séries", "de": "Filme und Serien", "ja": "映画・ドラマ", "zh": "电影与剧集", "ar": "الأفلام والمسلسلات", "pt": "Filmes e Séries"}
-    description: Cinema, filmes, séries, televisão e conteúdo audiovisual de streaming, incluindo atores, atrizes, diretores, trailers, críticas, temporadas, episódios, premiações e lançamentos. NÃO inclui videogames nem notícias puramente técnicas sobre plataformas de streaming.
-    aliases: [filmes, filme, cinema, series, séries, tv, television, movies, movie, films, film, streaming entertainment]
-  - slug: futebol
-    name: Futebol
-    labels: {"en": "Football (soccer)", "es": "Fútbol", "fr": "Football", "de": "Fußball", "ja": "サッカー", "zh": "足球", "ar": "كرة القدم", "pt": "Futebol"}
-    description: "Futebol de associação (soccer) exclusivamente: clubes, campeonatos, partidas, transferências, seleções, jogadores e jogadoras, mercado da bola e acontecimentos do futebol brasileiro e internacional. NÃO inclui futebol americano, NFL, NCAA ou competições de videogame/eFootball."
-    aliases: [soccer, association football, brasileirão, brasileirao, champions league, futebol internacional]
-  - slug: esportes
-    name: Esportes
-    labels: {"en": "Sports", "es": "Deportes", "fr": "Sports", "de": "Sport", "ja": "スポーツ", "zh": "体育", "ar": "الرياضة", "pt": "Esportes"}
-    description: Esportes que NÃO sejam futebol de associação, incluindo basquete, futebol americano/NFL, Fórmula 1, tênis, vôlei, atletismo, lutas, ciclismo, rugby, esportes olímpicos e outras modalidades físicas. Notícias de Brasileirão, Libertadores e seleções de soccer pertencem a Futebol; competições de videogame pertencem a eSports.
-    aliases: [sports, esporte, american football, nfl, ncaa football, super bowl, basquete, basketball, formula 1, f1, tênis, tenis, tennis, vôlei, volei, volleyball, mma, ufc, rugby, atletismo, olympics, olimpíadas, olimpiadas]
+
   - slug: esports
     name: eSports
+    required: false
     labels: {"en": "eSports", "es": "eSports", "fr": "eSport", "de": "E-Sport", "ja": "eスポーツ", "zh": "电子竞技", "ar": "الرياضات الإلكترونية", "pt": "eSports"}
-    description: Esportes eletrônicos e cenário competitivo de videogames, incluindo campeonatos, equipes, jogadores profissionais, organizações, patrocínios, investimentos, direitos de transmissão, transferências, resultados e mercado competitivo de League of Legends/CBLOL, VALORANT/VCT, Counter-Strike 2, Dota 2, Rainbow Six, Free Fire, EA Sports FC/eFootball, jogos de luta e outros títulos. NÃO inclui lançamentos, reviews, trailers, patches ou notícias gerais de games sem contexto competitivo.
+    description: Cenário competitivo de videogames, campeonatos, equipes, jogadores profissionais, organizações, patrocínios, investimentos, direitos de transmissão, transferências, resultados e mercado de eSports.
     aliases: [esports, e-sports, e sports, esportes eletrônicos, esportes eletronicos, competitive gaming, cblol, vct, esports world cup]
+
+  - slug: entretenimento
+    name: Entretenimento
+    required: false
+    labels: {"en": "Entertainment", "es": "Entretenimiento", "fr": "Divertissement", "de": "Unterhaltung", "ja": "エンタメ", "zh": "娱乐", "ar": "الترفيه", "pt": "Entretenimento"}
+    description: Cinema, filmes, séries, televisão e conteúdo audiovisual de streaming, incluindo atores, diretores, trailers, críticas, temporadas, episódios, premiações e lançamentos. Não inclui videogames.
+    aliases: [entretenimento, entertainment, filmes, filme, cinema, séries, series, tv, television, movies, streaming entertainment]
+
+  - slug: esportes
+    name: Esportes
+    required: false
+    labels: {"en": "Sports", "es": "Deportes", "fr": "Sports", "de": "Sport", "ja": "スポーツ", "zh": "体育", "ar": "الرياضة", "pt": "Esportes"}
+    description: Futebol brasileiro e internacional e demais esportes, incluindo Fórmula 1, basquete, tênis, vôlei, lutas, atletismo, ciclismo, rugby e esportes olímpicos. Competições de videogame pertencem a eSports.
+    aliases: [sports, esporte, esportes, futebol, soccer, football, brasileirão, libertadores, champions league, formula 1, f1, tênis, tennis, basquete, basketball, mma, ufc]
+
   - slug: economia
     name: Economia
+    required: true
     labels: {"en": "Economy", "es": "Economía", "fr": "Économie", "de": "Wirtschaft", "ja": "経済", "zh": "经济", "ar": "الاقتصاد", "pt": "Economia"}
     description: Mercados, empresas, inflação, juros, empregos, atividade econômica, investimentos e movimentos econômicos relevantes no Brasil e no mundo. Política entra aqui somente quando o impacto econômico for o assunto central.
     aliases: [economics, economy, mercados, markets, finanças, financas, finance, negócios, negocios, business]
+
   - slug: politica-sociedade
     name: Política & Sociedade
+    required: true
     labels: {"en": "Politics & Society", "es": "Política y sociedad", "fr": "Politique et société", "de": "Politik & Gesellschaft", "ja": "政治・社会", "zh": "政治与社会", "ar": "السياسة والمجتمع", "pt": "Política & Sociedade"}
-    description: Governos, eleições, instituições, legislação, Justiça, políticas públicas, direitos, segurança pública, demografia, movimentos sociais e transformações relevantes da sociedade. Economia pertence a Economia quando mercados, empresas ou impacto econômico forem o assunto central.
-    aliases: [politics, society, política, politica, sociedade, government, elections, sociedad]
-  - slug: ciencia
-    name: Ciência
-    labels: {"en": "Science", "es": "Ciencia", "fr": "Sciences", "de": "Wissenschaft", "ja": "科学", "zh": "科学", "ar": "العلوم", "pt": "Ciência"}
-    description: Pesquisa e descobertas científicas em astronomia, física, química, biologia, geociências, arqueologia e outras áreas do conhecimento. Tecnologia aplicada, protótipos e produtos emergentes pertencem a Futuro & Inovação quando a inovação tecnológica for o assunto central.
-    aliases: [science, ciencia, ciência, sciences, research, pesquisa, scientific discovery]
-  - slug: saude
-    name: Saúde
-    labels: {"en": "Health", "es": "Salud", "fr": "Santé", "de": "Gesundheit", "ja": "健康", "zh": "健康", "ar": "الصحة", "pt": "Saúde"}
-    description: Medicina, saúde pública, doenças, prevenção, tratamentos, medicamentos, pesquisas clínicas, sistemas de saúde e biotecnologia quando o impacto direto na saúde humana for central. Não classifique aqui bem-estar genérico sem relevância jornalística.
-    aliases: [health, salud, santé, saude, saúde, medicine, medicina, public health]
-  - slug: clima-meio-ambiente
-    name: Clima & Meio Ambiente
-    labels: {"en": "Climate & Environment", "es": "Clima y medio ambiente", "fr": "Climat et environnement", "de": "Klima & Umwelt", "ja": "気候・環境", "zh": "气候与环境", "ar": "المناخ والبيئة", "pt": "Clima & Meio Ambiente"}
-    description: Mudanças climáticas, eventos meteorológicos extremos, biodiversidade, ecossistemas, conservação, poluição, recursos naturais, sustentabilidade e política ambiental. Tecnologias energéticas experimentais pertencem a Futuro & Inovação quando a inovação for o foco central.
-    aliases: [climate, environment, clima, meio ambiente, environmental, sustainability, sustentabilidade]
-  - slug: futuro
-    name: Futuro & Inovação
-    labels: {"en": "Future & Innovation", "es": "Futuro e innovación", "fr": "Futur et innovation", "de": "Zukunft & Innovation", "ja": "未来・イノベーション", "zh": "未来与创新", "ar": "المستقبل والابتكار", "pt": "Futuro & Inovação"}
-    description: Tecnologias emergentes e inovação aplicada com potencial transformador, como robótica, computação quântica, VR/AR, computação espacial, novas interfaces, energia avançada, mobilidade futura, protótipos e novas plataformas tecnológicas. Descobertas científicas sem inovação aplicada pertencem a Ciência; produtos já estabelecidos pertencem às categorias de tecnologia correspondentes.
-    aliases: [future, innovation, futuro, inovação, inovacao, emerging tech, tecnologias emergentes, robótica, robotica, computação quântica, computacao quantica]
+    description: Governos, eleições, instituições, legislação, Justiça, políticas públicas, direitos, segurança pública, demografia, movimentos sociais e transformações relevantes da sociedade.
+    aliases: [politics, society, política, politica, sociedade, government, elections, justicia, justiça]
+
+  - slug: ciencia-saude
+    name: Ciência & Saúde
+    required: false
+    labels: {"en": "Science & Health", "es": "Ciencia y Salud", "fr": "Science et Santé", "de": "Wissenschaft & Gesundheit", "ja": "科学・健康", "zh": "科学与健康", "ar": "العلوم والصحة", "pt": "Ciência & Saúde"}
+    description: Pesquisa científica, astronomia, física, química, biologia, arqueologia, medicina, saúde pública, doenças, prevenção, tratamentos, medicamentos, pesquisa clínica e biotecnologia.
+    aliases: [science, ciência, ciencia, research, pesquisa, health, saúde, saude, medicine, medicina, public health]
+
+  - slug: clima-futuro
+    name: Clima & Futuro
+    required: false
+    labels: {"en": "Climate & Future", "es": "Clima y Futuro", "fr": "Climat et Futur", "de": "Klima & Zukunft", "ja": "気候・未来", "zh": "气候与未来", "ar": "المناخ والمستقبل", "pt": "Clima & Futuro"}
+    description: Mudanças climáticas, meio ambiente, biodiversidade, sustentabilidade e tecnologias emergentes com potencial transformador, como robótica, computação quântica, VR/AR, energia avançada, mobilidade futura e novas interfaces.
+    aliases: [climate, environment, clima, meio ambiente, sustentabilidade, future, innovation, futuro, inovação, emerging tech, robótica, computação quântica]
