@@ -26,7 +26,10 @@ function story(id, category, score, source = `source-${id}`) {
 
 test("taxonomy owns section names and the lead never repeats in its section", () => {
   const [first, second, third] = categories.slice(0, 3);
-  assert.ok(first && second && third, "bundled taxonomy must expose categories");
+  assert.ok(
+    first && second && third,
+    "bundled taxonomy must expose categories",
+  );
 
   const articles = [
     story(1, first.slug, 9),
