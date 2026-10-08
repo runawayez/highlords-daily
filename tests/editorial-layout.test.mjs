@@ -110,15 +110,18 @@ test("semantic review ignores low-confidence destructive changes", () => {
     focus: ["hardware", "futuro"],
     strictFocus: false,
   };
-  const result = applySemanticReview([article], [
-    {
-      id: 10,
-      action: "reclassify",
-      category: "futuro",
-      confidence: 0.41,
-      reason: "Uncertain overlap with emerging technology.",
-    },
-  ]);
+  const result = applySemanticReview(
+    [article],
+    [
+      {
+        id: 10,
+        action: "reclassify",
+        category: "futuro",
+        confidence: 0.41,
+        reason: "Uncertain overlap with emerging technology.",
+      },
+    ],
+  );
 
   assert.equal(result.articles[0].category, "hardware");
   assert.equal(result.stats.kept, 1);
@@ -153,7 +156,9 @@ test("bundled presets expose esports and use semantic review by default", async 
           x.focus.length === 1 && x.focus[0] === "esports" && x.strict_focus,
       ).length >= 2,
     );
-    assert.ok(metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"));
+    assert.ok(
+      metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
+    );
     assert.ok(!metadata.plugins.includes("00-esports-routing.plugin.mjs"));
   }
 });
