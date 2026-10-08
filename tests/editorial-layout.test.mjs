@@ -93,10 +93,7 @@ test("lottery results are rejected before LLM classification", () => {
       language: "pt-BR",
     });
     assert.equal(routed.editorialReject, true, originalTitle);
-    assert.equal(
-      routed.editorialGuardrail,
-      "lottery-outside-editorial-scope",
-    );
+    assert.equal(routed.editorialGuardrail, "lottery-outside-editorial-scope");
   }
 });
 
