@@ -114,39 +114,45 @@ function requestedTopStoryIds(curated) {
     : [];
 }
 
-function chooseTopStories(curated, articles, byId, used, globalSourceCounts) {
+function chooseTopStories(curated, sectionArticles, lead) {
+  const byId = new Map(
+    sectionArticles.map((article) => [Number(article.id), article]),
+  );
   const requestedIds = requestedTopStoryIds(curated);
   const desired =
     requestedIds.length >= 3
       ? Math.min(FRONT_PAGE_MAX, requestedIds.length)
-      : FRONT_PAGE_TARGET;
+      : Math.min(FRONT_PAGE_TARGET, sectionArticles.length);
   const selected = [];
+  const selectedIds = new Set();
   const seenCategories = new Set();
   const seenTopics = new Set();
+  const sourceCounts = new Map();
 
   const tryAdd = (article, { requireFreshCategory = false } = {}) => {
-    if (!article || used.has(article.id) || selected.length >= desired)
+    if (
+      !article ||
+      article.id === lead?.id ||
+      selectedIds.has(article.id) ||
+      selected.length >= desired
+    )
       return false;
     const topic = String(article.topicKey || "").trim();
     if (topic && seenTopics.has(topic)) return false;
     if (requireFreshCategory && seenCategories.has(article.category))
       return false;
-    if (!canUseSource(article, globalSourceCounts, new Map())) return false;
+    if (!canUseSource(article, sourceCounts, new Map())) return false;
     selected.push(article);
-    used.add(article.id);
+    selectedIds.add(article.id);
     seenCategories.add(article.category);
     if (topic) seenTopics.add(topic);
-    registerSource(article, globalSourceCounts);
+    registerSource(article, sourceCounts);
     return true;
   };
 
   for (const id of requestedIds) tryAdd(byId.get(id));
 
-  const candidates = articles
-    .filter((article) => !used.has(article.id))
-    .slice()
-    .sort(editorialSort);
-
+  const candidates = sectionArticles.slice().sort(editorialSort);
   for (const article of candidates) {
     if (selected.length >= desired) break;
     tryAdd(article, { requireFreshCategory: true });
@@ -159,47 +165,23 @@ function chooseTopStories(curated, articles, byId, used, globalSourceCounts) {
   return selected;
 }
 
-function normalizeSectionOrder(curated, articles, used) {
-  const categoryBySlug = new Map(
-    categories.map((category) => [category.slug, category]),
-  );
-  const requested = Array.isArray(curated?.sectionOrder)
-    ? curated.sectionOrder
-    : [];
-  const ordered = [];
-  const seen = new Set();
-
-  for (const raw of requested) {
-    const slug = String(raw || "").trim();
-    if (!categoryBySlug.has(slug) || seen.has(slug)) continue;
-    const hasRemaining = articles.some(
-      (article) => article.category === slug && !used.has(article.id),
-    );
-    if (!hasRemaining) continue;
-    ordered.push(slug);
-    seen.add(slug);
-  }
-
-  if (ordered.length) return ordered;
-
+function sectionOrder(articles) {
   return categories
-    .map((category, index) => {
-      const candidates = articles.filter(
-        (article) =>
-          article.category === category.slug && !used.has(article.id),
-      );
-      const strongest = candidates.slice().sort(editorialSort)[0] || null;
-      return {
-        slug: category.slug,
-        index,
-        strongest,
-      };
-    })
-    .filter((item) => item.strongest)
-    .sort(
-      (a, b) => editorialSort(a.strongest, b.strongest) || a.index - b.index,
+    .filter((category) =>
+      articles.some((article) => article.category === category.slug),
     )
-    .map((item) => item.slug);
+    .map((category) => category.slug);
+}
+
+function uniqueStories(stories) {
+  const seen = new Set();
+  return stories.filter((story) => {
+    if (!story) return false;
+    const key = story.id ?? story.link;
+    if (seen.has(key)) return false;
+    seen.add(key);
+    return true;
+  });
 }
 
 export function normalizeNewsletter(curated, articles, editionDate) {
@@ -209,8 +191,6 @@ export function normalizeNewsletter(curated, articles, editionDate) {
   const categoryBySlug = new Map(
     categories.map((category) => [category.slug, category]),
   );
-  const used = new Set();
-  const globalSourceCounts = new Map();
   const requestedLeadId = curatedId(
     curated?.leadId ??
       curated?.lead ??
@@ -229,23 +209,12 @@ export function normalizeNewsletter(curated, articles, editionDate) {
         score: Number(rawLead.frontPageScore ?? rawLead.score ?? 0),
       }
     : null;
-  if (lead) {
-    used.add(lead.id);
-    registerSource(lead, globalSourceCounts);
-  }
-
-  const topStories = chooseTopStories(
-    curated,
-    articles,
-    byId,
-    used,
-    globalSourceCounts,
-  );
-  const sectionOrder = normalizeSectionOrder(curated, articles, used);
 
   let backfilled = 0;
   let diversityRelaxed = 0;
-  const sections = sectionOrder
+  const usedSectionIds = new Set();
+  const globalSourceCounts = new Map();
+  const sections = sectionOrder(articles)
     .map((slug) => {
       const category = categoryBySlug.get(slug);
       if (!category) return null;
@@ -259,7 +228,7 @@ export function normalizeNewsletter(curated, articles, editionDate) {
         if (
           !article ||
           article.category !== category.slug ||
-          used.has(article.id)
+          usedSectionIds.has(article.id)
         )
           return false;
         if (
@@ -267,7 +236,7 @@ export function normalizeNewsletter(curated, articles, editionDate) {
           !canUseSource(article, globalSourceCounts, sectionSourceCounts)
         )
           return false;
-        used.add(article.id);
+        usedSectionIds.add(article.id);
         selected.push(article);
         registerSource(article, globalSourceCounts, sectionSourceCounts);
         if (backfill) backfilled += 1;
@@ -285,7 +254,8 @@ export function normalizeNewsletter(curated, articles, editionDate) {
       const candidates = articles
         .filter(
           (article) =>
-            article.category === category.slug && !used.has(article.id),
+            article.category === category.slug &&
+            !usedSectionIds.has(article.id),
         )
         .sort(
           (a, b) =>
@@ -305,7 +275,8 @@ export function normalizeNewsletter(curated, articles, editionDate) {
         const relaxedCandidates = articles
           .filter(
             (article) =>
-              article.category === category.slug && !used.has(article.id),
+              article.category === category.slug &&
+              !usedSectionIds.has(article.id),
           )
           .sort(
             (a, b) =>
@@ -325,11 +296,9 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     })
     .filter((section) => section?.articles?.length);
 
-  const chosen = [
-    lead,
-    ...topStories,
-    ...sections.flatMap((section) => section.articles),
-  ].filter(Boolean);
+  const sectionArticles = sections.flatMap((section) => section.articles);
+  const topStories = chooseTopStories(curated, sectionArticles, lead);
+  const chosen = uniqueStories([lead, ...topStories, ...sectionArticles]);
   const fallback = fallbackCopy();
   return {
     editionDate,
@@ -347,9 +316,9 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     intro: String(curated?.intro || fallback.intro)
       .trim()
       .slice(0, 420),
-    frontPageTitle: String(curated?.frontPageTitle || fallback.title)
-      .trim()
-      .slice(0, 100),
+    // This is UI copy, not an editorial decision. Keep it deterministic and
+    // localized so the model can never leak internal labels such as "Front Page".
+    frontPageTitle: fallback.title,
     ui: normalizeUi(curated?.ui),
     lead,
     topStories,
@@ -380,7 +349,6 @@ export function fallbackNewsletter(articles, editionDate) {
       leadId: articles[0]?.id,
       title: fallback.title,
       intro: fallback.intro,
-      frontPageTitle: fallback.title,
       sections: {},
     },
     articles,
