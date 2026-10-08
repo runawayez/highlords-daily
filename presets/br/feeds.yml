@@ -212,6 +212,12 @@ feeds:
     images: page
 
   # Ciência — pesquisa e descobertas. Saúde permanece separada semanticamente.
+  - name: Revista Pesquisa FAPESP
+    url: https://revistapesquisa.fapesp.br/feed/
+    focus: [ciencia]
+    strict_focus: true
+    images: page
+
   - name: Agência FAPESP
     url: https://agencia.fapesp.br/rss/
     focus: [ciencia, saude, futuro]
