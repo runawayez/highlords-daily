@@ -140,7 +140,7 @@ async function imageSignals(article, editionDir) {
 
   fitness = clamp(fitness);
   return {
-    hasImage: fitness >= 0.42,
+    hasImage: fitness >= 0.5,
     imageFitness: Number(fitness.toFixed(2)),
     imageDensity: density == null ? null : Number(density.toFixed(3)),
     imageAspect: aspect == null ? null : Number(aspect.toFixed(2)),
