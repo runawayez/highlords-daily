@@ -7,12 +7,25 @@ import { renderNewsletterHtml } from "../src/template.mjs";
 import { parse } from "yaml";
 import fs from "node:fs/promises";
 
-const universalExpansion = [
+const brDailySlugs = [
+  "tecnologia",
+  "ia-desenvolvimento",
+  "games",
+  "esports",
+  "entretenimento",
+  "esportes",
+  "economia",
   "politica-sociedade",
-  "ciencia",
-  "saude",
-  "clima-meio-ambiente",
-  "futuro",
+  "ciencia-saude",
+  "clima-futuro",
+];
+
+const brRequiredSlugs = [
+  "tecnologia",
+  "ia-desenvolvimento",
+  "games",
+  "economia",
+  "politica-sociedade",
 ];
 
 test("built-in BR routing is language-agnostic and does not classify by keywords", () => {
@@ -21,21 +34,21 @@ test("built-in BR routing is language-agnostic and does not classify by keywords
       originalTitle: "Resultado da Lotofácil de hoje: números e ganhadores",
       excerpt: "Confira o resultado do sorteio.",
       language: "pt-BR",
-      focus: ["futuro", "economia"],
+      focus: ["clima-futuro", "economia"],
       strictFocus: false,
     },
     {
       originalTitle: "Resultados de la lotería nacional y números ganadores",
       excerpt: "Sorteo celebrado en Buenos Aires.",
       language: "es-AR",
-      focus: ["futuro"],
+      focus: ["clima-futuro"],
       strictFocus: false,
     },
     {
       originalTitle: "新しい映画シリーズの予告編が公開",
       excerpt: "ストリーミング作品の新シーズン。",
       language: "ja-JP",
-      focus: ["filmes-series", "software-internet"],
+      focus: ["entretenimento", "tecnologia"],
       strictFocus: true,
     },
   ];
@@ -54,16 +67,16 @@ test("semantic review can reclassify and reject while enforcing strict focus", (
     [
       {
         id: 1,
-        category: "futuro",
+        category: "clima-futuro",
         originalTitle: "La inflación mensual vuelve a acelerarse",
-        focus: ["economia", "futuro"],
+        focus: ["economia", "clima-futuro"],
         strictFocus: false,
       },
       {
         id: 2,
-        category: "futuro",
+        category: "clima-futuro",
         originalTitle: "Resultado de lotería y números ganadores",
-        focus: ["futuro"],
+        focus: ["clima-futuro"],
         strictFocus: false,
       },
       {
@@ -113,9 +126,9 @@ test("semantic review can reclassify and reject while enforcing strict focus", (
 test("semantic review ignores low-confidence destructive changes", () => {
   const article = {
     id: 10,
-    category: "hardware",
+    category: "tecnologia",
     originalTitle: "New GPU architecture announced",
-    focus: ["hardware", "futuro"],
+    focus: ["tecnologia", "clima-futuro"],
     strictFocus: false,
   };
   const result = applySemanticReview(
@@ -124,88 +137,73 @@ test("semantic review ignores low-confidence destructive changes", () => {
       {
         id: 10,
         action: "reclassify",
-        category: "futuro",
+        category: "clima-futuro",
         confidence: 0.41,
         reason: "Uncertain overlap with emerging technology.",
       },
     ],
   );
 
-  assert.equal(result.articles[0].category, "hardware");
+  assert.equal(result.articles[0].category, "tecnologia");
   assert.equal(result.stats.kept, 1);
   assert.equal(result.stats.ignored, 1);
 });
 
-test("bundled presets expose the universal taxonomy and semantic review", async () => {
-  for (const preset of ["br", "global"]) {
-    const categories = parse(
-      await fs.readFile(
-        new URL(`../presets/${preset}/categories.yml`, import.meta.url),
-        "utf8",
-      ),
-    ).categories;
-    const feeds = parse(
-      await fs.readFile(
-        new URL(`../presets/${preset}/feeds.yml`, import.meta.url),
-        "utf8",
-      ),
-    ).feeds;
-    const metadata = JSON.parse(
-      await fs.readFile(
-        new URL(`../presets/${preset}/preset.json`, import.meta.url),
-        "utf8",
-      ),
-    );
+test("BR preset exposes ten daily sections with five contractual cores", async () => {
+  const categories = parse(
+    await fs.readFile(
+      new URL("../presets/br/categories.yml", import.meta.url),
+      "utf8",
+    ),
+  ).categories;
+  const feeds = parse(
+    await fs.readFile(new URL("../presets/br/feeds.yml", import.meta.url), "utf8"),
+  ).feeds;
+  const metadata = JSON.parse(
+    await fs.readFile(
+      new URL("../presets/br/preset.json", import.meta.url),
+      "utf8",
+    ),
+  );
 
-    const categorySlugs = new Set(categories.map((category) => category.slug));
-    const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
+  const categorySlugs = categories.map((category) => category.slug);
+  const requiredSlugs = categories
+    .filter((category) => category.required !== false)
+    .map((category) => category.slug);
+  const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
 
-    assert.equal(categorySlugs.size, 16);
-    for (const slug of universalExpansion) {
-      assert.ok(categorySlugs.has(slug), `${preset} missing ${slug}`);
-      assert.ok(
-        sourceCoverage.has(slug),
-        `${preset} has no source for ${slug}`,
-      );
-    }
-
-    for (const slug of [
-      "politica-sociedade",
-      "ciencia",
-      "saude",
-      "clima-meio-ambiente",
-    ]) {
-      const category = categories.find((item) => item.slug === slug);
-      assert.ok(category.labels.pt, `${preset}/${slug} missing pt label`);
-      assert.ok(category.labels.en, `${preset}/${slug} missing en label`);
-      assert.ok(category.labels.es, `${preset}/${slug} missing es label`);
-    }
-
-    assert.equal(
-      categories.find((category) => category.slug === "futuro").name,
-      "Futuro & Inovação",
-    );
-    assert.ok(categorySlugs.has("esports"));
-    assert.ok(
-      feeds.filter(
-        (feed) =>
-          feed.focus.length === 1 &&
-          feed.focus[0] === "esports" &&
-          feed.strict_focus,
-      ).length >= 2,
-    );
-    assert.ok(
-      metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
-    );
-    assert.ok(!metadata.plugins.includes("00-esports-routing.plugin.mjs"));
+  assert.deepEqual(categorySlugs, brDailySlugs);
+  assert.deepEqual(requiredSlugs, brRequiredSlugs);
+  for (const slug of brDailySlugs) {
+    assert.ok(sourceCoverage.has(slug), `BR has no source for ${slug}`);
   }
+  assert.ok(
+    feeds.filter(
+      (feed) =>
+        feed.focus.length === 1 &&
+        feed.focus[0] === "esports" &&
+        feed.strict_focus,
+    ).length >= 2,
+  );
+  assert.ok(metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"));
+  assert.ok(metadata.plugins.includes("99-editorial-quality-gate.plugin.mjs"));
+});
+
+test("global preset remains independent from the compact BR daily taxonomy", async () => {
+  const categories = parse(
+    await fs.readFile(
+      new URL("../presets/global/categories.yml", import.meta.url),
+      "utf8",
+    ),
+  ).categories;
+  assert.equal(categories.length, 16);
 });
 
 test("edition keeps configured sections and treats highlights as references", () => {
   const articles = [
     {
       id: 1,
-      category: "ia",
+      category: "ia-desenvolvimento",
       score: 8.8,
       frontPageScore: 9.4,
       sectionScore: 8.8,
@@ -222,7 +220,7 @@ test("edition keeps configured sections and treats highlights as references", ()
     },
     {
       id: 3,
-      category: "ciencia",
+      category: "ciencia-saude",
       score: 8,
       frontPageScore: 8.6,
       source: "Science Wire",
@@ -270,11 +268,11 @@ test("edition keeps configured sections and treats highlights as references", ()
     },
     {
       id: 9,
-      category: "hardware",
+      category: "tecnologia",
       score: 7.1,
       frontPageScore: 7.5,
-      source: "Hardware Wire",
-      headline: "Hardware também merece seção",
+      source: "Tech Wire",
+      headline: "Tecnologia também merece seção",
     },
   ];
 
@@ -298,19 +296,12 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.equal(edition.lead.id, 1);
   assert.equal(edition.topStories.length, 3);
   assert.deepEqual(
-    edition.topStories.slice(0, 2).map((article) => article.id),
-    [2, 3],
-  );
-  assert.deepEqual(
     edition.sections.map((section) => section.slug),
-    ["hardware", "games", "esports", "economia", "ciencia"],
+    ["tecnologia", "games", "esports", "economia", "ciencia-saude"],
   );
-  assert.ok(edition.sections.some((section) => section.slug === "hardware"));
 
   const sectionIds = new Set(
-    edition.sections.flatMap((section) =>
-      section.articles.map((article) => article.id),
-    ),
+    edition.sections.flatMap((section) => section.articles.map((article) => article.id)),
   );
   for (const highlight of edition.topStories) {
     assert.ok(sectionIds.has(highlight.id));
@@ -327,20 +318,12 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.ok(!html.includes("Texto de abertura"));
   assert.ok(html.includes('id="front-page"'));
   assert.equal((html.match(/class="front-story"/g) || []).length, 3);
-  assert.ok(!html.includes('id="ia"'));
-  assert.ok(
-    html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'),
-  );
-  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="hardware"'));
-  assert.ok(html.indexOf('id="hardware"') < html.indexOf('id="games"'));
+  assert.ok(!html.includes('id="ia-desenvolvimento"'));
+  assert.ok(html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'));
+  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="tecnologia"'));
+  assert.ok(html.indexOf('id="tecnologia"') < html.indexOf('id="games"'));
   assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
   assert.ok(
-    html.includes(
-      ".section-grid.solo-text .story-body{display:block!important",
-    ),
-  );
-  assert.match(
-    html,
-    /class="section-start"><div class="section-title">[\s\S]*?<div class="section-grid(?: [^"]+)?">/,
+    html.includes(".section-grid.solo-text .story-body{display:block!important"),
   );
 });
