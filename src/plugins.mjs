@@ -19,7 +19,9 @@ export async function loadPlugins() {
       continue;
     const file = path.join(config.pluginsDir, entry.name);
     try {
-      const module = await import(`${pathToFileURL(file).href}?v=${Date.now()}`);
+      const module = await import(
+        `${pathToFileURL(file).href}?v=${Date.now()}`
+      );
       const plugin =
         module.default && typeof module.default === "object"
           ? module.default
