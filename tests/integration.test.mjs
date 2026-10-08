@@ -233,7 +233,9 @@ test(
       assert.ok(html.includes('dir="rtl"'));
       assert.ok(html.includes("اقرأ الخبر"));
       assert.ok(
-        html.includes("تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم"),
+        !html.includes(
+          "تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم",
+        ),
       );
       assert.ok(html.includes("ما يستحق اهتمامك اليوم"));
       assert.ok(!html.includes("<h1>"));
