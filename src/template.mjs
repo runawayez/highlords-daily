@@ -18,8 +18,7 @@ const layoutNames = new Set([
 
 function safeMediaUrl(value = "") {
   const raw = String(value || "").trim();
-  if (/^(?:assets\/|\.\/assets\/)/i.test(raw))
-    return raw.replace(/^\.\//, "");
+  if (/^(?:assets\/|\.\/assets\/)/i.test(raw)) return raw.replace(/^\.\//, "");
   if (/^data:image\//i.test(raw)) return raw;
   try {
     const url = new URL(raw);
@@ -175,9 +174,10 @@ function frontPageMarkup(edition, ui, labels) {
 }
 
 function fallbackRowLayout(articles) {
-  const imageCount = articles.filter((article) => hasStoryImage(article)).length;
-  if (articles.length === 1)
-    return imageCount ? "solo-visual" : "solo-text";
+  const imageCount = articles.filter((article) =>
+    hasStoryImage(article),
+  ).length;
+  if (articles.length === 1) return imageCount ? "solo-visual" : "solo-text";
   if (imageCount === 0) return "text-grid";
   if (imageCount === 1) return "mixed-grid";
   return "balanced-grid";
@@ -186,9 +186,10 @@ function fallbackRowLayout(articles) {
 function firstRowLayout(section, articles) {
   const requested = section?.presentation?.layout;
   if (layoutNames.has(requested)) {
-    const imageCount = articles.filter((article) => hasStoryImage(article)).length;
-    if (articles.length === 1)
-      return imageCount ? "solo-visual" : "solo-text";
+    const imageCount = articles.filter((article) =>
+      hasStoryImage(article),
+    ).length;
+    if (articles.length === 1) return imageCount ? "solo-visual" : "solo-text";
     if (imageCount === 0)
       return requested === "briefs-grid" ? "briefs-grid" : "text-grid";
     if (imageCount === 1 && requested !== "briefs-grid") return "mixed-grid";
