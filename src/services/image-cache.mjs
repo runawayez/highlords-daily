@@ -271,7 +271,12 @@ function reconcileTopStories(topStories, sections, lead) {
     if (!article) return false;
     const key = articleKey(article);
     const topic = topicKey(article);
-    if (!key || key === leadKey || seen.has(key) || (topic && seenTopics.has(topic)))
+    if (
+      !key ||
+      key === leadKey ||
+      seen.has(key) ||
+      (topic && seenTopics.has(topic))
+    )
       return false;
     selected.push(article);
     seen.add(key);
@@ -279,7 +284,8 @@ function reconcileTopStories(topStories, sections, lead) {
     return true;
   };
 
-  for (const original of topStories) tryAdd(available.get(articleKey(original)));
+  for (const original of topStories)
+    tryAdd(available.get(articleKey(original)));
   for (const article of sectionArticles.slice().sort((a, b) => {
     const score =
       Number(b.frontPageScore ?? b.score ?? 0) -
