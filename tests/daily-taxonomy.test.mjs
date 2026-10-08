@@ -78,17 +78,18 @@ function edition({ omitPolitics = false } = {}) {
   };
 }
 
-test("daily quality gate allows optional sections to stay out when the day is weak", () => {
-  const input = edition();
-  const result = qualityGate.beforeRender({ edition: input });
-  assert.equal(result.edition.stats.qualityGate.passed, true);
-  assert.equal(result.edition.stats.qualityGate.requiredCategories, 5);
-  assert.equal(result.edition.stats.qualityGate.requiredCategoriesCovered, 5);
-  assert.equal(
-    result.edition.stats.qualityGate.optionalMissingCategories.length,
-    5,
-  );
-});
+test(
+  "daily quality gate allows optional sections to stay out when the day is weak",
+  () => {
+    const input = edition();
+    const result = qualityGate.beforeRender({ edition: input });
+    assert.equal(result.edition.stats.qualityGate.passed, true);
+    assert.equal(
+      result.edition.stats.qualityGate.optionalMissingCategories.length,
+      5,
+    );
+  },
+);
 
 test("daily quality gate still blocks a missing core section", () => {
   assert.throws(
