@@ -328,7 +328,9 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.ok(html.includes('id="front-page"'));
   assert.equal((html.match(/class="front-story"/g) || []).length, 3);
   assert.ok(!html.includes('id="ia"'));
-  assert.ok(html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'));
+  assert.ok(
+    html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'),
+  );
   assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="hardware"'));
   assert.ok(html.indexOf('id="hardware"') < html.indexOf('id="games"'));
   assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
