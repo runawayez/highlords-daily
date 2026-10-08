@@ -10,15 +10,15 @@ feeds:
 
   - name: Canaltech
     url: https://canaltech.com.br/rss/
-    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, futuro]
+    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, ciencia, saude, futuro]
 
   - name: TecMundo
     url: https://www.tecmundo.com.br/rss
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, ciencia, futuro]
 
   - name: Olhar Digital
     url: https://olhardigital.com.br/feed/
-    focus: [ia, mobile-gadgets, hardware, software-internet, filmes-series, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, filmes-series, ciencia, saude, clima-meio-ambiente, futuro]
 
   - name: g1 · Tecnologia
     url: http://g1.globo.com/dynamo/tecnologia/rss2.xml
@@ -197,6 +197,46 @@ feeds:
     url: https://g1.globo.com/dynamo/economia/rss2.xml
     focus: [economia]
     strict_focus: true
+
+  # Política & Sociedade — instituições, eleições, direitos e políticas públicas.
+  - name: Agência Brasil Política
+    url: https://agenciabrasil.ebc.com.br/rss/politica/feed.xml
+    focus: [politica-sociedade]
+    strict_focus: true
+    images: page
+
+  - name: g1 · Política
+    url: https://g1.globo.com/rss/g1/politica/
+    focus: [politica-sociedade]
+    strict_focus: true
+    images: page
+
+  # Ciência — pesquisa e descobertas. Saúde permanece separada semanticamente.
+  - name: Agência FAPESP
+    url: https://agencia.fapesp.br/rss/
+    focus: [ciencia, saude, futuro]
+    strict_focus: true
+    images: page
+
+  - name: g1 · Ciência e Saúde
+    url: http://g1.globo.com/dynamo/ciencia-e-saude/rss2.xml
+    focus: [ciencia, saude]
+    strict_focus: true
+    images: page
+
+  # Saúde — medicina, saúde pública, tratamentos e pesquisa clínica.
+  - name: Agência Brasil Saúde
+    url: https://agenciabrasil.ebc.com.br/rss/saude/feed.xml
+    focus: [saude]
+    strict_focus: true
+    images: page
+
+  # Clima & Meio Ambiente — clima, biodiversidade, conservação e sustentabilidade.
+  - name: Agência Brasil Meio Ambiente
+    url: https://agenciabrasil.ebc.com.br/rss/meio-ambiente/feed.xml
+    focus: [clima-meio-ambiente]
+    strict_focus: true
+    images: page
 
   # Dedicated competitive scene and esports industry sources.
   - name: Dust2 Brasil
