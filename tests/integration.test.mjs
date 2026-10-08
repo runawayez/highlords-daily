@@ -251,7 +251,7 @@ test(
       const before = { ...calls };
       await command(args);
       assert.deepEqual(calls, before);
-      // Force with history disabled: content analysis and dimensions reuse persistent results; curation still runs.
+      // Force with history disabled: cached analysis is reused; ranking, curation and front-page hierarchy still run.
       await fs.writeFile(
         profile,
         (await fs.readFile(profile, "utf8")) + "historyEnabled: false\n",
@@ -260,7 +260,7 @@ test(
       assert.ok(output.includes("Ready"));
       assert.equal(calls.feeds, before.feeds + 1);
       assert.equal(calls.images, before.images);
-      assert.equal(calls.chat, before.chat + 2);
+      assert.equal(calls.chat, before.chat + 3);
       const updated = JSON.parse(
         await fs.readFile(
           path.join(directory, "data", "runs", "2026-10-07", "metrics.json"),
