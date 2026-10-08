@@ -137,7 +137,7 @@ test("edition keeps esports separate and template groups header with first row w
   assert.ok(html.includes('<p class="hero-intro">Texto de abertura</p>'));
   assert.match(
     html,
-    /class="section-start"><div class="section-title">[\s\S]*?<div class="section-grid">/,
+    /class="section-start"><div class="section-title">[\s\S]*?<div class="section-grid(?: [^"]+)?">/,
   );
   assert.equal((html.match(/class="story-card /g) || []).length, 7);
   assert.ok(html.includes('id="esports"'));
