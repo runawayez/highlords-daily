@@ -307,8 +307,12 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
     }),
   );
   const eligible = suppressRepeatedSourceImages(enriched);
+  // `images: false` is an intentional editorial text mode. It survives the
+  // image hard rule; visual sources still need a validated image candidate.
   const withImages = config.requireImages
-    ? eligible.filter((article) => article.imageUrl)
+    ? eligible.filter(
+        (article) => article.imageMode === "off" || Boolean(article.imageUrl),
+      )
     : eligible;
   const selected = balancedLimit(withImages, feedList, config.maxCandidates);
   selected.forEach((article, index) => {

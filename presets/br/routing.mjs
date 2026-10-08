@@ -17,6 +17,8 @@ const politicsSignal =
   /\b(tse|stf|tribunal superior eleitoral|justica eleitoral|eleicao|eleicoes|eleitoral|urna|urnas|presidencial|congresso nacional|camara dos deputados|senado federal|partido politico|partidos politicos)\b/;
 const economySignal =
   /\b(economia|economico|economica|mercado|mercados|bolsa|acoes|inflacao|juros|selic|pib|dolar|cambio|fiscal|imposto|impostos|tributacao|investimento|investimentos|lucro|receita|balanca comercial|superavit|deficit|emprego|desemprego|banco central)\b/;
+const lotterySignal =
+  /\b(lotofacil|mega sena|lotomania|timemania|dupla sena|dia de sorte|super sete|loteria|loterias)\b|\b(resultado|sorteio|concurso|premio)\b.{0,80}\bquina\b|\bquina\b.{0,80}\b(resultado|sorteio|concurso|premio)\b/;
 
 function canForceCategory(article, slug) {
   if (!categorySlugs.has(slug)) return false;
@@ -60,6 +62,14 @@ export function applyEditorialGuardrails(article) {
   const isSoccer = soccerSignal.test(text);
   const isOtherSport = otherSportsSignal.test(text);
   const isPolitics = politicsSignal.test(text);
+  const isLottery = lotterySignal.test(text);
+
+  // Resultados de loterias e apostas não pertencem a nenhuma categoria do
+  // Highlords Vanilla. Rejeite antes da LLM para não transformar "sorteio"
+  // ou "números" em uma falsa pauta de ciência/futuro.
+  if (isLottery) {
+    return rejectArticle(article, "lottery-outside-editorial-scope");
+  }
 
   const economyOnly =
     article.strictFocus &&

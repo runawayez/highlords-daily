@@ -34,6 +34,9 @@ function topicKey(article) {
 
 function isPreparedValid(article) {
   if (!article) return false;
+  // `images: false` is explicit source policy, not an image failure. Those
+  // stories are allowed to render as deterministic text cards.
+  if (article.imageMode === "off" || article.textOnly === true) return true;
   return config.cacheImages
     ? article.imageCached === true
     : article.imageValidated === true;
@@ -78,6 +81,10 @@ function registerArticle(
 }
 
 async function candidateImageUrls(article) {
+  // Never rediscover an Open Graph/preview image for a source that explicitly
+  // opted out of images (copyright, quality or editorial reasons).
+  if (article?.imageMode === "off" || article?.textOnly === true) return [];
+
   const urls = [];
   if (article?.imageUrl && /^https?:\/\//i.test(article.imageUrl))
     urls.push(article.imageUrl);
@@ -185,6 +192,16 @@ async function validateRemoteOnly(article) {
 
 async function prepareArticle(article, assetsDir) {
   if (!article) return null;
+  if (article.imageMode === "off") {
+    return {
+      ...article,
+      imageUrl: null,
+      originalImageUrl: article.imageUrl || null,
+      imageCached: false,
+      imageValidated: false,
+      textOnly: true,
+    };
+  }
   return config.cacheImages
     ? cacheRemoteImage(article, assetsDir)
     : validateRemoteOnly(article);
@@ -299,7 +316,7 @@ async function enforceRequiredImages(
       (await findReplacement(null, null, true));
     if (!lead) {
       throw new Error(
-        "REQUIRE_IMAGES=true: nenhuma matéria com imagem editorial válida pôde assumir a manchete.",
+        "REQUIRE_IMAGES=true: nenhuma matéria visual válida ou fonte textual permitida pôde assumir a manchete.",
       );
     }
     replacements += 1;
@@ -428,7 +445,11 @@ export async function cacheEditionImages(edition, editionDir, context = {}) {
   let failed = 0;
   for (const article of preparedById.values()) {
     if (article.imageCached) cached += 1;
-    else if (article.originalImageUrl || article.imageUrl) failed += 1;
+    else if (
+      article.imageMode !== "off" &&
+      (article.originalImageUrl || article.imageUrl)
+    )
+      failed += 1;
   }
   return { edition: nextEdition, cached, failed };
 }

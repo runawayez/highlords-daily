@@ -73,6 +73,24 @@ test("game launches and hardware do not become esports", () => {
   assert.equal(corrected[0].category, "games");
 });
 
+test("lottery results are rejected before LLM classification", () => {
+  for (const originalTitle of [
+    "Resultado da Lotofácil de hoje: números e ganhadores do concurso 3799",
+    "Resultado da Quina de hoje: números e ganhadores do concurso 7137",
+    "Mega-Sena: confira os números sorteados nesta quarta-feira",
+  ]) {
+    const routed = applyEditorialGuardrails({
+      originalTitle,
+      excerpt: "Confira o resultado do sorteio e o prêmio do concurso.",
+      focus: ["ia", "mobile-gadgets", "hardware", "software-internet", "futuro"],
+      strictFocus: false,
+      language: "pt-BR",
+    });
+    assert.equal(routed.editorialReject, true, originalTitle);
+    assert.equal(routed.editorialGuardrail, "lottery-outside-editorial-scope");
+  }
+});
+
 test("bundled presets expose a separate esports category and dedicated sources", async () => {
   for (const preset of ["br", "global"]) {
     const categories = parse(
