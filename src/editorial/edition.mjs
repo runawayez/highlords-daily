@@ -46,7 +46,8 @@ function editorialSort(a, b) {
 }
 
 function chooseLead(requestedLead, articles) {
-  const strongest = articles.filter(Boolean).slice().sort(editorialSort)[0] || null;
+  const strongest =
+    articles.filter(Boolean).slice().sort(editorialSort)[0] || null;
 
   if (!requestedLead) return { lead: strongest, rebalanced: false };
   if (!strongest) return { lead: requestedLead, rebalanced: false };
@@ -128,7 +129,8 @@ function chooseTopStories(curated, articles, byId, used, globalSourceCounts) {
       return false;
     const topic = String(article.topicKey || "").trim();
     if (topic && seenTopics.has(topic)) return false;
-    if (requireFreshCategory && seenCategories.has(article.category)) return false;
+    if (requireFreshCategory && seenCategories.has(article.category))
+      return false;
     if (!canUseSource(article, globalSourceCounts, new Map())) return false;
     selected.push(article);
     used.add(article.id);
@@ -158,7 +160,9 @@ function chooseTopStories(curated, articles, byId, used, globalSourceCounts) {
 }
 
 function normalizeSectionOrder(curated, articles, used) {
-  const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
+  const categoryBySlug = new Map(
+    categories.map((category) => [category.slug, category]),
+  );
   const requested = Array.isArray(curated?.sectionOrder)
     ? curated.sectionOrder
     : [];
@@ -193,8 +197,7 @@ function normalizeSectionOrder(curated, articles, used) {
     })
     .filter((item) => item.strongest)
     .sort(
-      (a, b) =>
-        editorialSort(a.strongest, b.strongest) || a.index - b.index,
+      (a, b) => editorialSort(a.strongest, b.strongest) || a.index - b.index,
     )
     .map((item) => item.slug);
 }
@@ -203,7 +206,9 @@ export function normalizeNewsletter(curated, articles, editionDate) {
   const byId = new Map(
     articles.map((article) => [Number(article.id), article]),
   );
-  const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
+  const categoryBySlug = new Map(
+    categories.map((category) => [category.slug, category]),
+  );
   const used = new Set();
   const globalSourceCounts = new Map();
   const requestedLeadId = curatedId(
