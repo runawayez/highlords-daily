@@ -1,20 +1,41 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import { randomUUID, createHash } from "node:crypto";
+
+const TRANSIENT_WRITE_ERRORS = new Set(["EACCES", "EBUSY", "EPERM"]);
+const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
+
 export const digest = (value) =>
   createHash("sha256")
     .update(typeof value === "string" ? value : JSON.stringify(value))
     .digest("hex");
+
+async function renameWithRetry(source, target) {
+  let lastError;
+  for (let attempt = 0; attempt < 6; attempt += 1) {
+    try {
+      await fs.rename(source, target);
+      return;
+    } catch (error) {
+      lastError = error;
+      if (!TRANSIENT_WRITE_ERRORS.has(error.code) || attempt === 5) break;
+      await sleep(20 * 2 ** attempt);
+    }
+  }
+  throw lastError;
+}
+
 export async function atomicWrite(file, data) {
   await fs.mkdir(path.dirname(file), { recursive: true });
   const temporary = `${file}.${randomUUID()}.tmp`;
   try {
     await fs.writeFile(temporary, data);
-    await fs.rename(temporary, file);
+    await renameWithRetry(temporary, file);
   } finally {
     await fs.rm(temporary, { force: true }).catch(() => {});
   }
 }
+
 export async function readJson(file, fallback = null) {
   try {
     return JSON.parse(await fs.readFile(file, "utf8"));
@@ -24,10 +45,14 @@ export async function readJson(file, fallback = null) {
     throw error;
   }
 }
+
 export class DiskCache {
-  constructor(directory) {
+  constructor(directory, { writer = atomicWrite, onWriteError = null } = {}) {
     this.directory = directory;
     this.inflight = new Map();
+    this.writer = writer;
+    this.onWriteError = onWriteError;
+    this.warnedWriteError = false;
   }
   file(namespace, key) {
     return path.join(this.directory, namespace, `${digest(key)}.json`);
@@ -37,10 +62,23 @@ export class DiskCache {
     return item && (stale || item.expiresAt > Date.now()) ? item.value : null;
   }
   async set(namespace, key, value, ttlMs = 86400000) {
-    await atomicWrite(
-      this.file(namespace, key),
-      JSON.stringify({ expiresAt: Date.now() + ttlMs, value }),
-    );
+    try {
+      await this.writer(
+        this.file(namespace, key),
+        JSON.stringify({ expiresAt: Date.now() + ttlMs, value }),
+      );
+    } catch (error) {
+      // Cache is an optimization. A transient Windows lock, antivirus scan or
+      // read-only cache directory must never abort an otherwise valid edition.
+      if (!this.warnedWriteError) {
+        this.warnedWriteError = true;
+        if (this.onWriteError) this.onWriteError(error, namespace);
+        else
+          console.warn(
+            `  Cache write skipped (${error.code || "error"}) in ${namespace}; continuing without persistence.`,
+          );
+      }
+    }
     return value;
   }
   async remember(namespace, key, action, ttlMs) {
