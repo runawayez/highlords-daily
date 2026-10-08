@@ -10,10 +10,15 @@ export function applyEditorialGuardrails(article) {
   const focus = Array.isArray(article?.focus)
     ? article.focus.filter((slug) => validSlugs.has(slug))
     : [];
+  const strictFocus = Boolean(article?.strictFocus && focus.length);
+  const singleCategoryLock = strictFocus && focus.length === 1;
 
   return {
     ...article,
     focus,
-    strictFocus: Boolean(article?.strictFocus && focus.length),
+    strictFocus,
+    ...(singleCategoryLock
+      ? { editorialGuardrail: "strict-single-category-source" }
+      : {}),
   };
 }
