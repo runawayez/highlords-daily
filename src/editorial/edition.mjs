@@ -54,7 +54,8 @@ function sectionSort(a, b) {
 }
 
 function chooseLead(requestedLead, articles) {
-  const strongest = articles.filter(Boolean).slice().sort(editorialSort)[0] || null;
+  const strongest =
+    articles.filter(Boolean).slice().sort(editorialSort)[0] || null;
   if (!requestedLead) return { lead: strongest, rebalanced: false };
   if (!strongest) return { lead: requestedLead, rebalanced: false };
 
@@ -195,7 +196,9 @@ function buildCoveragePlan(curated, articles, lead) {
   const categoryBySlug = new Map(
     categories.map((category) => [category.slug, category]),
   );
-  const byId = new Map(articles.map((article) => [Number(article.id), article]));
+  const byId = new Map(
+    articles.map((article) => [Number(article.id), article]),
+  );
   const leadId = lead ? Number(lead.id) : null;
   const usedIds = new Set(leadId == null ? [] : [leadId]);
   const globalSourceCounts = new Map();
@@ -209,7 +212,9 @@ function buildCoveragePlan(curated, articles, lead) {
           article.category === slug &&
           Number(article.id) !== leadId,
       );
-    const requestedSet = new Set(requested.map((article) => Number(article.id)));
+    const requestedSet = new Set(
+      requested.map((article) => Number(article.id)),
+    );
     const fallback = articles
       .filter(
         (article) =>
@@ -230,7 +235,11 @@ function buildCoveragePlan(curated, articles, lead) {
   let backfilled = 0;
   let diversityRelaxed = 0;
 
-  const tryAdd = (state, article, { relaxed = false, backfill = false } = {}) => {
+  const tryAdd = (
+    state,
+    article,
+    { relaxed = false, backfill = false } = {},
+  ) => {
     if (
       !article ||
       article.category !== state.category.slug ||
@@ -313,10 +322,17 @@ function buildCoveragePlan(curated, articles, lead) {
     }));
 
   const missing = categories
-    .filter((category) => !sections.some((section) => section.slug === category.slug))
+    .filter(
+      (category) =>
+        !sections.some((section) => section.slug === category.slug),
+    )
     .map((category) => {
-      const pool = articles.filter((article) => article.category === category.slug);
-      const nonLead = pool.filter((article) => Number(article.id) !== leadId);
+      const pool = articles.filter(
+        (article) => article.category === category.slug,
+      );
+      const nonLead = pool.filter(
+        (article) => Number(article.id) !== leadId,
+      );
       let reason = "no-candidate-after-analysis";
       if (pool.length && !nonLead.length && lead?.category === category.slug)
         reason = "lead-only";
@@ -330,9 +346,11 @@ function buildCoveragePlan(curated, articles, lead) {
     diversityRelaxed,
     coverage: {
       configured: categories.length,
-      categoriesWithCandidates: new Set(articles.map((article) => article.category))
-        .size,
-      selectableCategories: states.filter((state) => state.candidates.length).length,
+      categoriesWithCandidates: new Set(
+        articles.map((article) => article.category),
+      ).size,
+      selectableCategories: states.filter((state) => state.candidates.length)
+        .length,
       visible: sections.length,
       missing,
     },
@@ -341,7 +359,9 @@ function buildCoveragePlan(curated, articles, lead) {
 
 export function validateNewsletterContract(edition) {
   const errors = [];
-  const categoryBySlug = new Map(categories.map((category) => [category.slug, category]));
+  const categoryBySlug = new Map(
+    categories.map((category) => [category.slug, category]),
+  );
   const seenSectionSlugs = new Set();
   const seenSectionNames = new Set();
   const seenStoryIds = new Set();
@@ -357,7 +377,9 @@ export function validateNewsletterContract(edition) {
     const canonical = categoryBySlug.get(section.slug)?.name;
     if (canonical && section.name !== canonical)
       errors.push(`noncanonical-section-name:${section.slug}`);
-    const nameKey = String(section.name || "").trim().toLocaleLowerCase(config.language);
+    const nameKey = String(section.name || "")
+      .trim()
+      .toLocaleLowerCase(config.language);
     if (nameKey && seenSectionNames.has(nameKey))
       errors.push(`duplicate-section-name:${section.name}`);
     if (nameKey) seenSectionNames.add(nameKey);
@@ -365,7 +387,9 @@ export function validateNewsletterContract(edition) {
     for (const article of section.articles || []) {
       const id = Number(article.id);
       if (article.category !== section.slug)
-        errors.push(`category-mismatch:${id}:${section.slug}:${article.category}`);
+        errors.push(
+          `category-mismatch:${id}:${section.slug}:${article.category}`,
+        );
       if (leadId != null && id === leadId)
         errors.push(`lead-repeated-in-section:${section.slug}:${id}`);
       if (seenStoryIds.has(id)) errors.push(`duplicate-section-story:${id}`);
@@ -382,23 +406,27 @@ export function validateNewsletterContract(edition) {
       errors.push(`top-story-without-section:${story.id}`);
   }
 
-  const expected = Number(edition?.stats?.coverage?.selectableCategories || 0);
+  const expected = Number(
+    edition?.stats?.coverage?.selectableCategories || 0,
+  );
   const visible = Number(edition?.stats?.coverage?.visible || 0);
-  if (visible < expected)
-    errors.push(`coverage-gap:${visible}/${expected}`);
+  if (visible < expected) errors.push(`coverage-gap:${visible}/${expected}`);
 
   return { ok: errors.length === 0, errors };
 }
 
 export function normalizeNewsletter(curated, articles, editionDate) {
-  const byId = new Map(articles.map((article) => [Number(article.id), article]));
+  const byId = new Map(
+    articles.map((article) => [Number(article.id), article]),
+  );
   const requestedLeadId = curatedId(
     curated?.leadId ??
       curated?.lead ??
       curated?.headlineId ??
       curated?.mancheteId,
   );
-  const requestedLead = requestedLeadId != null ? byId.get(requestedLeadId) : null;
+  const requestedLead =
+    requestedLeadId != null ? byId.get(requestedLeadId) : null;
   const { lead: rawLead, rebalanced: leadRebalanced } = chooseLead(
     requestedLead,
     articles,
@@ -419,7 +447,8 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: "ollama",
-    selectionMode: plan.backfilled > 0 ? "ollama+section-backfill" : "ollama",
+    selectionMode:
+      plan.backfilled > 0 ? "ollama+section-backfill" : "ollama",
     preset: editorial.preset,
     profile: profile.name,
     language: config.language,
