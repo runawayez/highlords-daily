@@ -82,12 +82,21 @@ test("lottery results are rejected before LLM classification", () => {
     const routed = applyEditorialGuardrails({
       originalTitle,
       excerpt: "Confira o resultado do sorteio e o prêmio do concurso.",
-      focus: ["ia", "mobile-gadgets", "hardware", "software-internet", "futuro"],
+      focus: [
+        "ia",
+        "mobile-gadgets",
+        "hardware",
+        "software-internet",
+        "futuro",
+      ],
       strictFocus: false,
       language: "pt-BR",
     });
     assert.equal(routed.editorialReject, true, originalTitle);
-    assert.equal(routed.editorialGuardrail, "lottery-outside-editorial-scope");
+    assert.equal(
+      routed.editorialGuardrail,
+      "lottery-outside-editorial-scope",
+    );
   }
 });
 
