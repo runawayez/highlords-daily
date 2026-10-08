@@ -323,13 +323,20 @@ test("edition keeps configured sections and treats highlights as references", ()
   const html = renderNewsletterHtml(edition);
   assert.ok(!html.includes("<h1>"));
   assert.ok(!html.includes("Front Page"));
-  assert.ok(html.includes('<p class="hero-intro">Texto de abertura</p>'));
+  assert.ok(!html.includes('class="hero-intro"'));
+  assert.ok(!html.includes("Texto de abertura"));
   assert.ok(html.includes('id="front-page"'));
   assert.equal((html.match(/class="front-story"/g) || []).length, 3);
   assert.ok(!html.includes('id="ia"'));
+  assert.ok(html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'));
   assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="hardware"'));
   assert.ok(html.indexOf('id="hardware"') < html.indexOf('id="games"'));
   assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
+  assert.ok(
+    html.includes(
+      ".section-grid.solo-text .story-body{display:block!important",
+    ),
+  );
   assert.match(
     html,
     /class="section-start"><div class="section-title">[\s\S]*?<div class="section-grid(?: [^"]+)?">/,
