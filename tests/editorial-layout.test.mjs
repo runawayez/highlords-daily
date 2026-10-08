@@ -149,68 +149,60 @@ test("semantic review ignores low-confidence destructive changes", () => {
   assert.equal(result.stats.ignored, 1);
 });
 
-test(
-  "BR preset exposes ten daily sections with five contractual cores",
-  async () => {
-    const categories = parse(
-      await fs.readFile(
-        new URL("../presets/br/categories.yml", import.meta.url),
-        "utf8",
-      ),
-    ).categories;
-    const feeds = parse(
-      await fs.readFile(
-        new URL("../presets/br/feeds.yml", import.meta.url),
-        "utf8",
-      ),
-    ).feeds;
-    const metadata = JSON.parse(
-      await fs.readFile(
-        new URL("../presets/br/preset.json", import.meta.url),
-        "utf8",
-      ),
-    );
+test("BR preset exposes ten daily sections with five contractual cores", async () => {
+  const categories = parse(
+    await fs.readFile(
+      new URL("../presets/br/categories.yml", import.meta.url),
+      "utf8",
+    ),
+  ).categories;
+  const feeds = parse(
+    await fs.readFile(
+      new URL("../presets/br/feeds.yml", import.meta.url),
+      "utf8",
+    ),
+  ).feeds;
+  const metadata = JSON.parse(
+    await fs.readFile(
+      new URL("../presets/br/preset.json", import.meta.url),
+      "utf8",
+    ),
+  );
 
-    const categorySlugs = categories.map((category) => category.slug);
-    const requiredSlugs = categories
-      .filter((category) => category.required !== false)
-      .map((category) => category.slug);
-    const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
+  const categorySlugs = categories.map((category) => category.slug);
+  const requiredSlugs = categories
+    .filter((category) => category.required !== false)
+    .map((category) => category.slug);
+  const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
 
-    assert.deepEqual(categorySlugs, brDailySlugs);
-    assert.deepEqual(requiredSlugs, brRequiredSlugs);
-    for (const slug of brDailySlugs) {
-      assert.ok(sourceCoverage.has(slug), `BR has no source for ${slug}`);
-    }
-    assert.ok(
-      feeds.filter(
-        (feed) =>
-          feed.focus.length === 1 &&
-          feed.focus[0] === "esports" &&
-          feed.strict_focus,
-      ).length >= 2,
-    );
-    assert.ok(
-      metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
-    );
-    assert.ok(
-      metadata.plugins.includes("99-editorial-quality-gate.plugin.mjs"),
-    );
-  },
-);
+  assert.deepEqual(categorySlugs, brDailySlugs);
+  assert.deepEqual(requiredSlugs, brRequiredSlugs);
+  for (const slug of brDailySlugs) {
+    assert.ok(sourceCoverage.has(slug), `BR has no source for ${slug}`);
+  }
+  assert.ok(
+    feeds.filter(
+      (feed) =>
+        feed.focus.length === 1 &&
+        feed.focus[0] === "esports" &&
+        feed.strict_focus,
+    ).length >= 2,
+  );
+  assert.ok(
+    metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
+  );
+  assert.ok(metadata.plugins.includes("99-editorial-quality-gate.plugin.mjs"));
+});
 
-test(
-  "global preset remains independent from the compact BR daily taxonomy",
-  async () => {
-    const categories = parse(
-      await fs.readFile(
-        new URL("../presets/global/categories.yml", import.meta.url),
-        "utf8",
-      ),
-    ).categories;
-    assert.equal(categories.length, 16);
-  },
-);
+test("global preset remains independent from the compact BR daily taxonomy", async () => {
+  const categories = parse(
+    await fs.readFile(
+      new URL("../presets/global/categories.yml", import.meta.url),
+      "utf8",
+    ),
+  ).categories;
+  assert.equal(categories.length, 16);
+});
 
 test("edition keeps configured sections and treats highlights as references", () => {
   const articles = [
@@ -337,12 +329,12 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.ok(
     html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'),
   );
-  assert.ok(
-    html.indexOf('id="front-page"') < html.indexOf('id="tecnologia"'),
-  );
+  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="tecnologia"'));
   assert.ok(html.indexOf('id="tecnologia"') < html.indexOf('id="games"'));
   assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
   assert.ok(
-    html.includes(".section-grid.solo-text .story-body{display:block!important"),
+    html.includes(
+      ".section-grid.solo-text .story-body{display:block!important",
+    ),
   );
 });
