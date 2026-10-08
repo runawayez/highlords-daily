@@ -19,9 +19,7 @@ export async function loadPlugins() {
       continue;
     const file = path.join(config.pluginsDir, entry.name);
     try {
-      const module = await import(
-        `${pathToFileURL(file).href}?v=${Date.now()}`
-      );
+      const module = await import(`${pathToFileURL(file).href}?v=${Date.now()}`);
       const plugin =
         module.default && typeof module.default === "object"
           ? module.default
@@ -48,6 +46,7 @@ export async function runPluginHook(plugins, hook, payload) {
       const result = await fn(current, payload?.context);
       if (result !== undefined) current = result;
     } catch (error) {
+      if (error?.fatal === true || plugin?.module?.fatal === true) throw error;
       console.warn(
         `  Plugin ${plugin.name} falhou em ${hook}: ${error.message || error}`,
       );
@@ -65,6 +64,7 @@ export async function runPluginExporters(plugins, context) {
       const result = await fn(context);
       if (result) outputs.push({ plugin: plugin.name, result });
     } catch (error) {
+      if (error?.fatal === true || plugin?.module?.fatal === true) throw error;
       console.warn(
         `  Plugin ${plugin.name} falhou ao exportar: ${error.message || error}`,
       );
