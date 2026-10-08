@@ -53,7 +53,9 @@ export function applyEditorialGuardrails(article) {
   if (canForceCategory(article, "esports") && isEsports(article)) {
     return routeToCategory(article, "esports", "clear-esports-signal");
   }
-  const text = searchText(`${article.originalTitle} ${article.excerpt}`);
+  const text = searchText(`${article.originalTitle} ${article.excerpt}`)
+    .normalize("NFD")
+    .replace(/\p{M}+/gu, "");
   const isEconomy = economySignal.test(text);
   const isFilmSeries =
     filmSeriesSignal.test(text) ||
