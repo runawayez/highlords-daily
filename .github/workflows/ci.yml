@@ -20,7 +20,7 @@ jobs:
           node-version: ${{ matrix.node }}
           cache: npm
       - run: npm ci
-      - run: npx prettier --write "tests/daily-taxonomy.test.mjs" "tests/editorial-layout.test.mjs"; git diff -- tests/daily-taxonomy.test.mjs tests/editorial-layout.test.mjs
+      - run: npm run format:check
       - run: npm run check
       - run: npm test
       - run: node desktop/prepare-core.mjs
