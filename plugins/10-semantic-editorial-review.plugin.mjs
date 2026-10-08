@@ -167,10 +167,14 @@ For EVERY supplied item return exactly one review row.
 Return only valid JSON.`;
 
 async function reviewBatch(batch) {
-  const parsed = await requestChat(reviewSystem, JSON.stringify(reviewPayload(batch)), {
-    timeoutMs: 150000,
-    schema: reviewSchema(batch),
-  });
+  const parsed = await requestChat(
+    reviewSystem,
+    JSON.stringify(reviewPayload(batch)),
+    {
+      timeoutMs: 150000,
+      schema: reviewSchema(batch),
+    },
+  );
   return Array.isArray(parsed?.items) ? parsed.items : [];
 }
 
@@ -187,7 +191,8 @@ async function afterAnalyze(payload) {
     try {
       const result = applySemanticReview(batch, await reviewBatch(batch));
       reviewed.push(...result.articles);
-      for (const key of Object.keys(totals)) totals[key] += result.stats[key] || 0;
+      for (const key of Object.keys(totals))
+        totals[key] += result.stats[key] || 0;
     } catch (error) {
       console.warn(
         `  Semantic review batch kept unchanged: ${error.message || error}`,
