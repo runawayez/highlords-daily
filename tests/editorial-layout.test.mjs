@@ -181,6 +181,15 @@ test("BR preset exposes ten daily sections with five contractual cores", async (
     assert.ok(sourceCoverage.has(slug), `BR has no source for ${slug}`);
   }
   assert.ok(
+    feeds.some(
+      (feed) =>
+        feed.focus.length === 1 &&
+        feed.focus[0] === "ia-desenvolvimento" &&
+        feed.strict_focus,
+    ),
+    "BR needs a dedicated strict source for IA & Desenvolvimento",
+  );
+  assert.ok(
     feeds.filter(
       (feed) =>
         feed.focus.length === 1 &&
