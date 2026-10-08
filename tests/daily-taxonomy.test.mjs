@@ -14,9 +14,21 @@ function story(id, category) {
 
 function edition({ omitPolitics = false } = {}) {
   const sections = [
-    { slug: "ia-desenvolvimento", name: "IA & Desenvolvimento", articles: [story(2, "ia-desenvolvimento")] },
-    { slug: "games", name: "Games", articles: [story(3, "games")] },
-    { slug: "economia", name: "Economia", articles: [story(4, "economia")] },
+    {
+      slug: "ia-desenvolvimento",
+      name: "IA & Desenvolvimento",
+      articles: [story(2, "ia-desenvolvimento")],
+    },
+    {
+      slug: "games",
+      name: "Games",
+      articles: [story(3, "games")],
+    },
+    {
+      slug: "economia",
+      name: "Economia",
+      articles: [story(4, "economia")],
+    },
     ...(!omitPolitics
       ? [
           {
@@ -72,7 +84,10 @@ test("daily quality gate allows optional sections to stay out when the day is we
   assert.equal(result.edition.stats.qualityGate.passed, true);
   assert.equal(result.edition.stats.qualityGate.requiredCategories, 5);
   assert.equal(result.edition.stats.qualityGate.requiredCategoriesCovered, 5);
-  assert.equal(result.edition.stats.qualityGate.optionalMissingCategories.length, 5);
+  assert.equal(
+    result.edition.stats.qualityGate.optionalMissingCategories.length,
+    5,
+  );
 });
 
 test("daily quality gate still blocks a missing core section", () => {
