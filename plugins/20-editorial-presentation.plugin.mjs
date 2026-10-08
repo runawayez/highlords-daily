@@ -69,7 +69,8 @@ function urlContextHits(article) {
     `${article?.originalImageUrl || ""} ${article?.imageUrl || ""}`,
   );
   if (!haystack) return 0;
-  return titleTokens(article).filter((token) => haystack.includes(token)).length;
+  return titleTokens(article).filter((token) => haystack.includes(token))
+    .length;
 }
 
 async function imageSignals(article, editionDir) {
@@ -175,7 +176,8 @@ function defaultSectionPlan(section, annotated) {
   }
 
   const sorted = stories.slice().sort((a, b) => {
-    const imageBonus = Number(Boolean(b.displayImage)) - Number(Boolean(a.displayImage));
+    const imageBonus =
+      Number(Boolean(b.displayImage)) - Number(Boolean(a.displayImage));
     return (
       storyPriority(b) - storyPriority(a) ||
       imageBonus ||
@@ -198,7 +200,10 @@ function defaultSectionPlan(section, annotated) {
     const rest = stories.filter((article) => article !== visual);
     return {
       layout: "mixed-grid",
-      articleIds: [Number(visual.id), ...rest.map((article) => Number(article.id))],
+      articleIds: [
+        Number(visual.id),
+        ...rest.map((article) => Number(article.id)),
+      ],
       featureId: Number(visual.id),
     };
   }
@@ -226,10 +231,15 @@ function normalizeRequestedPlan(section, annotated, requested) {
   const requestedIds = Array.isArray(requested?.articleIds)
     ? requested.articleIds.map(Number).filter((id) => ids.has(id))
     : [];
-  if (requestedIds.length !== ids.size || new Set(requestedIds).size !== ids.size)
+  if (
+    requestedIds.length !== ids.size ||
+    new Set(requestedIds).size !== ids.size
+  )
     return defaultSectionPlan(section, annotated);
 
-  const byId = new Map(annotated.map((article) => [Number(article.id), article]));
+  const byId = new Map(
+    annotated.map((article) => [Number(article.id), article]),
+  );
   const ordered = requestedIds.map((id) => byId.get(id)).filter(Boolean);
   const imageCount = ordered.filter((article) => article.displayImage).length;
   const rawFeatureId = requested?.featureId;
@@ -265,7 +275,8 @@ function normalizeRequestedPlan(section, annotated, requested) {
       layout: "mixed-grid",
       articleIds: requestedIds,
       featureId:
-        featureId || Number(ordered.find((article) => article.displayImage)?.id),
+        featureId ||
+        Number(ordered.find((article) => article.displayImage)?.id),
     };
   }
   return {
@@ -298,18 +309,22 @@ function compactForEditor(sections) {
       summary: String(article.summary || article.excerpt || "").slice(0, 260),
       source: article.source,
       sectionPriority: storyPriority(article),
-      frontPagePriority: Number(article.frontPageScore ?? article.score ?? 0) || 0,
+      frontPagePriority:
+        Number(article.frontPageScore ?? article.score ?? 0) || 0,
       hasImage: Boolean(article.displayImage),
       imageFitness: article.imageFitness,
       imageRisk: article.imageRisk,
-      headlineLength: String(article.headline || article.originalTitle || "").length,
+      headlineLength: String(article.headline || article.originalTitle || "")
+        .length,
     })),
   }));
 }
 
 async function requestPresentationPlan(sections, editionDate) {
   const compact = compactForEditor(sections);
-  const allIds = compact.flatMap((section) => section.stories.map((story) => story.id));
+  const allIds = compact.flatMap((section) =>
+    section.stories.map((story) => story.id),
+  );
   const schema = {
     type: "object",
     properties: {
@@ -339,7 +354,9 @@ async function requestPresentationPlan(sections, editionDate) {
     additionalProperties: false,
   };
 
-  const key = digest(JSON.stringify({ editionDate, compact, language: config.language }));
+  const key = digest(
+    JSON.stringify({ editionDate, compact, language: config.language }),
+  );
   return cache.remember(
     "editorial-presentation",
     key,
@@ -372,7 +389,9 @@ function applyMaterializedPlan(section, plan) {
   const byId = new Map(
     section.articles.map((article) => [Number(article.id), article]),
   );
-  const ordered = plan.articleIds.map((id) => byId.get(Number(id))).filter(Boolean);
+  const ordered = plan.articleIds
+    .map((id) => byId.get(Number(id)))
+    .filter(Boolean);
   const featureId = plan.featureId == null ? null : Number(plan.featureId);
   const articles = ordered.map((article, index) => {
     let displayRole = "standard";
@@ -411,12 +430,18 @@ function applyPlans(sections, response) {
 
 export async function beforeRender(payload) {
   if (!payload?.edition) return payload;
-  const sections = await buildAnnotatedSections(payload.edition, payload.editionDir);
+  const sections = await buildAnnotatedSections(
+    payload.edition,
+    payload.editionDir,
+  );
   const lead = await annotateArticle(payload.edition.lead, payload.editionDir);
   let response = null;
   let mode = "deterministic-fallback";
   try {
-    response = await requestPresentationPlan(sections, payload.edition.editionDate);
+    response = await requestPresentationPlan(
+      sections,
+      payload.edition.editionDate,
+    );
     mode = "ollama-art-director";
   } catch (error) {
     console.warn(`  Editor visual fallback: ${error.message || error}`);
@@ -430,9 +455,10 @@ export async function beforeRender(payload) {
           defaultSectionPlan(section, section.articles),
         ),
       );
-  const stories = [lead, ...planned.flatMap((section) => section.articles || [])].filter(
-    Boolean,
-  );
+  const stories = [
+    lead,
+    ...planned.flatMap((section) => section.articles || []),
+  ].filter(Boolean);
   const suppressedImages = stories.filter(
     (article) => article.imageUrl && article.displayImage === false,
   ).length;
