@@ -157,7 +157,10 @@ test("BR preset exposes ten daily sections with five contractual cores", async (
     ),
   ).categories;
   const feeds = parse(
-    await fs.readFile(new URL("../presets/br/feeds.yml", import.meta.url), "utf8"),
+    await fs.readFile(
+      new URL("../presets/br/feeds.yml", import.meta.url),
+      "utf8",
+    ),
   ).feeds;
   const metadata = JSON.parse(
     await fs.readFile(
@@ -185,7 +188,9 @@ test("BR preset exposes ten daily sections with five contractual cores", async (
         feed.strict_focus,
     ).length >= 2,
   );
-  assert.ok(metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"));
+  assert.ok(
+    metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
+  );
   assert.ok(metadata.plugins.includes("99-editorial-quality-gate.plugin.mjs"));
 });
 
@@ -301,7 +306,9 @@ test("edition keeps configured sections and treats highlights as references", ()
   );
 
   const sectionIds = new Set(
-    edition.sections.flatMap((section) => section.articles.map((article) => article.id)),
+    edition.sections.flatMap((section) =>
+      section.articles.map((article) => article.id),
+    ),
   );
   for (const highlight of edition.topStories) {
     assert.ok(sectionIds.has(highlight.id));
@@ -319,8 +326,12 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.ok(html.includes('id="front-page"'));
   assert.equal((html.match(/class="front-story"/g) || []).length, 3);
   assert.ok(!html.includes('id="ia-desenvolvimento"'));
-  assert.ok(html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'));
-  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="tecnologia"'));
+  assert.ok(
+    html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'),
+  );
+  assert.ok(
+    html.indexOf('id="front-page"') < html.indexOf('id="tecnologia"'),
+  );
   assert.ok(html.indexOf('id="tecnologia"') < html.indexOf('id="games"'));
   assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
   assert.ok(
