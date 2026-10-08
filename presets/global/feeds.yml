@@ -7,10 +7,10 @@ feeds:
     focus: [ia, mobile-gadgets, hardware, software-internet]
   - name: The Verge
     url: https://www.theverge.com/rss/index.xml
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, futuro]
+    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, ciencia, futuro]
   - name: Ars Technica
     url: https://feeds.arstechnica.com/arstechnica/index
-    focus: [ia, desenvolvimento, hardware, software-internet, futuro]
+    focus: [ia, desenvolvimento, hardware, software-internet, ciencia, futuro]
   - name: Hacker News
     url: https://news.ycombinator.com/rss
     focus: [ia, desenvolvimento, software-internet, futuro]
@@ -30,6 +30,46 @@ feeds:
     url: https://www.rockpapershotgun.com/feed
     focus: [games]
     strict_focus: true
+
+  # World affairs, politics and society. This feed is intentionally broad so
+  # Ollama can reject or reclassify stories according to the configured taxonomy.
+  - name: BBC News World
+    url: https://feeds.bbci.co.uk/news/world/rss.xml
+    language: en-GB
+    country: GB
+    coverage: [GLOBAL]
+    focus: [politica-sociedade, economia, saude, clima-meio-ambiente]
+    images: page
+
+  # Science, climate and environment.
+  - name: BBC News Science & Environment
+    url: https://feeds.bbci.co.uk/news/science_and_environment/rss.xml
+    language: en-GB
+    country: GB
+    coverage: [GLOBAL]
+    focus: [ciencia, clima-meio-ambiente, futuro]
+    strict_focus: true
+    images: page
+
+  - name: NASA JPL News
+    url: https://www.jpl.nasa.gov/feeds/news/
+    language: en-US
+    country: US
+    coverage: [GLOBAL]
+    focus: [ciencia, futuro]
+    strict_focus: true
+    images: page
+
+  # Health and medicine.
+  - name: BBC News Health
+    url: https://feeds.bbci.co.uk/news/health/rss.xml
+    language: en-GB
+    country: GB
+    coverage: [GLOBAL]
+    focus: [saude]
+    strict_focus: true
+    images: page
+
   - name: ge
     url: https://ge.globo.com/rss/ge
     focus: [futebol, esportes]
