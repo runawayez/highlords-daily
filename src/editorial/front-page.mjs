@@ -56,10 +56,16 @@ Reescreva uma abertura jornalística curta para o LEITOR, em ${config.language},
 Use 2 ou 3 frases e resuma os principais assuntos do dia com base SOMENTE nas matérias fornecidas.
 NÃO descreva análise, classificação, seleção, quantidade de artigos, categorias como estrutura do sistema, scores, campos internos, IA, modelo, pipeline ou primeira página.
 NÃO invente fatos. Devolva somente JSON válido.`,
-      JSON.stringify({ editionDate, currentIntro, stories: compact.slice(0, 10) }),
+      JSON.stringify({
+        editionDate,
+        currentIntro,
+        stories: compact.slice(0, 10),
+      }),
       { timeoutMs: 90000, schema },
     );
-    return readerFacingIntro(response?.intro) ? response.intro.trim() : fallback;
+    return readerFacingIntro(response?.intro)
+      ? response.intro.trim()
+      : fallback;
   } catch {
     return fallback;
   }
@@ -131,7 +137,11 @@ REGRAS:
   );
 
   if (!readerFacingIntro(result?.intro)) {
-    result.intro = await rewriteIntro(curated?.intro || result?.intro, compact, editionDate);
+    result.intro = await rewriteIntro(
+      curated?.intro || result?.intro,
+      compact,
+      editionDate,
+    );
   } else {
     result.intro = result.intro.trim();
   }
