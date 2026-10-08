@@ -64,7 +64,10 @@ test("taxonomy owns section names and the lead never repeats in its section", ()
       categories.find((category) => category.slug === section.slug).name,
     );
   }
-  assert.equal(new Set(edition.sections.map((section) => section.name)).size, edition.sections.length);
+  assert.equal(
+    new Set(edition.sections.map((section) => section.name)).size,
+    edition.sections.length,
+  );
   assert.equal(validateNewsletterContract(edition).ok, true);
 });
 
@@ -88,7 +91,8 @@ test("coverage planner gives each available category a first slot before second 
   const visible = new Set(edition.sections.map((section) => section.slug));
   // The lead consumes one story from its category, but the second candidate
   // backfills that section. Every category with a selectable candidate survives.
-  for (const category of selectedCategories) assert.ok(visible.has(category.slug));
+  for (const category of selectedCategories)
+    assert.ok(visible.has(category.slug));
   assert.equal(
     edition.stats.coverage.visible,
     edition.stats.coverage.selectableCategories,
@@ -99,12 +103,20 @@ test("quality gate detects post-normalization taxonomy drift", () => {
   const [first, second] = categories.slice(0, 2);
   const edition = normalizeNewsletter(
     { leadId: 1, sections: {} },
-    [story(1, first.slug, 9), story(2, first.slug, 7), story(3, second.slug, 8)],
+    [
+      story(1, first.slug, 9),
+      story(2, first.slug, 7),
+      story(3, second.slug, 8),
+    ],
     "2026-10-08",
   );
   const broken = structuredClone(edition);
   broken.sections[0].name = "Futebol";
   const result = validateNewsletterContract(broken);
   assert.equal(result.ok, false);
-  assert.ok(result.errors.some((error) => error.startsWith("noncanonical-section-name:")));
+  assert.ok(
+    result.errors.some((error) =>
+      error.startsWith("noncanonical-section-name:"),
+    ),
+  );
 });
