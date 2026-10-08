@@ -1,166 +1,204 @@
 import test from "node:test";
 import assert from "node:assert/strict";
-import fs from "node:fs/promises";
-import path from "node:path";
-import os from "node:os";
-import { parse as parseYaml } from "yaml";
-import {
-  applySemanticReview,
-} from "../plugins/10-semantic-editorial-review.plugin.mjs";
 import { applyEditorialGuardrails } from "../presets/br/routing.mjs";
+import { applySemanticReview } from "../plugins/10-semantic-editorial-review.plugin.mjs";
 import { normalizeNewsletter } from "../src/editorial/edition.mjs";
 import { renderNewsletterHtml } from "../src/template.mjs";
+import { parse } from "yaml";
+import fs from "node:fs/promises";
 
-const root = path.resolve(path.dirname(new URL(import.meta.url).pathname), "..");
-
-async function readYaml(file) {
-  return parseYaml(await fs.readFile(path.join(root, file), "utf8"));
-}
+const universalExpansion = [
+  "politica-sociedade",
+  "ciencia",
+  "saude",
+  "clima-meio-ambiente",
+  "futuro",
+];
 
 test("built-in BR routing is language-agnostic and does not classify by keywords", () => {
-  const samples = [
+  const inputs = [
     {
-      title: "Final de Counter-Strike define campeão",
-      focus: ["games", "esports"],
-      strictFocus: true,
+      originalTitle: "Resultado da Lotofácil de hoje: números e ganhadores",
+      excerpt: "Confira o resultado do sorteio.",
+      language: "pt-BR",
+      focus: ["futuro", "economia"],
+      strictFocus: false,
     },
     {
-      title: "Elecciones y sociedad en América Latina",
-      focus: ["politica-sociedade"],
-      strictFocus: true,
+      originalTitle: "Resultados de la lotería nacional y números ganadores",
+      excerpt: "Sorteo celebrado en Buenos Aires.",
+      language: "es-AR",
+      focus: ["futuro"],
+      strictFocus: false,
     },
     {
-      title: "量子コンピューティングの新研究",
-      focus: ["ciencia", "futuro"],
+      originalTitle: "新しい映画シリーズの予告編が公開",
+      excerpt: "ストリーミング作品の新シーズン。",
+      language: "ja-JP",
+      focus: ["filmes-series", "software-internet"],
       strictFocus: true,
     },
   ];
-  for (const article of samples) {
-    const result = applyEditorialGuardrails(article);
-    assert.equal(result.editorialReject, undefined);
-    assert.equal(result.category, undefined);
+
+  for (const input of inputs) {
+    const routed = applyEditorialGuardrails(input);
+    assert.equal(routed.editorialReject, undefined);
+    assert.equal(routed.editorialGuardrail, undefined);
+    assert.deepEqual(routed.focus, input.focus);
+    assert.equal(routed.strictFocus, input.strictFocus);
   }
 });
 
 test("semantic review can reclassify and reject while enforcing strict focus", () => {
-  const input = [
-    {
-      id: 1,
-      category: "games",
-      focus: ["games", "esports"],
-      strictFocus: true,
-      originalTitle: "CS2 Major reaches grand final",
-    },
-    {
-      id: 2,
-      category: "software-internet",
-      focus: ["software-internet"],
-      strictFocus: true,
-      originalTitle: "Completely unrelated celebrity gossip",
-    },
-    {
-      id: 3,
-      category: "ciencia",
-      focus: ["ciencia", "futuro"],
-      strictFocus: true,
-      originalTitle: "Quantum prototype advances",
-    },
-  ];
-  const result = applySemanticReview(input, [
-    {
-      id: 1,
-      action: "reclassify",
-      category: "esports",
-      confidence: 0.94,
-      reason: "professional competition",
-    },
-    {
-      id: 2,
-      action: "reject",
-      category: null,
-      confidence: 0.93,
-      reason: "outside taxonomy",
-    },
-    {
-      id: 3,
-      action: "reclassify",
-      category: "economia",
-      confidence: 0.96,
-      reason: "wrongly proposed outside strict focus",
-    },
-  ]);
-  assert.deepEqual(
-    result.articles.map((article) => [article.id, article.category]),
-    [[1, "esports"]],
+  const result = applySemanticReview(
+    [
+      {
+        id: 1,
+        category: "futuro",
+        originalTitle: "La inflación mensual vuelve a acelerarse",
+        focus: ["economia", "futuro"],
+        strictFocus: false,
+      },
+      {
+        id: 2,
+        category: "futuro",
+        originalTitle: "Resultado de lotería y números ganadores",
+        focus: ["futuro"],
+        strictFocus: false,
+      },
+      {
+        id: 3,
+        category: "games",
+        originalTitle: "Competitive roster change",
+        focus: ["games"],
+        strictFocus: true,
+      },
+    ],
+    [
+      {
+        id: 1,
+        action: "reclassify",
+        category: "economia",
+        confidence: 0.97,
+        reason: "Macroeconomic inflation story.",
+      },
+      {
+        id: 2,
+        action: "reject",
+        category: null,
+        confidence: 0.96,
+        reason: "Lottery result does not fit the configured taxonomy.",
+      },
+      {
+        id: 3,
+        action: "reclassify",
+        category: "esports",
+        confidence: 0.95,
+        reason: "Competitive gaming context.",
+      },
+    ],
   );
-  assert.equal(result.stats.reclassified, 1);
-  assert.equal(result.stats.rejected, 2);
+
+  assert.equal(result.articles.length, 1);
+  assert.equal(result.articles[0].category, "economia");
+  assert.equal(result.articles[0].semanticReview, "reclassified");
+  assert.deepEqual(result.stats, {
+    kept: 0,
+    reclassified: 1,
+    rejected: 2,
+    ignored: 0,
+  });
 });
 
 test("semantic review ignores low-confidence destructive changes", () => {
-  const input = [
-    {
-      id: 11,
-      category: "games",
-      focus: ["games", "esports"],
-      strictFocus: true,
-    },
-  ];
-  const result = applySemanticReview(input, [
-    {
-      id: 11,
-      action: "reject",
-      category: null,
-      confidence: 0.3,
-      reason: "uncertain",
-    },
-  ]);
-  assert.equal(result.articles.length, 1);
-  assert.equal(result.articles[0].category, "games");
+  const article = {
+    id: 10,
+    category: "hardware",
+    originalTitle: "New GPU architecture announced",
+    focus: ["hardware", "futuro"],
+    strictFocus: false,
+  };
+  const result = applySemanticReview(
+    [article],
+    [
+      {
+        id: 10,
+        action: "reclassify",
+        category: "futuro",
+        confidence: 0.41,
+        reason: "Uncertain overlap with emerging technology.",
+      },
+    ],
+  );
+
+  assert.equal(result.articles[0].category, "hardware");
+  assert.equal(result.stats.kept, 1);
   assert.equal(result.stats.ignored, 1);
 });
 
 test("bundled presets expose the universal taxonomy and semantic review", async () => {
   for (const preset of ["br", "global"]) {
-    const categories = await readYaml(`presets/${preset}/categories.yml`);
+    const categories = parse(
+      await fs.readFile(
+        new URL(`../presets/${preset}/categories.yml`, import.meta.url),
+        "utf8",
+      ),
+    ).categories;
+    const feeds = parse(
+      await fs.readFile(
+        new URL(`../presets/${preset}/feeds.yml`, import.meta.url),
+        "utf8",
+      ),
+    ).feeds;
     const metadata = JSON.parse(
-      await fs.readFile(path.join(root, `presets/${preset}/preset.json`), "utf8"),
+      await fs.readFile(
+        new URL(`../presets/${preset}/preset.json`, import.meta.url),
+        "utf8",
+      ),
     );
-    const slugs = categories.categories.map((category) => category.slug);
+
+    const categorySlugs = new Set(categories.map((category) => category.slug));
+    const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
+
+    assert.equal(categorySlugs.size, 16);
+    for (const slug of universalExpansion) {
+      assert.ok(categorySlugs.has(slug), `${preset} missing ${slug}`);
+      assert.ok(
+        sourceCoverage.has(slug),
+        `${preset} has no source for ${slug}`,
+      );
+    }
+
     for (const slug of [
-      "ia",
-      "desenvolvimento",
-      "mobile-gadgets",
-      "hardware",
-      "software-internet",
-      "games",
-      "filmes-series",
-      "futebol",
-      "esportes",
-      "esports",
-      "economia",
       "politica-sociedade",
       "ciencia",
       "saude",
       "clima-meio-ambiente",
-      "futuro",
-    ])
-      assert.ok(slugs.includes(slug), `${preset} missing ${slug}`);
+    ]) {
+      const category = categories.find((item) => item.slug === slug);
+      assert.ok(category.labels.pt, `${preset}/${slug} missing pt label`);
+      assert.ok(category.labels.en, `${preset}/${slug} missing en label`);
+      assert.ok(category.labels.es, `${preset}/${slug} missing es label`);
+    }
+
+    assert.equal(
+      categories.find((category) => category.slug === "futuro").name,
+      "Futuro & Inovação",
+    );
+    assert.ok(categorySlugs.has("esports"));
+    assert.ok(
+      feeds.filter(
+        (feed) =>
+          feed.focus.length === 1 &&
+          feed.focus[0] === "esports" &&
+          feed.strict_focus,
+      ).length >= 2,
+    );
     assert.ok(
       metadata.plugins.includes("10-semantic-editorial-review.plugin.mjs"),
     );
     assert.ok(!metadata.plugins.includes("00-esports-routing.plugin.mjs"));
   }
-
-  const feeds = (await readYaml("presets/br/feeds.yml")).feeds;
-  assert.ok(
-    feeds.filter(
-      (feed) =>
-        feed.focus.length === 1 &&
-        feed.focus[0] === "esports" &&
-        feed.strict_focus,
-    ).length >= 2,
-  );
 });
 
 test("edition keeps configured sections and treats highlights as references", () => {
