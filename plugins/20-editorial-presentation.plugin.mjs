@@ -149,6 +149,16 @@ async function imageSignals(article, editionDir) {
   };
 }
 
+async function annotateArticle(article, editionDir) {
+  if (!article) return article;
+  const visual = await imageSignals(article, editionDir);
+  return {
+    ...article,
+    ...visual,
+    displayImage: visual.hasImage,
+  };
+}
+
 function storyPriority(article) {
   return Number(article?.sectionScore ?? article?.score ?? 0) || 0;
 }
@@ -222,9 +232,11 @@ function normalizeRequestedPlan(section, annotated, requested) {
   const byId = new Map(annotated.map((article) => [Number(article.id), article]));
   const ordered = requestedIds.map((id) => byId.get(id)).filter(Boolean);
   const imageCount = ordered.filter((article) => article.displayImage).length;
-  const featureId = ids.has(Number(requested?.featureId))
-    ? Number(requested.featureId)
-    : null;
+  const rawFeatureId = requested?.featureId;
+  const featureId =
+    rawFeatureId != null && ids.has(Number(rawFeatureId))
+      ? Number(rawFeatureId)
+      : null;
   const requestedLayout = ["feature", "balanced", "briefs"].includes(
     requested?.layout,
   )
@@ -259,7 +271,8 @@ function normalizeRequestedPlan(section, annotated, requested) {
   return {
     layout: requestedLayout === "feature" ? "feature-grid" : "balanced-grid",
     articleIds: requestedIds,
-    featureId,
+    featureId:
+      requestedLayout === "feature" ? featureId || requestedIds[0] : featureId,
   };
 }
 
@@ -268,12 +281,7 @@ async function buildAnnotatedSections(edition, editionDir) {
   for (const section of edition.sections || []) {
     const articles = [];
     for (const article of section.articles || []) {
-      const visual = await imageSignals(article, editionDir);
-      articles.push({
-        ...article,
-        ...visual,
-        displayImage: visual.hasImage,
-      });
+      articles.push(await annotateArticle(article, editionDir));
     }
     sections.push({ ...section, articles });
   }
@@ -360,47 +368,51 @@ Para cada seção:
   );
 }
 
+function applyMaterializedPlan(section, plan) {
+  const byId = new Map(
+    section.articles.map((article) => [Number(article.id), article]),
+  );
+  const ordered = plan.articleIds.map((id) => byId.get(Number(id))).filter(Boolean);
+  const featureId = plan.featureId == null ? null : Number(plan.featureId);
+  const articles = ordered.map((article, index) => {
+    let displayRole = "standard";
+    if (featureId != null && Number(article.id) === featureId)
+      displayRole = "feature";
+    else if (
+      plan.layout === "briefs-grid" ||
+      (plan.layout === "feature-grid" && index > 0) ||
+      (plan.layout === "mixed-grid" && !article.displayImage)
+    )
+      displayRole = "brief";
+    return { ...article, displayRole };
+  });
+  return {
+    ...section,
+    presentation: { layout: plan.layout, featureId },
+    articles,
+  };
+}
+
 function applyPlans(sections, response) {
   const requestedBySlug = new Map(
     (response?.sections || []).map((section) => [section.slug, section]),
   );
-  return sections.map((section) => {
-    const plan = normalizeRequestedPlan(
+  return sections.map((section) =>
+    applyMaterializedPlan(
       section,
-      section.articles,
-      requestedBySlug.get(section.slug),
-    );
-    const byId = new Map(
-      section.articles.map((article) => [Number(article.id), article]),
-    );
-    const ordered = plan.articleIds.map((id) => byId.get(Number(id))).filter(Boolean);
-    const featureId = Number(plan.featureId);
-    const articles = ordered.map((article, index) => {
-      let displayRole = "standard";
-      if (Number.isFinite(featureId) && Number(article.id) === featureId)
-        displayRole = "feature";
-      else if (
-        plan.layout === "briefs-grid" ||
-        (plan.layout === "feature-grid" && index > 0) ||
-        (plan.layout === "mixed-grid" && !article.displayImage)
-      )
-        displayRole = "brief";
-      return { ...article, displayRole };
-    });
-    return {
-      ...section,
-      presentation: {
-        layout: plan.layout,
-        featureId: Number.isFinite(featureId) ? featureId : null,
-      },
-      articles,
-    };
-  });
+      normalizeRequestedPlan(
+        section,
+        section.articles,
+        requestedBySlug.get(section.slug),
+      ),
+    ),
+  );
 }
 
 export async function beforeRender(payload) {
   if (!payload?.edition) return payload;
   const sections = await buildAnnotatedSections(payload.edition, payload.editionDir);
+  const lead = await annotateArticle(payload.edition.lead, payload.editionDir);
   let response = null;
   let mode = "deterministic-fallback";
   try {
@@ -412,11 +424,15 @@ export async function beforeRender(payload) {
 
   const planned = response
     ? applyPlans(sections, response)
-    : sections.map((section) => {
-        const plan = defaultSectionPlan(section, section.articles);
-        return applyPlans([section], { sections: [{ slug: section.slug, ...plan }] })[0];
-      });
-  const stories = planned.flatMap((section) => section.articles || []);
+    : sections.map((section) =>
+        applyMaterializedPlan(
+          section,
+          defaultSectionPlan(section, section.articles),
+        ),
+      );
+  const stories = [lead, ...planned.flatMap((section) => section.articles || [])].filter(
+    Boolean,
+  );
   const suppressedImages = stories.filter(
     (article) => article.imageUrl && article.displayImage === false,
   ).length;
@@ -425,6 +441,7 @@ export async function beforeRender(payload) {
     ...payload,
     edition: {
       ...payload.edition,
+      lead,
       sections: planned,
       stats: {
         ...(payload.edition.stats || {}),
