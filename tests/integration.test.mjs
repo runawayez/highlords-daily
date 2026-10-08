@@ -119,7 +119,8 @@ test(
             };
         } else if (properties.topStoryIds)
           result = {
-            intro: "تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم، إلى جانب تطورات النقل المحلي في اليابان.",
+            intro:
+              "تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم، إلى جانب تطورات النقل المحلي في اليابان.",
             topStoryIds: [3, 2],
           };
         else
@@ -232,9 +233,7 @@ test(
       assert.ok(html.includes('dir="rtl"'));
       assert.ok(html.includes("اقرأ الخبر"));
       assert.ok(
-        html.includes(
-          "تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم",
-        ),
+        html.includes("تتصدر الأبحاث العلمية والاستكشافات الجديدة أخبار اليوم"),
       );
       assert.ok(html.includes("ما يستحق اهتمامك اليوم"));
       assert.ok(!html.includes("<h1>"));
