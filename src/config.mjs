@@ -424,7 +424,7 @@ export const config = {
     ),
   ),
   sourceDiversityStrict: booleanEnv("SOURCE_DIVERSITY_STRICT", false),
-  requireImages: booleanEnv("REQUIRE_IMAGES", true),
+  requireImages: booleanEnv("REQUIRE_IMAGES", false),
   cacheImages: booleanEnv("CACHE_IMAGES", true),
   historyEnabled: booleanEnv("HISTORY_ENABLED", true),
   historyDays: Math.max(7, numberEnv("HISTORY_DAYS", 90)),
