@@ -163,7 +163,10 @@ test("bundled presets expose the universal taxonomy and semantic review", async 
     assert.equal(categorySlugs.size, 16);
     for (const slug of universalExpansion) {
       assert.ok(categorySlugs.has(slug), `${preset} missing ${slug}`);
-      assert.ok(sourceCoverage.has(slug), `${preset} has no source for ${slug}`);
+      assert.ok(
+        sourceCoverage.has(slug),
+        `${preset} has no source for ${slug}`,
+      );
     }
 
     for (const slug of [
