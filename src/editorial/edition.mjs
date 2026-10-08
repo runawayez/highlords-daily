@@ -208,9 +208,7 @@ function buildCoveragePlan(curated, articles, lead) {
       .map((id) => byId.get(id))
       .filter(
         (article) =>
-          article &&
-          article.category === slug &&
-          Number(article.id) !== leadId,
+          article && article.category === slug && Number(article.id) !== leadId,
       );
     const requestedSet = new Set(
       requested.map((article) => Number(article.id)),
@@ -323,16 +321,13 @@ function buildCoveragePlan(curated, articles, lead) {
 
   const missing = categories
     .filter(
-      (category) =>
-        !sections.some((section) => section.slug === category.slug),
+      (category) => !sections.some((section) => section.slug === category.slug),
     )
     .map((category) => {
       const pool = articles.filter(
         (article) => article.category === category.slug,
       );
-      const nonLead = pool.filter(
-        (article) => Number(article.id) !== leadId,
-      );
+      const nonLead = pool.filter((article) => Number(article.id) !== leadId);
       let reason = "no-candidate-after-analysis";
       if (pool.length && !nonLead.length && lead?.category === category.slug)
         reason = "lead-only";
@@ -406,9 +401,7 @@ export function validateNewsletterContract(edition) {
       errors.push(`top-story-without-section:${story.id}`);
   }
 
-  const expected = Number(
-    edition?.stats?.coverage?.selectableCategories || 0,
-  );
+  const expected = Number(edition?.stats?.coverage?.selectableCategories || 0);
   const visible = Number(edition?.stats?.coverage?.visible || 0);
   if (visible < expected) errors.push(`coverage-gap:${visible}/${expected}`);
 
@@ -447,15 +440,18 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: "ollama",
-    selectionMode:
-      plan.backfilled > 0 ? "ollama+section-backfill" : "ollama",
+    selectionMode: plan.backfilled > 0 ? "ollama+section-backfill" : "ollama",
     preset: editorial.preset,
     profile: profile.name,
     language: config.language,
     editorialContext: config.editorialContext,
     publication: publication.name,
-    title: String(curated?.title || fallback.title).trim().slice(0, 120),
-    intro: String(curated?.intro || fallback.intro).trim().slice(0, 420),
+    title: String(curated?.title || fallback.title)
+      .trim()
+      .slice(0, 120),
+    intro: String(curated?.intro || fallback.intro)
+      .trim()
+      .slice(0, 420),
     frontPageTitle: fallback.title,
     ui: normalizeUi(curated?.ui),
     lead,
