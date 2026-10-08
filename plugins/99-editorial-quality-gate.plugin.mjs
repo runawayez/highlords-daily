@@ -1,5 +1,22 @@
-import { categories } from "../src/config.mjs";
+import fs from "node:fs";
+import { parse as parseYaml } from "yaml";
+import { categories, editorial } from "../src/config.mjs";
 import { validateNewsletterContract } from "../src/editorial/edition.mjs";
+
+function requiredCategorySlugs() {
+  try {
+    const document = parseYaml(fs.readFileSync(editorial.categoriesFile, "utf8")) || {};
+    const raw = Array.isArray(document.categories) ? document.categories : [];
+    const required = raw
+      .filter((category) => category && category.enabled !== false)
+      .filter((category) => category.required !== false)
+      .map((category) => String(category.slug || "").trim())
+      .filter(Boolean);
+    return new Set(required.length ? required : categories.map((category) => category.slug));
+  } catch {
+    return new Set(categories.map((category) => category.slug));
+  }
+}
 
 function beforeRender(payload) {
   const edition = payload?.edition;
@@ -14,18 +31,23 @@ function beforeRender(payload) {
     throw error;
   }
 
+  const required = requiredCategorySlugs();
   const missing = Array.isArray(edition?.stats?.coverage?.missing)
     ? edition.stats.coverage.missing
     : [];
-  const uncovered = missing.filter((item) => item.reason !== "lead-only");
   const leadOnly = missing.filter((item) => item.reason === "lead-only");
+  const uncoveredRequired = missing.filter(
+    (item) => item.reason !== "lead-only" && required.has(item.slug),
+  );
+  const optionalMissing = missing.filter(
+    (item) => item.reason !== "lead-only" && !required.has(item.slug),
+  );
 
-  // A category represented by the main headline is considered covered without
-  // duplicating the same story in a section. Every other configured category
-  // must have at least one real selected story; incomplete editions do not ship.
-  if (uncovered.length) {
+  // Core sections are contractual. Secondary sections are opportunistic: they
+  // appear only when the day has a strong, valid candidate for them.
+  if (uncoveredRequired.length) {
     const error = new Error(
-      `Editorial coverage incomplete: ${uncovered
+      `Editorial coverage incomplete: ${uncoveredRequired
         .map((item) => `${item.name} (${item.reason})`)
         .join(", ")}`,
     );
@@ -33,20 +55,29 @@ function beforeRender(payload) {
     throw error;
   }
 
+  const visibleSlugs = new Set((edition.sections || []).map((section) => section.slug));
+  const leadCategory = edition.lead?.category;
+  const requiredCovered = [...required].filter(
+    (slug) => visibleSlugs.has(slug) || slug === leadCategory,
+  ).length;
+
   edition.stats.qualityGate = {
     passed: true,
     configuredCategories: categories.length,
+    requiredCategories: required.size,
     visibleSections: edition.sections?.length || 0,
     categoriesCovered: (edition.sections?.length || 0) + leadOnly.length,
+    requiredCategoriesCovered: requiredCovered,
     leadOnlyCategories: leadOnly,
-    missingCategories: [],
+    optionalMissingCategories: optionalMissing,
+    missingCategories: optionalMissing,
   };
 
-  if (leadOnly.length) {
+  if (optionalMissing.length) {
     console.log(
-      `  Editorial coverage: ${categories.length}/${categories.length} categorias cobertas; ${leadOnly
+      `  Cobertura diária: ${requiredCovered}/${required.size} editorias essenciais cobertas; opcionais sem destaque: ${optionalMissing
         .map((item) => item.name)
-        .join(", ")} representada(s) pela manchete.`,
+        .join(", ")}.`,
     );
   }
 
