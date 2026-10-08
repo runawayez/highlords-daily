@@ -46,7 +46,7 @@
     "cache:prune": "node src/cli/run.mjs cache",
     "benchmark": "node scripts/benchmark.mjs",
     "format": "prettier --write \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\"",
-    "format:check": "prettier --write \"src/editorial/edition.mjs\" \"src/exporters/markdown.mjs\" && git diff -- src/editorial/edition.mjs src/exporters/markdown.mjs && node -e \"process.exit(1)\""
+    "format:check": "prettier --check \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\""
   },
   "engines": {
     "node": ">=22.12.0"
