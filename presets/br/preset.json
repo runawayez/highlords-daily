@@ -12,9 +12,11 @@
   "llmMinScore": 4.0,
   "bundledTaxonomy": true,
   "plugins": [
+    "05-editorial-contract-bootstrap.plugin.mjs",
     "10-semantic-editorial-review.plugin.mjs",
     "20-editorial-presentation.plugin.mjs",
-    "editorial-ranking.plugin.mjs"
+    "editorial-ranking.plugin.mjs",
+    "99-editorial-quality-gate.plugin.mjs"
   ],
   "routing": "routing.mjs"
 }
