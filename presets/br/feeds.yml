@@ -3,54 +3,51 @@ preset: br
 
 # Vanilla Brazil-first. Use your own regional preset for another country/context.
 feeds:
-  # Tecnologia, desenvolvimento, mobile, hardware, software, games e futuro.
+  # Tecnologia, IA, desenvolvimento, games e inovação.
   - name: Tecnoblog
     url: https://tecnoblog.net/feed/
-    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, futuro]
+    focus: [tecnologia, ia-desenvolvimento, clima-futuro]
 
   - name: Canaltech
     url: https://canaltech.com.br/rss/
-    focus: [ia, desenvolvimento, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, ciencia, saude, futuro]
+    focus: [tecnologia, ia-desenvolvimento, games, entretenimento, esports, ciencia-saude, clima-futuro]
 
   - name: TecMundo
     url: https://www.tecmundo.com.br/rss
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, esports, ciencia, futuro]
+    focus: [tecnologia, ia-desenvolvimento, games, entretenimento, esports, ciencia-saude, clima-futuro]
 
   - name: Olhar Digital
     url: https://olhardigital.com.br/feed/
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, filmes-series, ciencia, saude, clima-meio-ambiente, futuro]
+    focus: [tecnologia, ia-desenvolvimento, games, entretenimento, ciencia-saude, clima-futuro]
     strict_focus: true
 
   - name: g1 · Tecnologia
     url: http://g1.globo.com/dynamo/tecnologia/rss2.xml
-    focus: [ia, mobile-gadgets, hardware, software-internet, games, futuro]
+    focus: [tecnologia, ia-desenvolvimento, games, clima-futuro]
 
   - name: MacMagazine
     url: https://macmagazine.com.br/feed/
-    focus: [mobile-gadgets, hardware, software-internet, futuro]
+    focus: [tecnologia, clima-futuro]
     strict_focus: true
 
   - name: iMasters
     url: https://imasters.com.br/feed
-    focus: [ia, desenvolvimento, software-internet, futuro]
+    focus: [ia-desenvolvimento, tecnologia, clima-futuro]
     strict_focus: true
 
   - name: Diolinux
     url: https://diolinux.com.br/feed
-    focus: [desenvolvimento, software-internet, hardware]
+    focus: [ia-desenvolvimento, tecnologia]
     strict_focus: true
 
-  # TabNews é excelente como fonte textual, mas os previews Open Graph são cards
-  # gerados com texto, não imagens editoriais. No Vanilla REQUIRE_IMAGES=true,
-  # por isso ele fica disponível apenas para quem optar por aceitar matérias sem imagem.
   - name: TabNews
     url: https://www.tabnews.com.br/recentes/rss
-    focus: [ia, desenvolvimento, software-internet, futuro]
+    focus: [ia-desenvolvimento, tecnologia, clima-futuro]
     images: false
 
   - name: Adrenaline
     url: https://www.adrenaline.com.br/feed/
-    focus: [hardware, mobile-gadgets, games, esports]
+    focus: [tecnologia, games, esports]
     strict_focus: true
 
   - name: GameVicio
@@ -65,57 +62,56 @@ feeds:
     strict_focus: true
     images: page
 
-  # Filmes e séries — veículos brasileiros especializados em entretenimento.
+  # Entretenimento audiovisual.
   - name: CinePOP
     url: https://cinepop.com.br/feed/
-    focus: [filmes-series]
+    focus: [entretenimento]
     strict_focus: true
     images: page
 
   - name: Pipoca Moderna
     url: https://pipocamoderna.com.br/feed/
-    focus: [filmes-series]
+    focus: [entretenimento]
     strict_focus: true
     images: page
 
-  # Futebol — futebol de associação/soccer.
+  # Esportes — futebol e demais modalidades físicas.
   - name: ge
     url: https://ge.globo.com/rss/ge
-    focus: [futebol, esportes, games, esports]
+    focus: [esportes, games, esports]
     strict_focus: true
     images: page
 
   - name: Trivela
     url: https://trivela.com.br/feed/
-    focus: [futebol]
+    focus: [esportes]
     strict_focus: true
     images: page
 
   - name: Placar
     url: https://placar.com.br/feed/
-    focus: [futebol]
+    focus: [esportes]
     strict_focus: true
     images: page
 
   - name: UOL Esporte
     url: https://rss.uol.com.br/feed/esporte.xml
-    focus: [futebol, esportes]
+    focus: [esportes]
     strict_focus: true
     images: page
 
   - name: Gazeta Esportiva · Futebol Internacional
     url: https://www.gazetaesportiva.com/futebol/futebol-internacional/feed/
-    focus: [futebol]
+    focus: [esportes]
     strict_focus: true
     images: page
 
   - name: Gazeta Esportiva · Seleção Brasileira
     url: https://www.gazetaesportiva.com/times/brasil/feed/
-    focus: [futebol]
+    focus: [esportes]
     strict_focus: true
     images: page
 
-  # Outros esportes — F1, basquete, tênis, vôlei, lutas, esportes olímpicos etc.
   - name: Grande Prêmio
     url: https://www.grandepremio.com.br/feed/
     focus: [esportes]
@@ -153,6 +149,26 @@ feeds:
     country: BR
     coverage: [BR, GLOBAL]
     focus: [games, esports]
+    strict_focus: true
+    images: page
+
+  - name: Dust2 Brasil
+    url: https://www.dust2.com.br/rss
+    language: pt-BR
+    country: BR
+    coverage: [BR, GLOBAL]
+    publisher_group: Dust2
+    focus: [esports]
+    strict_focus: true
+    images: page
+
+  - name: Esports Insider
+    url: https://esportsinsider.com/feed
+    language: en
+    country: GB
+    coverage: [GLOBAL]
+    publisher_group: Esports Insider
+    focus: [esports]
     strict_focus: true
     images: page
 
@@ -207,56 +223,34 @@ feeds:
     strict_focus: true
     images: page
 
-  # Ciência — pesquisa e descobertas. Saúde permanece separada semanticamente.
+  # Ciência & Saúde — pesquisa, descobertas, medicina e saúde pública.
   - name: Revista Pesquisa FAPESP
     url: https://revistapesquisa.fapesp.br/feed/
-    focus: [ciencia]
+    focus: [ciencia-saude]
     strict_focus: true
     images: page
 
   - name: Agência FAPESP
     url: https://agencia.fapesp.br/rss/
-    focus: [ciencia, saude, futuro]
+    focus: [ciencia-saude, clima-futuro]
     strict_focus: true
     images: page
 
   - name: g1 · Ciência e Saúde
     url: http://g1.globo.com/dynamo/ciencia-e-saude/rss2.xml
-    focus: [ciencia, saude]
+    focus: [ciencia-saude]
     strict_focus: true
     images: page
 
-  # Saúde — medicina, saúde pública, tratamentos e pesquisa clínica.
   - name: Agência Brasil Saúde
     url: https://agenciabrasil.ebc.com.br/rss/saude/feed.xml
-    focus: [saude]
+    focus: [ciencia-saude]
     strict_focus: true
     images: page
 
-  # Clima & Meio Ambiente — clima, biodiversidade, conservação e sustentabilidade.
+  # Clima & Futuro — meio ambiente e inovação transformadora.
   - name: Agência Brasil Meio Ambiente
     url: https://agenciabrasil.ebc.com.br/rss/meio-ambiente/feed.xml
-    focus: [clima-meio-ambiente]
-    strict_focus: true
-    images: page
-
-  # Dedicated competitive scene and esports industry sources.
-  - name: Dust2 Brasil
-    url: https://www.dust2.com.br/rss
-    language: pt-BR
-    country: BR
-    coverage: [BR, GLOBAL]
-    publisher_group: Dust2
-    focus: [esports]
-    strict_focus: true
-    images: page
-
-  - name: Esports Insider
-    url: https://esportsinsider.com/feed
-    language: en
-    country: GB
-    coverage: [GLOBAL]
-    publisher_group: Esports Insider
-    focus: [esports]
+    focus: [clima-futuro]
     strict_focus: true
     images: page
