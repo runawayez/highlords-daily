@@ -1,27 +1,13 @@
-import fs from "node:fs";
-import { parse as parseYaml } from "yaml";
 import { categories, editorial } from "../src/config.mjs";
 import { validateNewsletterContract } from "../src/editorial/edition.mjs";
 
-function requiredCategorySlugs() {
-  try {
-    const document =
-      parseYaml(fs.readFileSync(editorial.categoriesFile, "utf8")) || {};
-    const raw = Array.isArray(document.categories) ? document.categories : [];
-    const required = raw
-      .filter((category) => category && category.enabled !== false)
-      .filter((category) => category.required !== false)
-      .map((category) => String(category.slug || "").trim())
-      .filter(Boolean);
-    return new Set(
-      required.length
-        ? required
-        : categories.map((category) => category.slug),
-    );
-  } catch {
-    return new Set(categories.map((category) => category.slug));
-  }
-}
+const optionalDailyCategories = new Set([
+  "esports",
+  "entretenimento",
+  "esportes",
+  "ciencia-saude",
+  "clima-futuro",
+]);
 
 function beforeRender(payload) {
   const edition = payload?.edition;
@@ -36,23 +22,25 @@ function beforeRender(payload) {
     throw error;
   }
 
-  const required = requiredCategorySlugs();
   const missing = Array.isArray(edition?.stats?.coverage?.missing)
     ? edition.stats.coverage.missing
     : [];
-  const leadOnly = missing.filter((item) => item.reason === "lead-only");
-  const uncoveredRequired = missing.filter(
-    (item) => item.reason !== "lead-only" && required.has(item.slug),
+  const isOptional = (item) =>
+    editorial.preset === "br" && optionalDailyCategories.has(item.slug);
+  const uncovered = missing.filter(
+    (item) => item.reason !== "lead-only" && !isOptional(item),
   );
+  const leadOnly = missing.filter((item) => item.reason === "lead-only");
   const optionalMissing = missing.filter(
-    (item) => item.reason !== "lead-only" && !required.has(item.slug),
+    (item) => item.reason !== "lead-only" && isOptional(item),
   );
 
-  // Core sections are contractual. Secondary sections are opportunistic: they
-  // appear only when the day has a strong, valid candidate for them.
-  if (uncoveredRequired.length) {
+  // A category represented by the main headline is considered covered without
+  // duplicating the same story in a section. Core categories remain mandatory;
+  // secondary BR sections only appear when the day has a strong candidate.
+  if (uncovered.length) {
     const error = new Error(
-      `Editorial coverage incomplete: ${uncoveredRequired
+      `Editorial coverage incomplete: ${uncovered
         .map((item) => `${item.name} (${item.reason})`)
         .join(", ")}`,
     );
@@ -60,21 +48,11 @@ function beforeRender(payload) {
     throw error;
   }
 
-  const visibleSlugs = new Set(
-    (edition.sections || []).map((section) => section.slug),
-  );
-  const leadCategory = edition.lead?.category;
-  const requiredCovered = [...required].filter(
-    (slug) => visibleSlugs.has(slug) || slug === leadCategory,
-  ).length;
-
   edition.stats.qualityGate = {
     passed: true,
     configuredCategories: categories.length,
-    requiredCategories: required.size,
     visibleSections: edition.sections?.length || 0,
     categoriesCovered: (edition.sections?.length || 0) + leadOnly.length,
-    requiredCategoriesCovered: requiredCovered,
     leadOnlyCategories: leadOnly,
     optionalMissingCategories: optionalMissing,
     missingCategories: optionalMissing,
@@ -82,7 +60,7 @@ function beforeRender(payload) {
 
   if (optionalMissing.length) {
     console.log(
-      `  Cobertura diária: ${requiredCovered}/${required.size} editorias essenciais cobertas; opcionais sem destaque: ${optionalMissing
+      `  Cobertura diária: opcionais sem destaque: ${optionalMissing
         .map((item) => item.name)
         .join(", ")}.`,
     );
