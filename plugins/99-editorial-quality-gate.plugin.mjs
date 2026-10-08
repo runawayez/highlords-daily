@@ -5,14 +5,19 @@ import { validateNewsletterContract } from "../src/editorial/edition.mjs";
 
 function requiredCategorySlugs() {
   try {
-    const document = parseYaml(fs.readFileSync(editorial.categoriesFile, "utf8")) || {};
+    const document =
+      parseYaml(fs.readFileSync(editorial.categoriesFile, "utf8")) || {};
     const raw = Array.isArray(document.categories) ? document.categories : [];
     const required = raw
       .filter((category) => category && category.enabled !== false)
       .filter((category) => category.required !== false)
       .map((category) => String(category.slug || "").trim())
       .filter(Boolean);
-    return new Set(required.length ? required : categories.map((category) => category.slug));
+    return new Set(
+      required.length
+        ? required
+        : categories.map((category) => category.slug),
+    );
   } catch {
     return new Set(categories.map((category) => category.slug));
   }
@@ -55,7 +60,9 @@ function beforeRender(payload) {
     throw error;
   }
 
-  const visibleSlugs = new Set((edition.sections || []).map((section) => section.slug));
+  const visibleSlugs = new Set(
+    (edition.sections || []).map((section) => section.slug),
+  );
   const leadCategory = edition.lead?.category;
   const requiredCovered = [...required].filter(
     (slug) => visibleSlugs.has(slug) || slug === leadCategory,
