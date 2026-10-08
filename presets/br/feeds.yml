@@ -30,6 +30,14 @@ feeds:
     focus: [tecnologia, clima-futuro]
     strict_focus: true
 
+  - name: GitHub Blog
+    url: https://github.blog/feed/
+    language: en
+    country: US
+    coverage: [GLOBAL]
+    focus: [ia-desenvolvimento]
+    strict_focus: true
+
   - name: iMasters
     url: https://imasters.com.br/feed
     focus: [ia-desenvolvimento, tecnologia, clima-futuro]
