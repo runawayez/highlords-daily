@@ -46,7 +46,8 @@ test("renderer composes solo text and mixed sections without exposing internal s
           story({
             id: 1,
             category: "desenvolvimento",
-            headline: "Plataforma para ensino de programação com Python no celular",
+            headline:
+              "Plataforma para ensino de programação com Python no celular",
             imageUrl: null,
             displayImage: false,
             displayRole: "feature",
@@ -80,7 +81,7 @@ test("renderer composes solo text and mixed sections without exposing internal s
   const html = renderNewsletterHtml(edition);
   assert.ok(html.includes('class="section-grid first-row single solo-text"'));
   assert.ok(html.includes('class="section-grid first-row mixed-grid"'));
-  assert.ok(html.includes("grid-template-areas:\"meta meta\" \"title summary\""));
+  assert.ok(html.includes('grid-template-areas:"meta meta" "title summary"'));
   assert.equal((html.match(/class="story-image"/g) || []).length, 1);
   assert.ok(!html.includes("<b>5.8</b>"));
   assert.ok(!html.includes("rejected-graphic.jpg"));
@@ -167,10 +168,19 @@ test(
       });
 
       assert.equal(calls, 1);
-      assert.equal(result.edition.stats.presentationMode, "ollama-art-director");
+      assert.equal(
+        result.edition.stats.presentationMode,
+        "ollama-art-director",
+      );
       assert.equal(result.edition.stats.suppressedImages, 1);
-      assert.equal(result.edition.sections[0].presentation.layout, "mixed-grid");
-      assert.equal(result.edition.sections[0].articles[0].displayRole, "feature");
+      assert.equal(
+        result.edition.sections[0].presentation.layout,
+        "mixed-grid",
+      );
+      assert.equal(
+        result.edition.sections[0].articles[0].displayRole,
+        "feature",
+      );
       assert.equal(result.edition.sections[0].articles[0].displayImage, true);
       assert.equal(result.edition.sections[0].articles[1].displayRole, "brief");
       assert.equal(result.edition.sections[0].articles[1].displayImage, false);
