@@ -117,7 +117,13 @@ test(
                 sectionPriority: 7,
               })),
             };
-        } else
+        } else if (properties.topStoryIds)
+          result = {
+            frontPageTitle: "الأهم اليوم",
+            topStoryIds: [3, 2],
+            sectionOrder: [],
+          };
+        else
           result = {
             title: "أخبار اليوم",
             intro: "أخبار من اليابان",
@@ -216,6 +222,8 @@ test(
       );
       assert.equal(edition.language, "ar-EG");
       assert.equal(edition.stats.stories, 3);
+      assert.equal(edition.frontPageTitle, "الأهم اليوم");
+      assert.equal(edition.topStories.length, 2);
       assert.ok(edition.lead.stableId);
       assert.equal(edition.lead.language, "ja-JP");
       const html = await fs.readFile(
@@ -225,10 +233,12 @@ test(
       assert.ok(html.includes('dir="rtl"'));
       assert.ok(html.includes("اقرأ الخبر"));
       assert.ok(html.includes("أخبار من اليابان"));
+      assert.ok(html.includes("الأهم اليوم"));
       assert.ok(!html.includes("<h1>"));
+      // Front-page highlights are text-first; only the visual lead needs a cached image.
       assert.equal(
         (await fs.readdir(path.join(editionDir, "assets"))).length,
-        3,
+        1,
       );
       const metrics = JSON.parse(
         await fs.readFile(
@@ -236,12 +246,12 @@ test(
           "utf8",
         ),
       );
-      assert.ok(metrics.counters.llmCalls >= 3);
+      assert.ok(metrics.counters.llmCalls >= 4);
       assert.ok(metrics.stages.analysis >= 0);
       const before = { ...calls };
       await command(args);
       assert.deepEqual(calls, before);
-      // Force with history disabled: content analysis and dimensions reuse persistent results; curation still runs.
+      // Force with history disabled: cached analysis is reused; ranking, curation and front-page hierarchy still run.
       await fs.writeFile(
         profile,
         (await fs.readFile(profile, "utf8")) + "historyEnabled: false\n",
@@ -250,7 +260,7 @@ test(
       assert.ok(output.includes("Ready"));
       assert.equal(calls.feeds, before.feeds + 1);
       assert.equal(calls.images, before.images);
-      assert.equal(calls.chat, before.chat + 2);
+      assert.equal(calls.chat, before.chat + 3);
       const updated = JSON.parse(
         await fs.readFile(
           path.join(directory, "data", "runs", "2026-10-07", "metrics.json"),
@@ -260,7 +270,7 @@ test(
       assert.equal(updated.counters.feedCacheHits, 1);
       assert.equal(updated.counters.analysisCacheHits, 3);
       assert.equal(updated.counters.dimensionCacheHits, 3);
-      assert.equal(updated.counters.imageFileCacheHits, 3);
+      assert.equal(updated.counters.imageFileCacheHits, 1);
     } finally {
       await new Promise((resolve) => server.close(resolve));
       await fs.rm(directory, { recursive: true, force: true });

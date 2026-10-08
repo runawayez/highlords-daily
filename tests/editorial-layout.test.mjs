@@ -201,48 +201,129 @@ test("bundled presets expose the universal taxonomy and semantic review", async 
   }
 });
 
-test("edition keeps esports separate and template groups header with first row without a hero title", () => {
+test("edition builds a front page without duplicating stories and respects section order", () => {
   const articles = [
-    { id: 1, category: "ia", score: 5, source: "A" },
-    ...Array.from({ length: 5 }, (_, i) => ({
-      id: i + 2,
+    {
+      id: 1,
+      category: "ia",
+      score: 8.8,
+      frontPageScore: 9.4,
+      sectionScore: 8.8,
+      source: "AI Wire",
+      headline: "Manchete principal",
+    },
+    {
+      id: 2,
+      category: "economia",
+      score: 8.2,
+      frontPageScore: 8.8,
+      source: "Economy Wire",
+      headline: "Economia do dia",
+    },
+    {
+      id: 3,
+      category: "ciencia",
+      score: 8,
+      frontPageScore: 8.6,
+      source: "Science Wire",
+      headline: "Ciência do dia",
+    },
+    {
+      id: 4,
       category: "games",
-      score: 4.5,
-      source: "Games " + i,
-      headline: "Jogo " + i,
-    })),
+      score: 7.8,
+      frontPageScore: 8.4,
+      source: "Games Front",
+      headline: "Games em destaque",
+    },
+    {
+      id: 5,
+      category: "games",
+      score: 7.4,
+      sectionScore: 8.1,
+      source: "Games A",
+      headline: "Jogo A",
+    },
+    {
+      id: 6,
+      category: "games",
+      score: 7.2,
+      sectionScore: 7.9,
+      source: "Games B",
+      headline: "Jogo B",
+    },
+    {
+      id: 7,
+      category: "esports",
+      score: 7.6,
+      sectionScore: 8.3,
+      source: "eSports A",
+      headline: "Competitivo A",
+    },
     {
       id: 8,
       category: "esports",
-      score: 4.6,
-      source: "Dust2",
-      headline: "Mercado competitivo",
+      score: 7.3,
+      sectionScore: 8,
+      source: "eSports B",
+      headline: "Competitivo B",
+    },
+    {
+      id: 9,
+      category: "hardware",
+      score: 7.1,
+      frontPageScore: 7.5,
+      source: "Hardware Wire",
+      headline: "Hardware que não deve virar seção",
     },
   ];
+
   const edition = normalizeNewsletter(
     {
-      title: "Análise de Notícias do Dia",
+      title: "Edição do dia",
       intro: "Texto de abertura",
+      frontPageTitle: "O que importa hoje",
       leadId: 1,
-      sections: {},
+      topStoryIds: [2, 3, 4],
+      sectionOrder: ["esports", "games"],
+      sections: {
+        esports: [7, 8],
+        games: [5, 6],
+      },
     },
     articles,
-    "2026-10-07",
+    "2026-10-08",
   );
-  assert.ok(
-    edition.sections
-      .find((section) => section.slug === "esports")
-      .articles.some((article) => article.id === 8),
+
+  assert.equal(edition.lead.id, 1);
+  assert.deepEqual(
+    edition.topStories.map((article) => article.id),
+    [2, 3, 4],
   );
-  const games = edition.sections.find((section) => section.slug === "games");
-  games.articles = articles.filter((article) => article.category === "games");
+  assert.deepEqual(
+    edition.sections.map((section) => section.slug),
+    ["esports", "games"],
+  );
+  assert.ok(!edition.sections.some((section) => section.slug === "hardware"));
+
+  const allIds = [
+    edition.lead.id,
+    ...edition.topStories.map((article) => article.id),
+    ...edition.sections.flatMap((section) =>
+      section.articles.map((article) => article.id),
+    ),
+  ];
+  assert.equal(new Set(allIds).size, allIds.length);
+
   const html = renderNewsletterHtml(edition);
   assert.ok(!html.includes("<h1>"));
   assert.ok(html.includes('<p class="hero-intro">Texto de abertura</p>'));
+  assert.ok(html.includes('id="front-page"'));
+  assert.equal((html.match(/class="front-story"/g) || []).length, 3);
+  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="esports"'));
+  assert.ok(html.indexOf('id="esports"') < html.indexOf('id="games"'));
   assert.match(
     html,
     /class="section-start"><div class="section-title">[\s\S]*?<div class="section-grid(?: [^"]+)?">/,
   );
-  assert.equal((html.match(/class="story-card /g) || []).length, 7);
-  assert.ok(html.includes('id="esports"'));
 });

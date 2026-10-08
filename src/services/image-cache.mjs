@@ -256,6 +256,9 @@ async function enforceRequiredImages(
   const usedTopics = new Set();
   const failedIds = new Set();
   const globalCounts = new Map();
+  const topStories = Array.isArray(edition.topStories)
+    ? edition.topStories.filter(Boolean)
+    : [];
   let replacements = 0;
   let removed = 0;
   let diversityRelaxed = 0;
@@ -308,6 +311,13 @@ async function enforceRequiredImages(
     return null;
   };
 
+  // Front-page highlights are intentionally text-first, so they do not need
+  // image validation. They still count as selected stories for duplicate,
+  // topic and source-diversity enforcement during any later image replacement.
+  for (const article of topStories) {
+    registerArticle(article, usedIds, usedTopics, globalCounts);
+  }
+
   let lead = await preparedFor(edition.lead);
   if (!isPreparedValid(lead)) {
     failedIds.add(articleKey(edition.lead));
@@ -354,6 +364,7 @@ async function enforceRequiredImages(
 
   const finalStories = [
     lead,
+    ...topStories,
     ...sections.flatMap((section) => section.articles || []),
   ].filter(Boolean);
   const cached = new Set(
@@ -382,6 +393,7 @@ async function enforceRequiredImages(
     edition: {
       ...edition,
       lead,
+      topStories,
       sections,
       stats: {
         ...(edition.stats || {}),

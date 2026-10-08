@@ -277,6 +277,7 @@ export async function filterPreviouslyPublished(
 function selectedStories(edition) {
   const stories = [
     edition?.lead,
+    ...(edition?.topStories || []),
     ...(edition?.sections || []).flatMap((section) => section.articles || []),
   ].filter(Boolean);
   const seen = new Set();

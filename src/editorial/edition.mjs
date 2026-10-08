@@ -6,6 +6,10 @@ import {
   publication,
 } from "../config.mjs";
 import { uiCatalog } from "../services/i18n.mjs";
+
+const FRONT_PAGE_TARGET = 4;
+const FRONT_PAGE_MAX = 5;
+
 function curatedId(value) {
   const raw =
     value && typeof value === "object"
@@ -24,18 +28,26 @@ function frontPageScore(article) {
   return Number.isFinite(value) ? value : 0;
 }
 
+function sectionScore(article) {
+  const value = Number(article?.sectionScore ?? article?.score ?? 0);
+  return Number.isFinite(value) ? value : 0;
+}
+
+function recency(article) {
+  return new Date(article?.publishedAt || 0).getTime() || 0;
+}
+
+function editorialSort(a, b) {
+  return (
+    frontPageScore(b) - frontPageScore(a) ||
+    sectionScore(b) - sectionScore(a) ||
+    recency(b) - recency(a)
+  );
+}
+
 function chooseLead(requestedLead, articles) {
   const strongest =
-    articles
-      .filter(Boolean)
-      .slice()
-      .sort(
-        (a, b) =>
-          frontPageScore(b) - frontPageScore(a) ||
-          Number(b.sectionScore ?? b.score ?? 0) -
-            Number(a.sectionScore ?? a.score ?? 0) ||
-          new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0),
-      )[0] || null;
+    articles.filter(Boolean).slice().sort(editorialSort)[0] || null;
 
   if (!requestedLead) return { lead: strongest, rebalanced: false };
   if (!strongest) return { lead: requestedLead, rebalanced: false };
@@ -83,20 +95,119 @@ function canUseSource(article, globalCounts, sectionCounts) {
   return true;
 }
 
-function registerSource(article, globalCounts, sectionCounts) {
-  globalCounts.set(
-    article.publisherGroup || article.source,
-    (globalCounts.get(article.publisherGroup || article.source) || 0) + 1,
+function registerSource(article, globalCounts, sectionCounts = null) {
+  const source = article.publisherGroup || article.source;
+  globalCounts.set(source, (globalCounts.get(source) || 0) + 1);
+  if (sectionCounts)
+    sectionCounts.set(source, (sectionCounts.get(source) || 0) + 1);
+}
+
+function requestedTopStoryIds(curated) {
+  const values =
+    curated?.topStoryIds ??
+    curated?.topStories ??
+    curated?.highlights ??
+    curated?.destaques ??
+    [];
+  return Array.isArray(values)
+    ? values.map(curatedId).filter((id) => id != null)
+    : [];
+}
+
+function chooseTopStories(curated, articles, byId, used, globalSourceCounts) {
+  const requestedIds = requestedTopStoryIds(curated);
+  const desired =
+    requestedIds.length >= 3
+      ? Math.min(FRONT_PAGE_MAX, requestedIds.length)
+      : FRONT_PAGE_TARGET;
+  const selected = [];
+  const seenCategories = new Set();
+  const seenTopics = new Set();
+
+  const tryAdd = (article, { requireFreshCategory = false } = {}) => {
+    if (!article || used.has(article.id) || selected.length >= desired)
+      return false;
+    const topic = String(article.topicKey || "").trim();
+    if (topic && seenTopics.has(topic)) return false;
+    if (requireFreshCategory && seenCategories.has(article.category))
+      return false;
+    if (!canUseSource(article, globalSourceCounts, new Map())) return false;
+    selected.push(article);
+    used.add(article.id);
+    seenCategories.add(article.category);
+    if (topic) seenTopics.add(topic);
+    registerSource(article, globalSourceCounts);
+    return true;
+  };
+
+  for (const id of requestedIds) tryAdd(byId.get(id));
+
+  const candidates = articles
+    .filter((article) => !used.has(article.id))
+    .slice()
+    .sort(editorialSort);
+
+  for (const article of candidates) {
+    if (selected.length >= desired) break;
+    tryAdd(article, { requireFreshCategory: true });
+  }
+  for (const article of candidates) {
+    if (selected.length >= desired) break;
+    tryAdd(article);
+  }
+
+  return selected;
+}
+
+function normalizeSectionOrder(curated, articles, used) {
+  const categoryBySlug = new Map(
+    categories.map((category) => [category.slug, category]),
   );
-  sectionCounts.set(
-    article.publisherGroup || article.source,
-    (sectionCounts.get(article.publisherGroup || article.source) || 0) + 1,
-  );
+  const requested = Array.isArray(curated?.sectionOrder)
+    ? curated.sectionOrder
+    : [];
+  const ordered = [];
+  const seen = new Set();
+
+  for (const raw of requested) {
+    const slug = String(raw || "").trim();
+    if (!categoryBySlug.has(slug) || seen.has(slug)) continue;
+    const hasRemaining = articles.some(
+      (article) => article.category === slug && !used.has(article.id),
+    );
+    if (!hasRemaining) continue;
+    ordered.push(slug);
+    seen.add(slug);
+  }
+
+  if (ordered.length) return ordered;
+
+  return categories
+    .map((category, index) => {
+      const candidates = articles.filter(
+        (article) =>
+          article.category === category.slug && !used.has(article.id),
+      );
+      const strongest = candidates.slice().sort(editorialSort)[0] || null;
+      return {
+        slug: category.slug,
+        index,
+        strongest,
+      };
+    })
+    .filter((item) => item.strongest)
+    .sort(
+      (a, b) => editorialSort(a.strongest, b.strongest) || a.index - b.index,
+    )
+    .map((item) => item.slug);
 }
 
 export function normalizeNewsletter(curated, articles, editionDate) {
   const byId = new Map(
     articles.map((article) => [Number(article.id), article]),
+  );
+  const categoryBySlug = new Map(
+    categories.map((category) => [category.slug, category]),
   );
   const used = new Set();
   const globalSourceCounts = new Map();
@@ -120,90 +231,103 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     : null;
   if (lead) {
     used.add(lead.id);
-    globalSourceCounts.set(lead.publisherGroup || lead.source, 1);
+    registerSource(lead, globalSourceCounts);
   }
+
+  const topStories = chooseTopStories(
+    curated,
+    articles,
+    byId,
+    used,
+    globalSourceCounts,
+  );
+  const sectionOrder = normalizeSectionOrder(curated, articles, used);
 
   let backfilled = 0;
   let diversityRelaxed = 0;
-  const sections = categories.map((category) => {
-    const requested = Array.isArray(curated?.sections?.[category.slug])
-      ? curated.sections[category.slug]
-      : [];
-    const selected = [];
-    const sectionSourceCounts = new Map();
+  const sections = sectionOrder
+    .map((slug) => {
+      const category = categoryBySlug.get(slug);
+      if (!category) return null;
+      const requested = Array.isArray(curated?.sections?.[category.slug])
+        ? curated.sections[category.slug]
+        : [];
+      const selected = [];
+      const sectionSourceCounts = new Map();
 
-    const tryAdd = (article, { relaxed = false, backfill = false } = {}) => {
-      if (
-        !article ||
-        article.category !== category.slug ||
-        used.has(article.id)
-      )
-        return false;
-      if (
-        !relaxed &&
-        !canUseSource(article, globalSourceCounts, sectionSourceCounts)
-      )
-        return false;
-      used.add(article.id);
-      selected.push(article);
-      registerSource(article, globalSourceCounts, sectionSourceCounts);
-      if (backfill) backfilled += 1;
-      if (relaxed) diversityRelaxed += 1;
-      return true;
-    };
+      const tryAdd = (article, { relaxed = false, backfill = false } = {}) => {
+        if (
+          !article ||
+          article.category !== category.slug ||
+          used.has(article.id)
+        )
+          return false;
+        if (
+          !relaxed &&
+          !canUseSource(article, globalSourceCounts, sectionSourceCounts)
+        )
+          return false;
+        used.add(article.id);
+        selected.push(article);
+        registerSource(article, globalSourceCounts, sectionSourceCounts);
+        if (backfill) backfilled += 1;
+        if (relaxed) diversityRelaxed += 1;
+        return true;
+      };
 
-    for (const rawValue of requested) {
-      const id = curatedId(rawValue);
-      if (id == null) continue;
-      tryAdd(byId.get(id));
-      if (selected.length >= config.itemsPerCategory) break;
-    }
+      for (const rawValue of requested) {
+        const id = curatedId(rawValue);
+        if (id == null) continue;
+        tryAdd(byId.get(id));
+        if (selected.length >= config.itemsPerCategory) break;
+      }
 
-    const candidates = articles
-      .filter(
-        (article) =>
-          article.category === category.slug && !used.has(article.id),
-      )
-      .sort(
-        (a, b) =>
-          Number(b.sectionScore ?? b.score ?? 0) -
-            Number(a.sectionScore ?? a.score ?? 0) ||
-          new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0),
-      );
-    for (const article of candidates) {
-      if (selected.length >= config.itemsPerCategory) break;
-      tryAdd(article, { backfill: true });
-    }
-
-    if (
-      selected.length < config.itemsPerCategory &&
-      !config.sourceDiversityStrict
-    ) {
-      const relaxedCandidates = articles
+      const candidates = articles
         .filter(
           (article) =>
             article.category === category.slug && !used.has(article.id),
         )
         .sort(
           (a, b) =>
-            Number(b.sectionScore ?? b.score ?? 0) -
-            Number(a.sectionScore ?? a.score ?? 0),
+            sectionScore(b) - sectionScore(a) ||
+            frontPageScore(b) - frontPageScore(a) ||
+            recency(b) - recency(a),
         );
-      for (const article of relaxedCandidates) {
+      for (const article of candidates) {
         if (selected.length >= config.itemsPerCategory) break;
-        tryAdd(article, { relaxed: true, backfill: true });
+        tryAdd(article, { backfill: true });
       }
-    }
 
-    return {
-      slug: category.slug,
-      name: localizedSectionName(curated, category),
-      articles: selected,
-    };
-  });
+      if (
+        selected.length < config.itemsPerCategory &&
+        !config.sourceDiversityStrict
+      ) {
+        const relaxedCandidates = articles
+          .filter(
+            (article) =>
+              article.category === category.slug && !used.has(article.id),
+          )
+          .sort(
+            (a, b) =>
+              sectionScore(b) - sectionScore(a) || recency(b) - recency(a),
+          );
+        for (const article of relaxedCandidates) {
+          if (selected.length >= config.itemsPerCategory) break;
+          tryAdd(article, { relaxed: true, backfill: true });
+        }
+      }
+
+      return {
+        slug: category.slug,
+        name: localizedSectionName(curated, category),
+        articles: selected,
+      };
+    })
+    .filter((section) => section?.articles?.length);
 
   const chosen = [
     lead,
+    ...topStories,
     ...sections.flatMap((section) => section.articles),
   ].filter(Boolean);
   const fallback = fallbackCopy();
@@ -223,8 +347,13 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     intro: String(curated?.intro || fallback.intro)
       .trim()
       .slice(0, 420),
+    frontPageTitle: String(curated?.frontPageTitle || fallback.title)
+      .trim()
+      .slice(0, 100),
     ui: normalizeUi(curated?.ui),
     lead,
+    topStories,
+    sectionOrder: sections.map((section) => section.slug),
     sections,
     stats: {
       stories: chosen.length,
@@ -232,6 +361,8 @@ export function normalizeNewsletter(curated, articles, editionDate) {
         chosen.map((article) => article.publisherGroup || article.source),
       ).size,
       candidates: articles.length,
+      topStories: topStories.length,
+      visibleSections: sections.length,
       backfilled,
       diversityRelaxed,
       leadRebalanced,
@@ -249,6 +380,7 @@ export function fallbackNewsletter(articles, editionDate) {
       leadId: articles[0]?.id,
       title: fallback.title,
       intro: fallback.intro,
+      frontPageTitle: fallback.title,
       sections: {},
     },
     articles,

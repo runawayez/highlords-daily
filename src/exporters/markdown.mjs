@@ -1,4 +1,5 @@
 import { publication } from "../config.mjs";
+import { uiCatalog } from "../services/i18n.mjs";
 
 function story(article, prefix = "###") {
   if (!article) return "";
@@ -19,6 +20,11 @@ export function renderMarkdown(edition) {
     "",
     story(edition.lead, "###"),
   ];
+
+  if (edition.topStories?.length) {
+    lines.push(`## ${edition.frontPageTitle || uiCatalog().fallbackTitle}`, "");
+    for (const article of edition.topStories) lines.push(story(article, "###"));
+  }
 
   for (const section of edition.sections || []) {
     if (!section.articles?.length) continue;
