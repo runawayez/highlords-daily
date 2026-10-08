@@ -13,6 +13,7 @@
   "bundledTaxonomy": true,
   "plugins": [
     "10-semantic-editorial-review.plugin.mjs",
+    "20-editorial-presentation.plugin.mjs",
     "editorial-ranking.plugin.mjs"
   ],
   "routing": "routing.mjs"
