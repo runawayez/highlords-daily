@@ -11,56 +11,131 @@
 </p>
 
 <p align="center">
-Motor local-first de newsletter diária com RSS/Atom, Ollama, memória editorial, localização regional e geração em HTML, JSON, PDF, Markdown e formatos para distribuição.
+Motor local-first de newsletter diária com RSS/Atom, Ollama, memória editorial, curadoria em múltiplas etapas e geração em HTML, JSON, PDF, Markdown e formatos para distribuição.
 </p>
 
-O **Highlords Daily** coleta notícias recentes, valida e cacheia imagens, elimina histórias repetidas, usa uma LLM local para classificar, traduzir/localizar, resumir e pontuar as matérias e executa uma segunda etapa de curadoria para montar a edição.
+O **Highlords Daily** coleta notícias recentes, aplica regras editoriais determinísticas, elimina histórias repetidas, usa uma LLM local para classificar e resumir as matérias, executa revisão semântica e ranking editorial humano, monta a edição e só publica quando o contrato editorial é atendido.
 
 A IA roda localmente pelo **Ollama**. Nenhuma API externa de IA é necessária.
 
-O preset padrão **Vanilla/BR** continua pronto para uso: `pt-BR`, contexto Brasil e fontes brasileiras. O engine, porém, é universal: idioma, país/contexto, timezone, categorias, feeds, perfil editorial, identidade visual e exportadores são configuráveis sem alterar o JavaScript.
-
-
-## Motor regional e automação (v5)
-
-Região, idiomas das fontes e idioma da edição são independentes. A versão 5 inclui coleta concorrente, caches persistentes, métricas, checkpoints, catálogo regional, UI multilíngue e entrega SMTP/Telegram/Discord.
-
-Comece com `npm ci`, inicie Ollama e execute `npm run doctor` e `npm run daily`. Consulte [docs/ENGINE.md](docs/ENGINE.md) para instalação, perfis por publicação, pesquisa de fontes, agendamento e recuperação.
-
-Comandos: `npm run sources:discover`, `npm run config:show`, `npm run benchmark`, `npm run schedule -- --time 07:00`, `npm run deliver`. Use `--help` nos comandos via `src/cli/run.mjs` para opções.
+O preset padrão **Vanilla/BR** vem pronto para uso em `pt-BR`, com contexto Brasil, fontes brasileiras e internacionais selecionadas, taxonomia diária compacta e regras próprias de cobertura. O engine continua universal: idioma, região, timezone, categorias, feeds, perfil editorial, identidade visual e exportadores podem ser configurados sem alterar o JavaScript.
 
 ---
 
-## Instalação e verificação
+## O que mudou no fluxo editorial atual
 
-O launcher é o caminho mais simples e instala as versões do `package-lock.json` com `npm ci`.
-Para instalar manualmente, a partir da pasta do projeto:
+O preset BR não tenta mais preencher um portal com dezenas de editorias. A edição diária trabalha com **10 categorias**, divididas entre núcleos obrigatórios e editorias oportunísticas.
 
-```bash
-npm ci
-npm run setup
-npm run doctor
-npm run daily
+### Núcleo editorial
+
+Estas categorias são consideradas centrais para a edição e devem ter cobertura válida:
+
+- **Tecnologia**
+- **IA & Desenvolvimento**
+- **Games**
+- **Economia**
+- **Política & Sociedade**
+
+### Editorias oportunísticas
+
+Estas entram somente quando houver matéria boa o suficiente no dia:
+
+- **eSports**
+- **Entretenimento**
+- **Esportes**
+- **Ciência & Saúde**
+- **Clima & Futuro**
+
+Uma categoria opcional sem notícia forte pode simplesmente não aparecer. Isso evita preenchimento artificial e reduz classificações forçadas só para completar uma grade.
+
+O preset BR atual usa até **160 candidatas** por execução e até **20 itens por feed** antes das etapas de análise e curadoria.
+
+---
+
+## Como a edição é construída
+
+O pipeline atual combina regras determinísticas e avaliação local por IA:
+
+```text
+Preset / YAML / .env
+        ↓
+RSS / Atom
+        ↓
+normalização de fonte + strict_focus + guardrails
+        ↓
+validação de imagens + memória histórica
+        ↓
+Ollama: classificação + score + headline + resumo + topicKey
+        ↓
+recuperação de cobertura por categoria
+        ↓
+revisão semântica editorial
+        ↓
+deduplicação semântica
+        ↓
+ranking editorial humano multidimensional
+        ↓
+calibração global da primeira página
+        ↓
+curadoria da edição
+        ↓
+quality gate editorial
+        ↓
+cache local das imagens selecionadas
+        ↓
+HTML + PDF + JSON + Markdown + email + social
+        ↓
+memória + arquivo navegável + plugins
 ```
 
-No PowerShell, use `npm.cmd` no lugar de `npm` se a política de execução bloquear `npm.ps1`.
-O setup é opcional: o preset BR funciona sem `.env`.
-`npm run doctor` valida Node.js, configuração, navegador e modelo Ollama sem iniciar serviços nem baixar arquivos.
-Se Ollama estiver parado, execute `ollama serve`; se faltar o modelo, execute `ollama pull qwen3:4b`
-(ou o nome configurado em `OLLAMA_MODEL`). Chrome, Chromium ou Edge precisam estar instalados para gerar PDF.
+### Classificação e `strict_focus`
 
-Para atualizar, execute `git pull --ff-only` e `npm ci`. Sua configuração `.env`, histórico em `data/`
-e edições em `output/` ficam fora do Git. Faça backup dessas pastas antes de trocar de computador.
+Cada feed pode declarar categorias permitidas com `focus`.
 
-Para contribuir: `npm ci`, `npm run check` e `npm test`. O CI executa as verificações em Windows, macOS
- e Linux com Node.js 22 e 24. Os testes usam dados locais e não precisam de Ollama ou feeds ativos.
-A interface desktop continua experimental; `npm run desktop:install` instala suas dependências separadamente.
+```yaml
+feeds:
+  - name: Example News
+    url: https://example.com/feed.xml
+    focus: [ia-desenvolvimento]
+    strict_focus: true
+```
+
+Quando uma fonte é `strict_focus`, a classificação não pode escapar das categorias declaradas. Fontes dedicadas com **um único focus** recebem um lock canônico de categoria no preset BR, reduzindo a dependência da LLM em casos óbvios.
+
+Exemplo real do preset: o **GitHub Blog** é uma fonte dedicada de `ia-desenvolvimento`, usada para fortalecer a cobertura do núcleo de IA e desenvolvimento.
+
+### Revisão semântica
+
+Depois da classificação inicial, o preset BR executa uma segunda revisão editorial. Essa etapa pode:
+
+- manter a categoria;
+- reclassificar uma matéria quando houver alta confiança;
+- rejeitar conteúdo fora do escopo;
+- ignorar mudanças destrutivas quando a confiança for baixa;
+- respeitar os limites de `strict_focus`.
+
+### Ranking editorial humano
+
+As matérias aprovadas são avaliadas por dimensões editoriais separadas, como impacto, significância, interesse público, novidade, utilidade, valor editorial e nível promocional.
+
+O ranking gera dois sinais principais:
+
+- **sectionScore** — força da matéria dentro da própria editoria;
+- **frontPageScore** — força relativa para disputar a manchete e a primeira página.
+
+Uma etapa adicional tenta calibrar as melhores candidatas entre si. Se a calibração global retornar uma resposta inválida, o sistema mantém o ranking dimensional anterior em vez de abortar a edição.
+
+### Quality gate
+
+Antes da renderização, o Highlords valida o contrato editorial da edição.
+
+Categorias obrigatórias não podem desaparecer silenciosamente. Se um núcleo como `IA & Desenvolvimento` ficar sem candidata válida, a geração é interrompida com um erro explícito em vez de publicar uma edição incompleta. Categorias oportunísticas podem faltar sem derrubar a publicação.
 
 ---
 
 ## Quick Start
 
-### Windows
+### Windows — caminho recomendado
 
 Pré-requisitos:
 
@@ -72,15 +147,22 @@ Pré-requisitos:
 ```powershell
 git clone https://github.com/runawayez/highlords-daily.git
 cd highlords-daily
-```
-
-Depois dê dois cliques em `GERAR-DAILY.bat` ou execute:
-
-```powershell
 .\GERAR-DAILY.bat
 ```
 
-O launcher verifica o ambiente, instala dependências quando necessário, inicia o Ollama, baixa o modelo configurado na primeira execução e encerra o Ollama ao final quando foi ele quem iniciou o serviço.
+Também é possível dar dois cliques em `GERAR-DAILY.bat`.
+
+O launcher do Windows:
+
+- verifica Node.js, npm e navegador;
+- garante as dependências do projeto;
+- inicia Ollama quando necessário;
+- aguarda a API local;
+- baixa o modelo configurado na primeira execução quando necessário;
+- gera a edição;
+- encerra o Ollama ao final somente se foi o próprio Highlords que iniciou o serviço.
+
+Esse é o fluxo recomendado para uso diário no Windows.
 
 ### macOS / Linux
 
@@ -92,21 +174,119 @@ cd highlords-daily
 bash RUN-DAILY.sh
 ```
 
-### Setup guiado opcional
+### Execução manual
 
-O Vanilla funciona sem `.env`. Para personalizar sem editar o arquivo na mão:
+Se preferir controlar os serviços manualmente:
 
 ```bash
-npm run setup
+npm ci
+npm run doctor
+ollama serve
+npm run daily
 ```
 
-O assistente pergunta preset, idioma, contexto regional, timezone, perfil editorial, nome da publicação, modelo e quantidade por categoria.
+No PowerShell, use `npm.cmd` no lugar de `npm` se a política de execução bloquear `npm.ps1`:
+
+```powershell
+npm.cmd run doctor
+npm.cmd run daily
+```
+
+---
+
+## Atualização e cache
+
+Para atualizar o projeto:
+
+```bash
+git pull --ff-only
+npm ci
+```
+
+No uso normal, faça a manutenção do cache pelo comando próprio:
+
+```bash
+npm run cache:prune
+```
+
+No PowerShell:
+
+```powershell
+npm.cmd run cache:prune
+```
+
+Esse comando é preferível a apagar diretórios manualmente.
+
+O histórico editorial fica separado em `data/`, incluindo o banco configurado para memória. Não apague `data/highlords.sqlite` apenas para limpar cache: isso remove histórico editorial, não só arquivos temporários.
+
+---
+
+## Instalação e diagnóstico
+
+O preset BR funciona sem `.env`. Para instalação manual:
+
+```bash
+npm ci
+npm run setup
+npm run doctor
+npm run daily
+```
+
+`npm run setup` é opcional e ajuda a configurar preset, idioma, contexto regional, timezone, perfil editorial, nome da publicação, modelo e quantidade por categoria.
+
+`npm run doctor` valida Node.js, configuração, navegador e modelo Ollama sem iniciar serviços nem baixar arquivos.
+
+Se Ollama estiver parado:
+
+```bash
+ollama serve
+```
+
+Se faltar o modelo padrão:
+
+```bash
+ollama pull qwen3:4b
+```
+
+Chrome, Chromium ou Edge são necessários para gerar PDF.
+
+---
+
+## Preset BR atual
+
+A taxonomia diária do `PRESET=br` é:
+
+```text
+Tecnologia
+IA & Desenvolvimento
+Games
+eSports
+Entretenimento
+Esportes
+Economia
+Política & Sociedade
+Ciência & Saúde
+Clima & Futuro
+```
+
+As definições ficam em:
+
+```text
+presets/br/categories.yml
+presets/br/feeds.yml
+presets/br/preset.json
+presets/br/routing.mjs
+```
+
+O preset BR também habilita plugins editoriais específicos para contrato, revisão semântica, apresentação, ranking humano e quality gate.
+
+O preset `global` continua separado e mantém sua própria taxonomia e fontes.
 
 ---
 
 ## Universal por design
 
-As três configurações que definem o contexto principal são:
+As configurações principais são independentes:
 
 ```env
 PRESET=br
@@ -126,29 +306,39 @@ CATEGORIES_FILE=./my-config/categories.yml
 FEEDS_FILE=./my-config/feeds.yml
 ```
 
-O Ollama localiza títulos, resumos, tags, introdução, nomes de seções e rótulos da interface para o locale escolhido. Ele **não inventa conversão cambial**: preços estrangeiros continuam na moeda original e recebem contexto de mercado quando necessário.
+Ollama localiza o conteúdo editorial para o locale configurado sem inventar conversão cambial. Preços estrangeiros permanecem na moeda original e podem receber contexto de mercado quando necessário.
 
 ---
 
-## Presets
+## Categorias e fontes customizadas
 
-A estrutura é:
+Exemplo de categoria:
 
-```text
-presets/
-├─ br/
-│  ├─ categories.yml
-│  └─ feeds.yml
-└─ global/
-   ├─ categories.yml
-   └─ feeds.yml
+```yaml
+categories:
+  - slug: ciencia
+    name: Ciência
+    required: false
+    description: Pesquisa, espaço, astronomia, biologia e descobertas científicas.
+    aliases: [science, astronomia]
 ```
 
-`PRESET=br` é o Vanilla Brazil-first. `PRESET=global` mistura fontes brasileiras e internacionais.
+Exemplo de fonte:
 
-Para criar um preset regional, copie uma pasta, troque os RSS/Atom e configure `LANGUAGE`, `EDITORIAL_CONTEXT` e `TIME_ZONE`. O engine resolve automaticamente `presets/<nome>/categories.yml` e `feeds.yml`.
+```yaml
+feeds:
+  - name: Example News
+    url: https://example.com/feed.xml
+    focus: [ciencia]
+    strict_focus: true
+    images: page
+```
 
-`CATEGORIES_FILE` e `FEEDS_FILE` continuam disponíveis como overrides completos.
+`required: false` permite que a editoria falte sem derrubar a edição.
+
+`focus` orienta a classificação. `strict_focus: true` impede uma fonte vertical de vazar para editorias não autorizadas. `images: page` força a busca de `og:image`/`twitter:image` na página da matéria.
+
+`CATEGORIES_FILE` e `FEEDS_FILE` podem substituir completamente os arquivos do preset.
 
 ---
 
@@ -165,16 +355,16 @@ Perfis incluídos:
 - `balanced` — equilíbrio geral;
 - `tech-heavy` — tecnologia em primeiro plano;
 - `business` — economia e negócios;
-- `gaming` — games e hardware;
+- `gaming` — games e tecnologia relacionada;
 - `minimal` — edição mais curta.
 
-As definições ficam em `config/editorial-profiles.yml` e podem ser editadas ou ampliadas.
+As definições ficam em `config/editorial-profiles.yml`.
 
 ---
 
 ## Memória e deduplicação
 
-O Highlords mantém memória local entre edições. Por padrão:
+Por padrão, o projeto pode manter memória local entre edições:
 
 ```env
 HISTORY_ENABLED=true
@@ -184,9 +374,9 @@ DUPLICATE_THRESHOLD=0.72
 MEMORY_FILE=./data/highlords.sqlite
 ```
 
-Quando o `node:sqlite` está disponível, o histórico usa SQLite. Em runtimes onde o módulo não está disponível, o engine cai automaticamente para um arquivo JSON local.
+Quando `node:sqlite` está disponível, o histórico usa SQLite. Em runtimes sem o módulo, o engine pode usar fallback local em JSON.
 
-Antes da IA, links e histórias já publicadas recentemente são removidos. Depois da análise, o Ollama gera um `topicKey` por matéria e o engine faz uma segunda deduplicação semântica para consolidar coberturas do mesmo acontecimento.
+Antes da IA, links e histórias já publicadas recentemente podem ser removidos. Depois da classificação, `topicKey` ajuda a consolidar coberturas diferentes do mesmo acontecimento.
 
 A pasta `data/` é local e ignorada pelo Git.
 
@@ -194,24 +384,21 @@ A pasta `data/` é local e ignorada pelo Git.
 
 ## Imagens estáveis
 
-O Vanilla usa:
+O engine pode validar imagens antes da análise e armazenar localmente apenas as imagens das histórias escolhidas.
 
-```env
-REQUIRE_IMAGES=true
-CACHE_IMAGES=true
-```
-
-O coletor valida imagens antes de gastar processamento com a matéria. Depois da curadoria, as imagens das histórias realmente selecionadas são baixadas para:
+Quando o cache de imagens está habilitado, os arquivos selecionados são salvos em:
 
 ```text
 output/AAAA-MM-DD/assets/
 ```
 
-Assim a edição HTML/PDF não depende permanentemente de hotlinks externos. Se um download de cache falhar no último estágio, a matéria mantém a URL remota como fallback.
+Assim HTML e PDF não dependem permanentemente de hotlinks externos. Se o cache final falhar, a URL remota pode ser mantida como fallback.
 
 ---
 
 ## Diversidade de fontes
+
+Configurações disponíveis incluem:
 
 ```env
 MAX_ITEMS_PER_SOURCE=3
@@ -219,13 +406,11 @@ MAX_ITEMS_PER_SOURCE_PER_SECTION=1
 SOURCE_DIVERSITY_STRICT=false
 ```
 
-O engine tenta evitar que uma única fonte domine a edição e cada seção. Com `SOURCE_DIVERSITY_STRICT=false`, o limite pode ser relaxado apenas quando necessário para não deixar vagas vazias. Use `true` para transformar a regra em limite rígido.
+O engine tenta evitar que uma única publicação domine a edição. Em modo não estrito, os limites podem ser relaxados quando necessário para preservar cobertura editorial.
 
 ---
 
 ## Identidade visual
-
-O Highlords pode continuar sendo Highlords ou virar outra publicação em cima do mesmo engine:
 
 ```env
 PUBLICATION_NAME=Highlords Daily
@@ -236,43 +421,41 @@ PAPER_COLOR=#f7f3e9
 BACKGROUND_COLOR=#0b0b0d
 ```
 
-Nome, logo, slogan e cores são usados no HTML/PDF e no arquivo histórico.
+Nome, logo, slogan e cores são aplicados às saídas visuais e ao arquivo histórico.
 
 ---
 
-## Diagnóstico e descoberta de feeds
+## Diagnóstico de feeds
 
-Antes de gerar uma edição você pode verificar as fontes sem chamar o Ollama:
+Verifique as fontes sem chamar o Ollama:
 
 ```bash
 npm run feeds:check
 ```
 
-O comando testa cada feed, mede tempo, mostra quantas matérias recentes permaneceram elegíveis e quantas foram descartadas por falta de imagem.
-
-Para saída estruturada:
+Saída estruturada:
 
 ```bash
 npm run feeds:check -- --json
 ```
 
-### Descoberta automática de RSS/Atom
+O comando testa feeds e mostra saúde, latência e elegibilidade das matérias.
 
-Você também pode informar apenas os sites e deixar o Highlords procurar feeds válidos:
+### Descoberta automática de RSS/Atom
 
 ```bash
 npm run feeds:discover -- omelete.com.br canaltech.com.br
 ```
 
-O comando procura `<link rel="alternate">` no HTML, testa caminhos comuns como `/feed`, `/rss.xml`, `/feed.xml` e `/atom.xml`, valida cada candidato como RSS/Atom real e imprime um bloco YAML pronto para usar.
+O comando procura declarações RSS/Atom no HTML e testa caminhos comuns como `/feed`, `/rss.xml`, `/feed.xml` e `/atom.xml`.
 
-Para adicionar os feeds encontrados diretamente a um arquivo de configuração:
+Para anexar os feeds encontrados a outro arquivo:
 
 ```bash
 npm run feeds:discover -- abc.net.au theguardian.com/au --append ./my-config/feeds.yml
 ```
 
-Os feeds adicionados entram com `focus: []` de propósito: depois da descoberta, defina as categorias editoriais adequadas para cada fonte. Para automação, use `--json`.
+Os feeds descobertos entram com `focus: []`; revise manualmente a cobertura editorial antes de usá-los em produção.
 
 ---
 
@@ -290,24 +473,46 @@ O comando usa:
 - `launchd` no macOS;
 - `cron` no Linux.
 
-Remover:
+Para remover:
 
 ```bash
 npm run schedule:remove
 ```
 
-Nada depende de servidor ou GitHub Actions.
+---
+
+## Principais comandos
+
+```bash
+npm run daily
+npm run doctor
+npm run setup
+npm run feeds:check
+npm run feeds:discover -- example.com
+npm run sources:discover
+npm run config:show
+npm run cache:prune
+npm run benchmark
+npm run pdf:rerender
+npm run deliver
+npm run schedule -- --time 07:00
+npm run schedule:remove
+npm run check
+npm test
+```
+
+Use `node src/cli/run.mjs <comando> --help` quando quiser ver opções adicionais dos comandos roteados pelo CLI principal.
 
 ---
 
 ## Saídas
 
-Cada execução cria:
+Cada execução pode gerar:
 
 ```text
 output/
-├─ index.html                         # arquivo navegável das edições
-├─ latest.html                        # redireciona para a edição mais recente
+├─ index.html
+├─ latest.html
 ├─ latest.json
 ├─ latest.md
 ├─ latest-email.html
@@ -325,55 +530,13 @@ output/
    └─ assets/
 ```
 
-Você pode desligar exportadores individualmente:
-
-```env
-EXPORT_MARKDOWN=true
-EXPORT_EMAIL=true
-EXPORT_SOCIAL=true
-ARCHIVE_ENABLED=true
-```
-
----
-
-## Categorias e fontes
-
-O Vanilla inclui, entre outras, categorias separadas de `Games`, `Filmes e Séries`, `Futebol`, `Esportes` e `Economia`. Há guardrails determinísticos antes do Ollama para os limites mais óbvios — por exemplo, filme/série não entra em Games, futebol de associação não entra em Esportes e uma notícia puramente eleitoral de um feed econômico estrito é descartada em vez de ser forçada para Economia.
-
-Uma categoria:
-
-```yaml
-categories:
-  - slug: ciencia
-    name: Ciência
-    description: Pesquisa, espaço, astronomia, biologia e descobertas científicas.
-    aliases: [science, astronomia]
-```
-
-Uma fonte:
-
-```yaml
-feeds:
-  - name: Example News
-    url: https://example.com/feed.xml
-    focus: [ciencia]
-    strict_focus: true
-    images: page
-```
-
-`focus` orienta a classificação. `strict_focus: true` impede uma fonte vertical de vazar para outras categorias. `images: page` força a busca de `og:image`/`twitter:image` na página da matéria.
+Exportadores podem ser ativados ou desativados pela configuração, incluindo Markdown, email, social e arquivo navegável.
 
 ---
 
 ## Plugins
 
-Arquivos `plugins/*.plugin.mjs` são carregados automaticamente quando:
-
-```env
-PLUGINS_ENABLED=true
-```
-
-Hooks disponíveis:
+Arquivos `plugins/*.plugin.mjs` podem participar de hooks como:
 
 - `afterCollect`
 - `afterAnalyze`
@@ -381,9 +544,9 @@ Hooks disponíveis:
 - `afterWrite`
 - `exportEdition`
 
-Erros de plugins são isolados e não derrubam a edição. Veja `plugins/README.md`.
+O preset BR usa plugins editoriais próprios. Alguns plugins são deliberadamente **fatais**, como o quality gate: quando o contrato editorial não é atendido, a geração deve parar em vez de publicar conteúdo incompleto.
 
-Isso permite integrar novas fontes, filtros, exportadores ou automações sem alterar o core.
+Veja `plugins/README.md` para o contrato dos plugins.
 
 ---
 
@@ -396,52 +559,33 @@ npm run desktop:install
 npm run desktop
 ```
 
-Ela permite editar as principais configurações e gerar a edição por interface gráfica.
-
 Para preparar um instalador no sistema operacional atual:
 
 ```bash
 npm run desktop:build
 ```
 
-Targets configurados: NSIS/Windows, DMG/macOS e AppImage/Linux. Ollama e Chrome/Chromium/Edge continuam sendo pré-requisitos externos. A interface desktop é opcional; o CLI continua sendo o caminho principal e mais leve.
+Targets configurados incluem NSIS/Windows, DMG/macOS e AppImage/Linux. Ollama e Chrome/Chromium/Edge continuam sendo pré-requisitos externos. O CLI e os launchers continuam sendo o caminho principal.
 
 ---
 
-## Como funciona
+## Desenvolvimento e CI
 
-```text
-Preset / YAML / .env
-        ↓
-RSS / Atom
-        ↓
-guardrails editoriais + validação de imagens
-        ↓
-memória histórica
-        ↓
-Ollama: classificação + localização + topicKey
-        ↓
-deduplicação semântica
-        ↓
-perfil editorial + diversidade de fontes
-        ↓
-Ollama editor-chefe
-        ↓
-cache local das imagens selecionadas
-        ↓
-HTML + PDF + JSON + Markdown + email + social
-        ↓
-memória + arquivo navegável + plugins
+Para contribuir:
+
+```bash
+npm ci
+npm run format:check
+npm run check
+npm test
 ```
 
+O CI valida Windows, macOS e Linux em Node.js 22 e 24, incluindo preparação do core desktop. Os testes não dependem de Ollama ou feeds ativos.
+
+O projeto requer Node.js **22.12+** e usa `package-lock.json` para instalações reproduzíveis.
+
 ---
-
-## Configuração completa
-
-Veja `.env.example`. Os valores Vanilla funcionam sem criar `.env`.
-
-O projeto requer Node.js 22.12+ e utiliza `package-lock.json` para instalações reproduzíveis. Os launchers instalam dependências automaticamente quando necessário.
 
 ## Privacidade
 
-A curadoria acontece localmente pelo Ollama. O conteúdo das matérias não precisa ser enviado a uma API externa de IA. As requisições externas do Highlords são apenas as necessárias para buscar RSS/Atom, páginas e imagens das fontes configuradas.
+A curadoria por IA acontece localmente pelo Ollama. O conteúdo das matérias não precisa ser enviado a uma API externa de IA. As requisições externas do Highlords são as necessárias para buscar RSS/Atom, páginas, imagens e serviços de entrega que o usuário tenha configurado.
