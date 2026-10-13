@@ -125,10 +125,14 @@ Rules:
 - Return exactly one row for every supplied id and only valid JSON.`;
 
 async function auditBatch(batch) {
-  const parsed = await requestChat(auditSystem, JSON.stringify(auditPayload(batch)), {
-    timeoutMs: 150000,
-    schema: auditSchema(batch),
-  });
+  const parsed = await requestChat(
+    auditSystem,
+    JSON.stringify(auditPayload(batch)),
+    {
+      timeoutMs: 150000,
+      schema: auditSchema(batch),
+    },
+  );
   return Array.isArray(parsed?.items) ? parsed.items : [];
 }
 
