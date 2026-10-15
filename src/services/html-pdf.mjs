@@ -134,6 +134,48 @@ async function preparePdfLayout(page) {
         break-after: avoid-page !important;
         page-break-after: avoid !important;
       }
+      .section-grid.mixed-grid {
+        grid-template-columns: minmax(0, 1.28fr) minmax(250px, .72fr) !important;
+        gap: 22px !important;
+        align-items: stretch !important;
+      }
+      .section-grid.mixed-grid:has(>.has-image:nth-child(2)) {
+        grid-template-columns: minmax(250px, .72fr) minmax(0, 1.28fr) !important;
+      }
+      .section-grid.mixed-grid > .story-card {
+        height: 100% !important;
+      }
+      .section-grid.mixed-grid > .text-card {
+        display: flex !important;
+        align-items: stretch !important;
+        border-top: 4px solid var(--ink) !important;
+        border-bottom: 1px solid var(--line) !important;
+        background: rgba(255, 255, 255, .18) !important;
+      }
+      .section-grid.mixed-grid > .text-card .story-body {
+        display: flex !important;
+        flex-direction: column !important;
+        justify-content: center !important;
+        width: 100% !important;
+        padding: 22px 18px 20px !important;
+      }
+      .section-grid.mixed-grid > .text-card h3 {
+        max-width: 100% !important;
+        margin: 9px 0 10px !important;
+        font-size: 24px !important;
+        line-height: 1.04 !important;
+      }
+      .section-grid.mixed-grid > .text-card p {
+        max-width: 100% !important;
+        font-size: 12.5px !important;
+        line-height: 1.52 !important;
+      }
+      .section-grid.mixed-grid > .text-card .read-link {
+        margin-top: 14px !important;
+      }
+      .section-grid.mixed-grid > .has-image .story-image {
+        max-height: 255px !important;
+      }
       .footer {
         display: none !important;
       }
