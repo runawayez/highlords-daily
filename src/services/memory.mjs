@@ -1,3 +1,6 @@
+import { materialDevelopment } from "../editorial/developments.mjs";
+import { decision } from "../editorial/audit.mjs";
+import { atomicWrite } from "../utils/storage.mjs";
 import { normalizeText as normalizeText, wordTokens } from "../utils/text.mjs";
 import fs from "node:fs/promises";
 import fsSync from "node:fs";
@@ -69,6 +72,12 @@ let sqlitePromise;
 let sqliteDb;
 let warnedFallback = false;
 
+export function closeMemory() {
+  sqliteDb?.close();
+  sqliteDb = undefined;
+  sqlitePromise = undefined;
+}
+
 function tokenSet(value = "", language = config.language) {
   return new Set(wordTokens(value, language, STOPWORDS));
 }
@@ -133,6 +142,11 @@ export function deduplicateArticles(
     let similarity = 0;
     for (let index = 0; index < articles.length; index += 1) {
       const score = articleSimilarity(candidate, articles[index]);
+      if (
+        materialDevelopment(candidate, articles[index], score) ||
+        materialDevelopment(articles[index], candidate, score)
+      )
+        continue;
       if (score >= threshold && score > similarity) {
         duplicateIndex = index;
         similarity = score;
@@ -147,8 +161,23 @@ export function deduplicateArticles(
     const existing = articles[duplicateIndex];
     const winner = betterArticle(candidate, existing);
     const loser = winner === candidate ? existing : candidate;
-    articles[duplicateIndex] = winner;
+    articles[duplicateIndex] = {
+      ...winner,
+      relatedCoverage: [
+        ...(winner.relatedCoverage || []),
+        {
+          link: loser.link,
+          source: loser.source,
+          publisherGroup: loser.publisherGroup,
+        },
+        ...(loser.relatedCoverage || []),
+      ],
+    };
     duplicates.push({ kept: winner, removed: loser, similarity });
+    decision(loser, "deduplication", "same-event", {
+      kept: winner.link,
+      similarity,
+    });
   }
 
   // Final image enforcement runs after editorial selection. Keep the complete
@@ -179,10 +208,18 @@ async function openSqlite() {
           published_at TEXT,
           created_at TEXT NOT NULL
         );
-        CREATE UNIQUE INDEX IF NOT EXISTS idx_published_link ON published_stories(link);
+        DROP INDEX IF EXISTS idx_published_link;
+        CREATE UNIQUE INDEX IF NOT EXISTS idx_published_edition_link ON published_stories(edition_date, link);
         CREATE INDEX IF NOT EXISTS idx_published_edition ON published_stories(edition_date);
         CREATE INDEX IF NOT EXISTS idx_published_topic ON published_stories(topic_key);
       `);
+      const columns = sqliteDb
+        .prepare("PRAGMA table_info(published_stories)")
+        .all();
+      if (!columns.some((column) => column.name === "excerpt"))
+        sqliteDb.exec(
+          "ALTER TABLE published_stories ADD COLUMN excerpt TEXT DEFAULT ''",
+        );
       return sqliteDb;
     } catch {
       if (!warnedFallback) {
@@ -212,7 +249,7 @@ async function loadFallback() {
 
 async function saveFallback(data) {
   await fs.mkdir(path.dirname(fallbackFile()), { recursive: true });
-  await fs.writeFile(fallbackFile(), JSON.stringify(data, null, 2), "utf8");
+  await atomicWrite(fallbackFile(), JSON.stringify(data, null, 2));
 }
 
 function cutoffDate(days) {
@@ -231,7 +268,7 @@ export async function recentPublishedStories(days = config.duplicateDays) {
         `
       SELECT edition_date AS editionDate, link, source,
              original_title AS originalTitle, headline, category,
-             topic_key AS topicKey, fingerprint, published_at AS publishedAt
+             topic_key AS topicKey, fingerprint, published_at AS publishedAt, excerpt
       FROM published_stories
       WHERE edition_date >= ?
       ORDER BY edition_date DESC, id DESC
@@ -261,15 +298,30 @@ export async function filterPreviouslyPublished(
   for (const candidate of input) {
     let match = null;
     let similarity = 0;
+    let development = null;
     for (const published of history) {
       const score = articleSimilarity(candidate, published);
+      const change = materialDevelopment(candidate, published, score);
+      if (change) {
+        development ||= change;
+        continue;
+      }
       if (score >= threshold && score > similarity) {
         match = published;
         similarity = score;
       }
     }
-    if (match) rejected.push({ article: candidate, match, similarity });
-    else articles.push(candidate);
+    if (match) {
+      rejected.push({ article: candidate, match, similarity });
+      decision(candidate, "history", "previously-published", {
+        matched: match.link,
+        similarity,
+      });
+    } else {
+      articles.push(development ? { ...candidate, development } : candidate);
+      if (development)
+        decision(candidate, "history", "material-development", development);
+    }
   }
   return { articles, rejected };
 }
@@ -297,9 +349,9 @@ export async function rememberEdition(edition) {
 
   if (db) {
     const insert = db.prepare(`
-      INSERT OR IGNORE INTO published_stories
-        (edition_date, link, source, original_title, headline, category, topic_key, fingerprint, published_at, created_at)
-      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      INSERT OR REPLACE INTO published_stories
+        (edition_date, link, source, original_title, headline, category, topic_key, fingerprint, published_at, created_at, excerpt)
+      VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     let inserted = 0;
     for (const story of stories) {
@@ -314,6 +366,7 @@ export async function rememberEdition(edition) {
         storyFingerprint(story),
         String(story.publishedAt || ""),
         now,
+        String(story.excerpt || ""),
       );
       inserted += Number(result.changes || 0);
     }
@@ -321,15 +374,19 @@ export async function rememberEdition(edition) {
   }
 
   const data = await loadFallback();
-  const existing = new Set((data.stories || []).map((story) => story.link));
+  const existing = new Set(
+    (data.stories || []).map((story) => `${story.editionDate}:${story.link}`),
+  );
   let inserted = 0;
   for (const story of stories) {
-    if (!story.link || existing.has(story.link)) continue;
+    if (!story.link || existing.has(`${edition.editionDate}:${story.link}`))
+      continue;
     data.stories.push({
       editionDate: edition.editionDate,
       link: story.link,
       source: story.source,
       originalTitle: story.originalTitle,
+      excerpt: story.excerpt,
       headline: story.headline,
       category: story.category,
       topicKey: story.topicKey,
@@ -337,7 +394,7 @@ export async function rememberEdition(edition) {
       publishedAt: story.publishedAt,
       createdAt: now,
     });
-    existing.add(story.link);
+    existing.add(`${edition.editionDate}:${story.link}`);
     inserted += 1;
   }
   const cutoff = cutoffDate(config.historyDays);

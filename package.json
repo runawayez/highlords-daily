@@ -1,6 +1,6 @@
 {
   "name": "highlords-daily",
-  "version": "5.0.1",
+  "version": "5.1.0",
   "private": true,
   "type": "module",
   "description": "Local-first universal daily newsletter engine powered by RSS/Atom and Ollama, with configurable locale, editorial profiles, memory and multi-format exports.",
@@ -44,9 +44,12 @@
     "deliver": "node src/cli/run.mjs deliver",
     "config:show": "node src/cli/run.mjs config",
     "cache:prune": "node src/cli/run.mjs cache",
-    "benchmark": "node scripts/benchmark.mjs",
+    "benchmark": "node src/cli/run.mjs benchmark",
     "format": "prettier --write \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\"",
-    "format:check": "prettier --check \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\""
+    "format:check": "prettier --check \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\"",
+    "editorial:evaluate": "node src/cli/run.mjs evaluate",
+    "feedback:import": "node src/cli/run.mjs feedback",
+    "test:visual": "node scripts/visual-regression.mjs"
   },
   "engines": {
     "node": ">=22.12.0"

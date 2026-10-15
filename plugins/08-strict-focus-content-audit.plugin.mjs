@@ -1,3 +1,4 @@
+import { decision as recordDecision } from "../src/editorial/audit.mjs";
 import { categories, config, publication } from "../src/config.mjs";
 import { itemsSchema, requestChat } from "../src/services/ollama-client.mjs";
 
@@ -47,6 +48,11 @@ export function applyStrictFocusAudit(articles, rows = []) {
 
     stats.checked += 1;
     const decision = decisions.get(Number(article.id));
+    if (decision)
+      recordDecision(article, "strict-focus-audit", "model-decision", {
+        suggestedCategory: decision.category,
+        confidence: decision.confidence,
+      });
     if (!decision) {
       stats.uncertain += 1;
       output.push(article);

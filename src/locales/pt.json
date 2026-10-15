@@ -15,5 +15,22 @@
   "archiveTitle": "Arquivo de edições",
   "latest": "Última edição",
   "fallbackTitle": "O que importa hoje",
-  "fallbackIntro": "Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído."
+  "fallbackIntro": "Uma seleção curta do que mais vale sua atenção hoje, sem excesso de ruído.",
+  "searchArchive": "Buscar matérias",
+  "allCategories": "Todas as categorias",
+  "allSources": "Todas as fontes",
+  "searchResults": "resultados",
+  "feedback": "Avaliar",
+  "relevant": "Relevante",
+  "repeated": "Repetida",
+  "wrongCategory": "Categoria errada",
+  "correctCategory": "Categoria correta",
+  "exportFeedback": "Exportar avaliações",
+  "feedbackSaved": "Salvo neste navegador.",
+  "storageUnavailable": "Armazenamento do navegador indisponível. Exporte as avaliações antes de fechar.",
+  "generationFailed": "A geração mais recente falhou; a última edição válida mantém sua data original.",
+  "pdfPending": "Edição pronta; PDF pendente.",
+  "report": "Relatório editorial",
+  "sourceLanguage": "Idioma original",
+  "operationFailed": "A edição foi gerada, mas houve uma falha de entrega ou após a publicação."
 }

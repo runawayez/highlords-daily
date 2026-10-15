@@ -1,40 +1,22 @@
 # Plugins
 
-The engine loads files ending in `.plugin.mjs` from this directory when `PLUGINS_ENABLED=true`.
+The engine loads enabled `plugins/*.plugin.mjs` in filename order. `PLUGINS_ENABLED=false` disables plugins; `ENABLED_PLUGINS` and preset metadata select a subset. BR currently enables contract bootstrap, strict-focus audit, copy integrity, semantic review, presentation, human editorial ranking and a final quality gate. The eSports routing plugin is also available for compatible presets; it is not enabled by every preset.
 
-Highlords Daily ships with `00-esports-routing.plugin.mjs`, a deterministic routing layer for the Vanilla `eSports` section. It identifies clear competitive-gaming signals (for example CBLOL, VCT, CS2 Majors, IEM, Worlds, professional rosters and tournament context) before/after the regular Ollama classification so competitive stories do not fall back into generic `Games`.
-
-Highlords Daily also ships with `editorial-ranking.plugin.mjs`, the bundled second-pass editorial ranking engine. It deepens the candidate scan, detects cross-source coverage, remembers the previous successful edition and asks Ollama to evaluate human newsworthiness (impact, historical significance, public interest, novelty, utility, editorial value and promotional level) before a final global front-page calibration.
-
-The bundled ranking can be tuned with `EDITORIAL_DEEP_*`, `EDITORIAL_CYCLE_OVERLAP_HOURS`, `EDITORIAL_RANKING_BATCH_SIZE` and `EDITORIAL_GLOBAL_CALIBRATION_SIZE` in `.env`. Set `EDITORIAL_DEEP_SCAN=false` to keep the original collection limits. Set `PLUGINS_ENABLED=false` to disable all plugins, including the bundled routing/ranking layers.
-
-A plugin may export any of these hooks:
+Hooks:
 
 ```js
-export const name = 'my-plugin';
-
-export async function afterCollect(state) {
-  // state: { articles, errors, imageRejected, editionDate }
-  return state;
-}
-
-export async function afterAnalyze(state) {
-  // state: { articles, editionDate }
-  return state;
-}
-
-export async function beforeRender(state) {
-  // state: { edition, editionDir }
-  return state;
-}
-
-export async function afterWrite(context) {
-  // context: { edition, editionDir, paths }
-}
-
-export async function exportEdition(context) {
-  // Create any extra local output you want.
-}
+export const name = 'Example';
+export async function afterCollect(state, context) { return state; }
+export async function afterAnalyze(state, context) { return state; }
+export async function beforeRender(state, context) { return state; }
+export async function afterWrite(context) {}
+export async function exportEdition(context) {}
 ```
 
-Plugin errors are isolated: the edition continues and the failure is printed as a warning.
+`afterCollect` / `afterAnalyze` receive `articles`; `beforeRender` receives `edition` and `editionDir`. The payload includes execution `context` where provided. Return an updated payload or leave it unchanged. Plugins may export named functions or a default object.
+
+Optional hook/export errors are warnings. **A plugin with `fatal: true`, or an error with `fatal: true`, stops the run.** The BR quality gate uses this contract to prevent publishing without required coverage. Do not assume every plugin failure is recoverable.
+
+Article transitions are recorded in the editorial report. Review plugins also record their model decisions. If adding a discard rule, preserve its evidence through `decision()` from `src/editorial/audit.mjs`; do not invent a rationale for a model choice that was not returned.
+
+The ranking plugin keeps section and front-page scores separate, with dimensional evaluation and global calibration. `coverageCount` counts publishers; consensus weighting uses conservative `independentCoverageCount`, based on declared reporting origins and duplicate-excerpt checks. See `docs/EDITORIAL_QUALITY.md` for configuration, evaluation, source-copy integrity and limitations.

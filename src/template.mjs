@@ -129,7 +129,7 @@ function storyCard(
   return `<article class="${classes}">
     ${image}
     <div class="story-body">
-      <div class="story-meta"><span class="source">${escapeHtml(article.source)}</span><span>${escapeHtml(category)}</span></div>
+      <div class="story-meta"><span class="source">${escapeHtml(article.source)}</span><span>${escapeHtml(category)}</span>${article.provenance?.languageFallback ? `<span>${escapeHtml(ui.sourceLanguage)}: ${escapeHtml(article.language || "und")}</span>` : ""}</div>
       <h${lead ? "2" : "3"}><a href="${escapeHtml(safeUrl(article.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(article.headline || article.originalTitle)}</a></h${lead ? "2" : "3"}>
       <p>${escapeHtml(article.summary || article.excerpt || "")}</p>
       ${tags}
@@ -314,7 +314,7 @@ a{transition:color .15s ease}
     ${frontPage}
     ${sections}
   </main>
-  <footer class="footer"><strong>${escapeHtml(publication.name)}</strong><span>${escapeHtml(formatDate(edition.editionDate))}</span></footer>
+  <footer class="footer"><strong>${escapeHtml(publication.name)}</strong><a href="../index.html">${escapeHtml(ui.archiveTitle)}</a><span>${escapeHtml(formatDate(edition.editionDate))}</span></footer>
 </div>
 </body>
 </html>`;

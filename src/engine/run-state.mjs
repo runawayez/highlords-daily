@@ -1,3 +1,4 @@
+import { currentMetrics } from "./metrics.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import os from "node:os";
@@ -88,17 +89,29 @@ export class RunState {
     const file = path.join(this.directory, `${name}.json`);
     if (this.state.stages[name]) {
       const cached = await readJson(file);
-      if (cached !== null && digest(cached) === this.state.stages[name].digest)
+      if (
+        cached !== null &&
+        digest(cached) === this.state.stages[name].digest
+      ) {
+        const metrics = currentMetrics();
+        if (metrics)
+          (metrics.decisions ||= []).push(
+            ...(this.state.stages[name].decisions || []),
+          );
         return cached;
+      }
     }
     const order = ["collected", "analyzed", "ranked", "selected"];
     for (const stage of order.slice(Math.max(0, order.indexOf(name))))
       delete this.state.stages[stage];
+    const metrics = currentMetrics();
+    const decisionOffset = metrics?.decisions?.length || 0;
     const result = await action();
     await atomicWrite(file, JSON.stringify(result));
     this.state.stages[name] = {
       completedAt: new Date().toISOString(),
       digest: digest(result),
+      decisions: metrics?.decisions?.slice(decisionOffset) || [],
     };
     await this.save();
     return result;

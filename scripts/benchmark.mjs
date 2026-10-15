@@ -1,53 +1,51 @@
-import http from "node:http";
-import { mapLimit } from "../src/utils/concurrency.mjs";
-import { digest } from "../src/utils/storage.mjs";
-const server = http.createServer((request, response) =>
-  setTimeout(() => {
-    response.setHeader("content-type", "application/json");
-    response.end(
-      JSON.stringify({
-        source: request.url,
-        items: ["東京", "ciência", "العلم"],
-      }),
-    );
-  }, 30),
+import fs from "node:fs/promises";
+import path from "node:path";
+import {
+  loadDataset,
+  option,
+  runEditorialFixture,
+} from "./editorial-fixture-run.mjs";
+const args = process.argv.slice(2);
+const dataset = await loadDataset(args);
+const target = path.resolve(
+  option(args, "--output", "data/benchmarks/latest.json"),
 );
-await new Promise((resolve) => server.listen(0, "127.0.0.1", resolve));
+const artifacts = option(args, "--artifacts");
+let run;
 try {
-  const urls = Array.from(
-    { length: 12 },
-    (_, index) => `http://127.0.0.1:${server.address().port}/${index}`,
-  );
-  const run = async (concurrency) => {
-    const started = performance.now();
-    const items = await mapLimit(urls, concurrency, async (url) =>
-      (await fetch(url)).json(),
-    );
-    return {
-      concurrency,
-      durationMs: Math.round(performance.now() - started),
-      itemsDigest: digest(items),
-    };
+  run = await runEditorialFixture(dataset, {
+    live: args.includes("--live"),
+    pdf: args.includes("--pdf"),
+    directory: artifacts ? path.resolve(artifacts) : undefined,
+  });
+  const { evaluateEditorial } = await import("../src/editorial/evaluation.mjs");
+  const report = {
+    ...run.benchmark,
+    evaluation: evaluateEditorial(
+      dataset,
+      args.includes("--live") ? run.predictions : null,
+    ),
   };
-  const sequential = await run(1);
-  const concurrent = await run(4);
-  if (sequential.itemsDigest !== concurrent.itemsDigest)
-    throw new Error("Concurrency changed output ordering.");
+  await fs.mkdir(path.dirname(target), { recursive: true });
+  await fs.writeFile(target, JSON.stringify(report, null, 2));
+  const { decisions, ...metrics } = report.metrics;
   console.log(
     JSON.stringify(
       {
-        kind: "local-network-fixture",
-        note: "Measures feed I/O orchestration, not real Ollama generation.",
-        sequential,
-        concurrent,
-        speedup: Number(
-          (sequential.durationMs / concurrent.durationMs).toFixed(2),
-        ),
+        ...report,
+        metrics,
+        evaluation: {
+          ...report.evaluation,
+          checks: report.evaluation.checks.filter((check) => !check.passed),
+        },
       },
       null,
       2,
     ),
   );
+  console.log(`Report: ${target}`);
+  if (!report.evaluation.success || run.result.pdfError) process.exitCode = 1;
 } finally {
-  await new Promise((resolve) => server.close(resolve));
+  if (run && !artifacts)
+    await fs.rm(run.directory, { recursive: true, force: true });
 }

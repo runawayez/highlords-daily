@@ -204,3 +204,7 @@ npm.cmd run pdf:rerender -- --refresh-template
 O comando preserva matérias e imagens de `edition.json`, atualiza HTML/PDF e não altera o histórico. Sem a opção, continua convertendo o HTML existente. Para gerar outra seleção no mesmo dia, `npm.cmd run daily -- --force` continua respeitando o histórico: notícias já publicadas podem ser excluídas.
 
 BR, Global e configuração legada incluem eSports separado de Games. Dust2 Brasil e Esports Insider fornecem feeds dedicados, com metadados de idioma e cobertura. A seleção segue os filtros de atualidade, imagem e relevância; uma categoria sem candidatas aprovadas não é preenchida artificialmente. Perfis que usam seus próprios arquivos de fontes/categorias precisam incluir essas entradas explicitamente.
+
+## Qualidade editorial 5.1
+
+Consulte [EDITORIAL_QUALITY.md](EDITORIAL_QUALITY.md) para avaliação offline/live, benchmark com candidatas fixas, relatórios de decisão, migração do histórico, procedência dos textos, busca, feedback e testes visuais. O [contexto atual](HIGHLORDS_DAILY_PROJECT_CONTEXT.md) substitui o snapshot conceitual 4.0.0.

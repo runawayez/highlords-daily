@@ -20,6 +20,22 @@ AI runs locally through **Ollama**. No external AI API is required.
 
 The default **Vanilla/BR** preset is ready to use in `pt-BR`, with Brazil as its editorial context, curated Brazilian and international sources, a compact daily taxonomy and BR-specific coverage rules. The engine remains universal: locale, region, timezone, categories, feeds, editorial profile, visual identity and exporters can be changed without editing the core JavaScript.
 
+
+## Editorial quality and evaluation (5.1)
+
+New editions include HTML/JSON decision reports, source-text provenance, numeric consistency protection and conservative follow-up detection in publication history. The static archive supports search, category/source filters and exportable browser-local feedback. Publisher diversity is separate from declared reporting-origin diversity.
+
+```bash
+npm run editorial:evaluate
+npm run editorial:evaluate -- --live
+npm run benchmark -- --live --pdf
+npm run feedback:import -- --file highlords-editorial-feedback.json
+npm run test:visual
+```
+
+Default evaluation runs without a model; `--live` uses Ollama with isolated state. The default benchmark replays reference responses; only `--live` measures real model work. Numeric consistency is not factual verification. See [editorial quality and limitations](docs/EDITORIAL_QUALITY.md) and [updated project context](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
+
+
 ---
 
 ## Current editorial model

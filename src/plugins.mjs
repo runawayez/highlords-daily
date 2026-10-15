@@ -1,3 +1,4 @@
+import { auditTransition } from "./editorial/audit.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { pathToFileURL } from "node:url";
@@ -45,8 +46,16 @@ export async function runPluginHook(plugins, hook, payload) {
     const fn = plugin?.module?.[hook];
     if (typeof fn !== "function") continue;
     try {
+      const before = current?.articles?.map((article) => ({ ...article }));
       const result = await fn(current, payload?.context);
       if (result !== undefined) current = result;
+      if (before && current?.articles)
+        auditTransition(
+          before,
+          current.articles,
+          `plugin:${plugin.name}:${hook}`,
+          "plugin-rejected",
+        );
     } catch (error) {
       if (error?.fatal === true || plugin?.module?.fatal === true) throw error;
       console.warn(

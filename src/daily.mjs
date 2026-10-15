@@ -124,16 +124,15 @@ async function writeExports(edition, editionDir) {
   return files;
 }
 
-export async function main(options = {}) {
-  const context = createContext(options);
-  const plugins = await loadPlugins();
-  console.log(
-    `${publication.name} · ${context.editionDate} · ${config.language} · ${config.region}`,
-  );
-  console.log(
-    `Limits: ${config.maxCandidates} candidates, ${config.maxItemsPerFeed}/feed; ${config.feedConcurrency} concurrent feeds.`,
-  );
-  const result = await runPipeline(context, {
+export function createDailyServices(plugins) {
+  return {
+    status: async (status) => {
+      await atomicWrite(
+        path.join(config.outputDir, "status.json"),
+        JSON.stringify(status, null, 2),
+      );
+      await updateArchive(config.outputDir);
+    },
     preflight: async () => {
       await ensureOllama();
       await maintainCache();
@@ -245,7 +244,19 @@ export async function main(options = {}) {
         context: ctx,
       });
     },
-  });
+  };
+}
+
+export async function main(options = {}) {
+  const context = createContext(options);
+  const plugins = await loadPlugins();
+  console.log(
+    `${publication.name} · ${context.editionDate} · ${config.language} · ${config.region}`,
+  );
+  console.log(
+    `Limits: ${config.maxCandidates} candidates, ${config.maxItemsPerFeed}/feed; ${config.feedConcurrency} concurrent feeds.`,
+  );
+  const result = await runPipeline(context, createDailyServices(plugins));
   console.log(
     `${result.alreadyCompleted ? "Already generated" : "Ready"}: ${path.join(result.editionDir, "index.html")}`,
   );

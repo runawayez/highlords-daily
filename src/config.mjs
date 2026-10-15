@@ -171,6 +171,9 @@ export const feeds = rawFeeds
     publisherGroup: String(
       feed.publisher_group || feed.publisherGroup || feed.name,
     ).trim(),
+    reportingOrigin: String(
+      feed.reporting_origin || feed.reportingOrigin || "",
+    ).trim(),
     strictFocus: feed.strict_focus === true || feed.strictFocus === true,
     weight: Math.max(0.1, Number(feed.weight || 1)),
     focus: Array.isArray(feed.focus)

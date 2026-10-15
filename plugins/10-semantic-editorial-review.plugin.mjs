@@ -1,3 +1,4 @@
+import { decision as recordDecision } from "../src/editorial/audit.mjs";
 import { categories, config, profile, publication } from "../src/config.mjs";
 import { itemsSchema, requestChat } from "../src/services/ollama-client.mjs";
 
@@ -61,6 +62,12 @@ export function applySemanticReview(articles, rows = []) {
 
   for (const article of articles || []) {
     const decision = decisions.get(Number(article.id));
+    if (decision)
+      recordDecision(article, "semantic-review", decision.action, {
+        suggestedCategory: decision.category,
+        confidence: decision.confidence,
+        reasonFromModel: decision.reason,
+      });
     if (!decision) {
       stats.kept += 1;
       output.push(article);

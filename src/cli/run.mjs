@@ -7,6 +7,9 @@ const root = path.resolve(
   "../..",
 );
 const commands = {
+  evaluate: "scripts/editorial-evaluate.mjs",
+  feedback: "src/cli/feedback.mjs",
+  benchmark: "scripts/benchmark.mjs",
   tick: "src/cli/scheduled.mjs",
   daily: "src/daily.mjs",
   doctor: "src/cli/doctor.mjs",
@@ -25,7 +28,7 @@ export async function runCommand(
 ) {
   if (args.includes("--help") || command === "help") {
     console.log(
-      `Highlords Daily commands: ${Object.keys(commands).join(", ")}.\nUse --config profile.yml to isolate a publication.\nDaily: --unattended --date YYYY-MM-DD --force --deliver\nSchedule: --time HH:MM --deliver --dry-run --backend systemd|cron --remove\nSources: --region ISO --languages ja,en --research --query Japan --site https://example.org --output feeds.yml\nDeliver: [YYYY-MM-DD] --retry-uncertain\nSee docs/ENGINE.md for configuration and recovery.`,
+      `Highlords Daily commands: ${Object.keys(commands).join(", ")}.\nUse --config profile.yml to isolate a publication.\nDaily: --unattended --date YYYY-MM-DD --force --deliver\nSchedule: --time HH:MM --deliver --dry-run --backend systemd|cron --remove\nSources: --region ISO --languages ja,en --research --query Japan --site https://example.org --output feeds.yml\nDeliver: [YYYY-MM-DD] --retry-uncertain\nEvaluate: --live | --predictions file.json [--dataset fixtures.json] --output report.json\nFeedback: --file highlords-editorial-feedback.json\nBenchmark: --live --pdf --artifacts directory --output report.json\nSee docs/ENGINE.md for configuration and recovery.`,
     );
     return;
   }

@@ -15,5 +15,22 @@
   "archiveTitle": "Edition archive",
   "latest": "Latest edition",
   "fallbackTitle": "What deserves your attention today",
-  "fallbackIntro": "A concise selection of the stories most worth your attention today, without the noise."
+  "fallbackIntro": "A concise selection of the stories most worth your attention today, without the noise.",
+  "searchArchive": "Search stories",
+  "allCategories": "All categories",
+  "allSources": "All sources",
+  "searchResults": "results",
+  "feedback": "Feedback",
+  "relevant": "Relevant",
+  "repeated": "Repeated",
+  "wrongCategory": "Wrong category",
+  "correctCategory": "Correct category",
+  "exportFeedback": "Export feedback",
+  "feedbackSaved": "Saved in this browser.",
+  "storageUnavailable": "Browser storage unavailable. Export feedback before closing.",
+  "generationFailed": "The latest generation failed; the last valid edition is shown with its original date.",
+  "pdfPending": "Edition ready; PDF pending.",
+  "report": "Editorial report",
+  "sourceLanguage": "Source language",
+  "operationFailed": "The edition was generated, but a delivery or post-publication operation failed."
 }

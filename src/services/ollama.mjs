@@ -1,3 +1,5 @@
+import { decision } from "../editorial/audit.mjs";
+import { enforceCopyProvenance } from "../editorial/provenance.mjs";
 import { requestChat, itemsSchema } from "./ollama-client.mjs";
 import { DiskCache, digest } from "../utils/storage.mjs";
 import { count } from "../engine/metrics.mjs";
@@ -305,6 +307,7 @@ function parseBatch(parsed, batch) {
     );
     if (!category) {
       invalidCategory += 1;
+      decision(article, "analysis", "invalid-category");
       continue;
     }
 
@@ -315,6 +318,7 @@ function parseBatch(parsed, batch) {
       !article.focus.includes(category)
     ) {
       strictMismatch += 1;
+      decision(article, "analysis", "strict-focus-mismatch", { category });
       continue;
     }
 
@@ -341,6 +345,12 @@ function parseBatch(parsed, batch) {
       ).slice(0, 900),
       tags: tagsField(row),
     };
+    decision(
+      normalized,
+      "analysis",
+      score < config.llmMinScore ? "below-score" : "approved",
+      { category, score },
+    );
     classified.push(normalized);
 
     if (score < config.llmMinScore) {
@@ -441,6 +451,7 @@ async function analyzeBatch(batch) {
   let microRetried = false;
 
   if (result.stats.missing > 0 || result.stats.invalidId > 0) {
+    count("analysisRetries");
     retried = true;
     const retry = await analyzeBatchOnce(
       batch,
@@ -453,6 +464,7 @@ async function analyzeBatch(batch) {
     const matched = new Set(result.matchedArticleIds);
     const missingArticles = batch.filter((article) => !matched.has(article.id));
     for (let offset = 0; offset < missingArticles.length; offset += 3) {
+      count("analysisMicroRetries");
       microRetried = true;
       const chunk = missingArticles.slice(offset, offset + 3);
       try {
@@ -756,13 +768,15 @@ ${JSON.stringify(responseExample)}`;
 const analysisCache = new DiskCache(config.cacheDir);
 export async function analyzeArticles(articles, onProgress = () => {}) {
   if (!config.analysisCacheDays)
-    return analyzeArticlesUncached(articles, onProgress);
+    return (await analyzeArticlesUncached(articles, onProgress)).map(
+      (article) => enforceCopyProvenance(article, config.language),
+    );
   const keys = new Map();
   const hits = [];
   const pending = [];
   for (const article of articles) {
     const key = digest({
-      version: 2,
+      version: 3,
       model: config.ollamaModel,
       prompt: analysisSystem,
       language: config.language,
@@ -804,5 +818,16 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
       config.analysisCacheDays * 86400000,
     );
   }
-  return [...hits, ...analyzed].sort((a, b) => a.id - b.id);
+  return [...hits, ...analyzed]
+    .sort((a, b) => a.id - b.id)
+    .map((article) => {
+      const result = enforceCopyProvenance(article, config.language);
+      decision(result, "copy", result.provenance.action, {
+        status: result.provenance.status,
+        issues:
+          result.provenance.originalIssues ||
+          result.provenance.unsupportedNumbers,
+      });
+      return result;
+    });
 }

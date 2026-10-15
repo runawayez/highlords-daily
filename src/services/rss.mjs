@@ -1,3 +1,4 @@
+import { decision } from "../editorial/audit.mjs";
 import { fetchFeedXml, recordFeedHealth } from "./feed-cache.mjs";
 import { mapLimit } from "../utils/concurrency.mjs";
 import { digest } from "../utils/storage.mjs";
@@ -15,7 +16,7 @@ const parser = new Parser({
   timeout: 15000,
   headers: {
     "User-Agent":
-      "HighlordsDaily/4.0 (+https://github.com/runawayez/highlords-daily)",
+      "HighlordsDaily/5.1 (+https://github.com/runawayez/highlords-daily)",
   },
   customFields: {
     item: [
@@ -145,6 +146,7 @@ export async function fetchFeed(feed) {
         id: `${feed.name}:${item.guid || item.id || link || index}`,
         language: feed.language || parsed.language || "und",
         publisherGroup: feed.publisherGroup || feed.name,
+        reportingOrigin: feed.reportingOrigin || "",
         country: feed.country,
         coverage: feed.coverage,
         imageMode: feed.imageMode,
@@ -161,13 +163,22 @@ export async function fetchFeed(feed) {
             : extractImage(item, link || feed.url),
       };
     })
-    .filter(
-      (article) =>
+    .filter((article) => {
+      const eligible =
         /^https?:\/\//i.test(String(article.link || "")) &&
-        new Date(article.publishedAt).getTime() >= cutoff,
-    )
+        new Date(article.publishedAt).getTime() >= cutoff;
+      if (!eligible)
+        decision(article, "collect", "invalid-link-or-outside-window");
+      return eligible;
+    })
     .map(applyEditorialGuardrails)
-    .filter((article) => !article.editorialReject);
+    .filter((article) => {
+      if (article.editorialReject)
+        decision(article, "guardrails", "editorial-rejected", {
+          guardrail: article.editorialReject,
+        });
+      return !article.editorialReject;
+    });
 
   return prepared.filter(
     (article) =>
@@ -181,16 +192,30 @@ export async function fetchFeed(feed) {
 }
 
 function dedupe(articles) {
-  const seenLinks = new Set();
-  const seenTitles = new Set();
-  return articles.filter((article) => {
-    const titleKey = normalizeText(article.originalTitle);
-    if (seenLinks.has(article.link) || (titleKey && seenTitles.has(titleKey)))
-      return false;
-    seenLinks.add(article.link);
-    if (titleKey) seenTitles.add(titleKey);
-    return true;
-  });
+  const links = new Map();
+  const titles = new Map();
+  const unique = [];
+  for (const article of articles) {
+    const title = normalizeText(article.originalTitle);
+    const existing = links.get(article.link) || (title && titles.get(title));
+    if (existing) {
+      (existing.relatedCoverage ||= []).push({
+        link: article.link,
+        source: article.source,
+        publisherGroup: article.publisherGroup,
+        reportingOrigin: article.reportingOrigin,
+        excerpt: article.excerpt,
+      });
+      decision(article, "collect", "duplicate-link-or-title", {
+        kept: existing.link,
+      });
+      continue;
+    }
+    unique.push(article);
+    links.set(article.link, article);
+    if (title) titles.set(title, article);
+  }
+  return unique;
 }
 
 function suppressRepeatedSourceImages(articles) {
@@ -314,7 +339,20 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
         (article) => article.imageMode === "off" || Boolean(article.imageUrl),
       )
     : eligible;
+  const imageKeys = new Set(withImages.map((article) => article.stableId));
+  for (const article of eligible)
+    if (!imageKeys.has(article.stableId))
+      decision(article, "images", "no-valid-editorial-image");
   const selected = balancedLimit(withImages, feedList, config.maxCandidates);
+  const selectedKeys = new Set(selected.map((article) => article.stableId));
+  for (const article of withImages)
+    decision(
+      article,
+      "collect",
+      selectedKeys.has(article.stableId)
+        ? "candidate-selected"
+        : "candidate-limit",
+    );
   selected.forEach((article, index) => {
     article.id = index + 1;
   });

@@ -1,0 +1,412 @@
+{
+  "version": 1,
+  "editionDate": "2026-10-15",
+  "description": "Synthetic editorial starter set; labels need review and expansion using real editions.",
+  "articles": [
+    {
+      "id": 1,
+      "stableId": "fixture-1",
+      "source": "Fixture Source 1",
+      "publisherGroup": "Fixture Group 1",
+      "language": "pt-BR",
+      "originalTitle": "Falha em sistema operacional expõe dados de usuários",
+      "excerpt": "A fabricante confirmou uma vulnerabilidade e disponibilizou uma atualização de segurança.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/1",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "tecnologia",
+      "referenceScore": 8
+    },
+    {
+      "id": 2,
+      "stableId": "fixture-2",
+      "source": "Fixture Source 2",
+      "publisherGroup": "Fixture Group 2",
+      "language": "pt-BR",
+      "originalTitle": "Projeto publica biblioteca aberta para testar agentes de IA",
+      "excerpt": "A ferramenta permite medir se agentes executam tarefas conforme os testes definidos.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/2",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "ia-desenvolvimento",
+      "referenceScore": 7
+    },
+    {
+      "id": 3,
+      "stableId": "fixture-3",
+      "source": "Fixture Source 3",
+      "publisherGroup": "Fixture Group 3",
+      "language": "pt-BR",
+      "originalTitle": "Estúdio lança jogo de exploração cooperativa",
+      "excerpt": "O jogo permite explorar um mundo fictício em equipe e foi lançado para computadores.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/3",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "games",
+      "referenceScore": 6
+    },
+    {
+      "id": 4,
+      "stableId": "fixture-4",
+      "source": "Fixture Source 4",
+      "publisherGroup": "Fixture Group 4",
+      "language": "pt-BR",
+      "originalTitle": "Banco Central eleva taxa básica de juros para 12%",
+      "excerpt": "A decisão altera a taxa básica de juros de 11% para 12% e afeta o custo do crédito.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/4",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "economia",
+      "referenceScore": 9
+    },
+    {
+      "id": 5,
+      "stableId": "fixture-5",
+      "source": "Fixture Source 5",
+      "publisherGroup": "Fixture Group 5",
+      "language": "pt-BR",
+      "originalTitle": "Congresso aprova programa nacional de moradia popular",
+      "excerpt": "O programa amplia o acesso à moradia para famílias de baixa renda.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/5",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "politica-sociedade",
+      "referenceScore": 8
+    },
+    {
+      "id": 6,
+      "stableId": "fixture-6",
+      "source": "Fixture Source 6",
+      "publisherGroup": "Fixture Group 6",
+      "language": "pt-BR",
+      "originalTitle": "Equipe vence campeonato profissional de Counter-Strike",
+      "excerpt": "A final encerrou o torneio com a vitória da equipe e a definição do título.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/6",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "esports",
+      "referenceScore": 7
+    },
+    {
+      "id": 7,
+      "stableId": "fixture-7",
+      "source": "Fixture Source 7",
+      "publisherGroup": "Fixture Group 7",
+      "language": "pt-BR",
+      "originalTitle": "Festival anuncia seleção de filmes da competição",
+      "excerpt": "Os filmes selecionados disputarão a premiação do festival de cinema.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/7",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "entretenimento",
+      "referenceScore": 6
+    },
+    {
+      "id": 8,
+      "stableId": "fixture-8",
+      "source": "Fixture Source 8",
+      "publisherGroup": "Fixture Group 8",
+      "language": "pt-BR",
+      "originalTitle": "Atleta conquista título mundial de atletismo",
+      "excerpt": "A vitória ocorreu na final do campeonato mundial e garantiu a medalha de ouro.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/8",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "esportes",
+      "referenceScore": 7
+    },
+    {
+      "id": 9,
+      "stableId": "fixture-9",
+      "source": "Fixture Source 9",
+      "publisherGroup": "Fixture Group 9",
+      "language": "pt-BR",
+      "originalTitle": "Estudo clínico publica resultados sobre tratamento experimental",
+      "excerpt": "Os pesquisadores reportaram resultados preliminares e afirmaram que novos estudos são necessários.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/9",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "ciencia-saude",
+      "referenceScore": 8
+    },
+    {
+      "id": 10,
+      "stableId": "fixture-10",
+      "source": "Fixture Source 10",
+      "publisherGroup": "Fixture Group 10",
+      "language": "pt-BR",
+      "originalTitle": "Serviço meteorológico alerta para enchentes na região",
+      "excerpt": "A previsão indica chuva intensa e as autoridades orientam moradores sobre medidas de proteção.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/10",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "clima-futuro",
+      "referenceScore": 9
+    },
+    {
+      "id": 11,
+      "stableId": "fixture-11",
+      "source": "Fixture Source 11",
+      "publisherGroup": "Fixture Group 11",
+      "language": "pt-BR",
+      "originalTitle": "Loja anuncia promoção de jogo com desconto de 20%",
+      "excerpt": "A loja oferece desconto de 20% no jogo durante sua campanha comercial.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/11",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "games",
+      "referenceScore": 3,
+      "expectedEligible": false
+    },
+    {
+      "id": 12,
+      "stableId": "fixture-12",
+      "source": "Fixture Source 12",
+      "publisherGroup": "Fixture Group 12",
+      "language": "pt-BR",
+      "originalTitle": "Framework de testes lança suporte a execução paralela",
+      "excerpt": "A nova versão do framework permite executar testes simultaneamente em ambientes isolados.",
+      "publishedAt": "2026-10-15T10:00:00Z",
+      "link": "https://example.org/editorial-fixture/12",
+      "focus": [],
+      "strictFocus": false,
+      "imageMode": "off",
+      "expectedCategory": "ia-desenvolvimento",
+      "referenceScore": 6
+    }
+  ],
+  "pairs": [
+    {
+      "id": "same-event",
+      "previous": {
+        "originalTitle": "Empresa anuncia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Empresa anuncia compra da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "duplicate"
+    },
+    {
+      "id": "blocked-acquisition",
+      "previous": {
+        "originalTitle": "Empresa anuncia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Regulador bloqueia aquisição da Rival pela Empresa",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "development"
+    },
+    {
+      "id": "approved-acquisition",
+      "previous": {
+        "originalTitle": "Empresa anuncia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Regulador aprova aquisição da Rival pela Empresa",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "development"
+    },
+    {
+      "id": "english-development",
+      "previous": {
+        "originalTitle": "Acme announces acquisition of Rival",
+        "topicKey": "acme-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Regulator blocks Acme acquisition of Rival",
+        "topicKey": "acme-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "development"
+    },
+    {
+      "id": "older-story-not-development",
+      "previous": {
+        "originalTitle": "Regulador bloqueia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Empresa anuncia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "duplicate"
+    },
+    {
+      "id": "different-event",
+      "previous": {
+        "originalTitle": "Banco Central eleva juros",
+        "topicKey": "",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Equipe vence campeonato de Counter Strike",
+        "topicKey": "",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "different"
+    },
+    {
+      "id": "unproven-change",
+      "previous": {
+        "originalTitle": "Empresa anuncia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Entenda os detalhes da aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "duplicate"
+    },
+    {
+      "id": "ambiguous-change",
+      "previous": {
+        "originalTitle": "Empresa anuncia aquisição da Rival",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-14T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "candidate": {
+        "originalTitle": "Empresa anuncia aquisição e regulador bloqueia acordo",
+        "topicKey": "empresa-rival",
+        "publishedAt": "2026-10-15T10:00:00Z",
+        "excerpt": "",
+        "link": "",
+        "language": "pt-BR"
+      },
+      "expected": "duplicate"
+    }
+  ],
+  "copies": [
+    {
+      "id": "backed-number",
+      "article": {
+        "originalTitle": "Juros sobem para 12%",
+        "excerpt": "A taxa passou de 11% para 12%.",
+        "headline": "Juros chegam a 12%",
+        "summary": "A taxa passou de 11% para 12%."
+      },
+      "expected": "no-numeric-conflict-detected"
+    },
+    {
+      "id": "invented-number",
+      "article": {
+        "originalTitle": "Juros sobem para 12%",
+        "excerpt": "A taxa passou de 11% para 12%.",
+        "headline": "Juros chegam a 15%",
+        "summary": "A taxa aumentou."
+      },
+      "expected": "needs-review"
+    },
+    {
+      "id": "invented-currency",
+      "article": {
+        "originalTitle": "Produto custa $5",
+        "excerpt": "O preço anunciado é $5.",
+        "headline": "Produto custa €5",
+        "summary": "A fabricante anunciou o preço."
+      },
+      "expected": "needs-review"
+    },
+    {
+      "id": "missing-source",
+      "article": {
+        "headline": "Um anúncio",
+        "summary": "A empresa anunciou algo."
+      },
+      "expected": "insufficient-source"
+    }
+  ],
+  "leadCandidates": [
+    "fixture-4",
+    "fixture-10"
+  ],
+  "rankingPreferences": [
+    {
+      "higher": "fixture-4",
+      "lower": "fixture-11"
+    }
+  ]
+}

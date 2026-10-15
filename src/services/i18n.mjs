@@ -4,16 +4,42 @@ import { textDirection } from "../utils/text.mjs";
 const base = JSON.parse(
   fs.readFileSync(new URL("../locales/en.json", import.meta.url), "utf8"),
 );
+const optionalKeys = new Set([
+  "sourceLanguage",
+  "operationFailed",
+  "searchArchive",
+  "allCategories",
+  "allSources",
+  "searchResults",
+  "feedback",
+  "relevant",
+  "repeated",
+  "wrongCategory",
+  "correctCategory",
+  "exportFeedback",
+  "feedbackSaved",
+  "storageUnavailable",
+  "generationFailed",
+  "pdfPending",
+  "report",
+]);
 export const localeKeys = Object.keys(base);
 export function validateCatalog(value) {
   if (
     !value ||
     localeKeys.some(
-      (key) => typeof value[key] !== "string" || !value[key].trim(),
+      (key) =>
+        !optionalKeys.has(key) &&
+        (typeof value[key] !== "string" || !value[key].trim()),
     )
   )
     throw new Error("Locale catalog is incomplete.");
-  return Object.fromEntries(localeKeys.map((key) => [key, value[key].trim()]));
+  return Object.fromEntries(
+    localeKeys.map((key) => [
+      key,
+      (typeof value[key] === "string" && value[key].trim()) || base[key],
+    ]),
+  );
 }
 export function uiCatalog(
   language = config.language,

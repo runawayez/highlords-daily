@@ -26,6 +26,7 @@ export async function requestChat(
   { schema = "json", timeoutMs = 150000 } = {},
 ) {
   return serial(async () => {
+    count("llmCalls");
     const response = await fetch(`${config.ollamaHost}/api/chat`, {
       method: "POST",
       headers: { "content-type": "application/json" },
@@ -43,7 +44,6 @@ export async function requestChat(
       }),
       signal: AbortSignal.timeout(timeoutMs),
     });
-    count("llmCalls");
     if (!response.ok)
       throw new Error(
         `Ollama HTTP ${response.status}: ${(await response.text()).slice(0, 160)}`,

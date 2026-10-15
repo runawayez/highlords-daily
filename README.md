@@ -20,6 +20,22 @@ A IA roda localmente pelo **Ollama**. Nenhuma API externa de IA é necessária.
 
 O preset padrão **Vanilla/BR** vem pronto para uso em `pt-BR`, com contexto Brasil, fontes brasileiras e internacionais selecionadas, taxonomia diária compacta e regras próprias de cobertura. O engine continua universal: idioma, região, timezone, categorias, feeds, perfil editorial, identidade visual e exportadores podem ser configurados sem alterar o JavaScript.
 
+
+## Qualidade editorial e avaliação (5.1)
+
+A edição agora inclui relatórios HTML/JSON das decisões editoriais e procedência do texto, proteção contra números não sustentados pela fonte e reconhecimento conservador de desdobramentos no histórico. O arquivo de edições oferece busca, filtros e feedback local exportável. Veículos distintos e origens declaradas de apuração são sinais separados.
+
+```bash
+npm run editorial:evaluate
+npm run editorial:evaluate -- --live
+npm run benchmark -- --live --pdf
+npm run feedback:import -- --file highlords-editorial-feedback.json
+npm run test:visual
+```
+
+A avaliação padrão não chama IA; `--live` usa Ollama em estado isolado. O benchmark padrão reproduz respostas de referência; apenas `--live` mede o modelo. Consistência numérica não equivale a checagem factual. Veja [qualidade editorial e limitações](docs/EDITORIAL_QUALITY.md) e o [contexto atualizado do projeto](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
+
+
 ---
 
 ## O que mudou no fluxo editorial atual
