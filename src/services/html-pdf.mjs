@@ -119,7 +119,8 @@ async function preparePdfLayout(page) {
     };
     const text = hints[language] || hints.en;
     for (const link of document.querySelectorAll(".read-link")) {
-      if (link.nextElementSibling?.classList?.contains("pdf-link-hint")) continue;
+      if (link.nextElementSibling?.classList?.contains("pdf-link-hint"))
+        continue;
       const hint = document.createElement("span");
       hint.className = "pdf-link-hint";
       hint.textContent = text;
