@@ -103,6 +103,30 @@ async function loadNewsletterPage(page, html, baseDir) {
 }
 
 async function preparePdfLayout(page) {
+  await page.evaluate(() => {
+    const language = String(document.documentElement.lang || "en")
+      .toLowerCase()
+      .split("-")[0];
+    const hints = {
+      ar: "Ctrl/Cmd+نقرة: علامة تبويب جديدة",
+      de: "Ctrl/Cmd+Klick: neuer Tab",
+      en: "Ctrl/Cmd+click: new tab",
+      es: "Ctrl/Cmd+clic: nueva pestaña",
+      fr: "Ctrl/Cmd+clic : nouvel onglet",
+      ja: "Ctrl/Cmd+クリック: 新しいタブ",
+      pt: "Ctrl/Cmd+clique: nova aba",
+      zh: "Ctrl/Cmd+点击：新标签页",
+    };
+    const text = hints[language] || hints.en;
+    for (const link of document.querySelectorAll(".read-link")) {
+      if (link.nextElementSibling?.classList?.contains("pdf-link-hint")) continue;
+      const hint = document.createElement("span");
+      hint.className = "pdf-link-hint";
+      hint.textContent = text;
+      link.insertAdjacentElement("afterend", hint);
+    }
+  });
+
   await page.addStyleTag({
     content: `
       @page { size: A4; margin: 0; }
@@ -175,6 +199,18 @@ async function preparePdfLayout(page) {
       }
       .section-grid.mixed-grid > .has-image .story-image {
         max-height: 255px !important;
+      }
+      .pdf-link-hint {
+        display: inline-block !important;
+        margin-inline-start: 7px !important;
+        color: #817b72 !important;
+        font-size: 7px !important;
+        font-weight: 650 !important;
+        letter-spacing: .01em !important;
+        white-space: nowrap !important;
+      }
+      .lead-card .pdf-link-hint {
+        color: #aaa !important;
       }
       .footer {
         display: none !important;
