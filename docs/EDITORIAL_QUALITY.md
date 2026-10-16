@@ -84,3 +84,7 @@ npm run test:visual
 Requer Chrome/Chromium/Edge; use `BROWSER_PATH` quando necessário. A suíte gera screenshots, HTML, PDF e `checks.json` em `data/visual-regression/`. Testa títulos/resumos longos, imagens verticais/horizontais, diferentes composições, desktop e celular, busca com acentos, filtros e persistência do feedback.
 
 Com Poppler (`pdftotext`), também verifica presença dos cards, que início/fim de cada card estejam na mesma página, título eSports acompanhado de conteúdo e ausência de páginas quase vazias. `REQUIRE_PDF_TEXT_CHECKS=true` exige essas verificações, como no job visual de CI. São testes de estrutura/paginação com artefatos para revisão visual; não são comparação pixel a pixel com uma imagem de referência. A suíte não roda Ollama nem depende de feeds externos.
+
+## Atualização visual 5.2
+
+O teste visual também cobre o [design editorial e a paginação A4](EDITORIAL_DESIGN.md), incluindo fonte mínima, contagem de matérias, textos no tamanho máximo, versão sem imagens, RTL e compatibilidade com HTML legado.

@@ -1,0 +1,42 @@
+# Design editorial 5.2
+
+O layout aplica a direção visual aprovada na prévia conceitual: fundo de papel, preto e vermelho da publicação, cabeçalho tipográfico, manchete em destaque, resumos leves, filetes discretos e duas colunas. Sai a apresentação com grandes blocos escuros, bordas de cards e badges. A identidade continua configurável pelas cores/nome/logo do perfil.
+
+## HTML
+
+`src/template.mjs` continua gerando HTML determinístico e autocontido. `src/presentation/editorial-styles.mjs` centraliza os estilos compartilhados. Georgia/DejaVu Serif/Times e Arial/DejaVu/Noto são famílias locais de fallback; não há download de fontes nem dependência de uma API de design. A aparência exata e o número de páginas podem variar com as fontes instaladas, que são medidas no navegador antes de imprimir.
+
+A manchete é apresentada antes de uma imagem horizontal de destaque. Fontes, categorias e links permanecem visíveis. Matérias com imagem, notas tipográficas e editorias de uma ou várias matérias usam composições distintas. Em celular, as colunas empilham. Scores continuam disponíveis nos dados/relatórios, sem entrar na apresentação de leitura.
+
+## PDF
+
+Novos HTMLs possuem `data-design="editorial-v2"`. Ao gerar PDF, `src/services/html-pdf.mjs` usa Chromium para compor páginas A4 com `src/presentation/paginate.mjs`. Os mesmos componentes/conteúdos do HTML são clonados e medidos; os títulos, resumos e fatos não são reescritos.
+
+- Escala fixa 1, margens próprias para A4, cabeçalhos de continuação e numeração `01 / 03`.
+- Matérias são mantidas inteiras; título de editoria acompanha a primeira linha de matérias.
+- Dois destaques curtos de editorias adjacentes podem aparecer lado a lado, cada um com sua categoria e fonte.
+- Manchetes longas recebem tamanho tipográfico apropriado; pares muito altos podem virar matérias de largura inteira. Há uma composição compacta para blocos extremos, sem redução global do documento nem corte de texto.
+- Resumos mantêm pelo menos 13,4 CSS px, aproximadamente 10 pt, nas composições atuais.
+- A imagem da manchete ocupa uma faixa horizontal; imagens verticais não forçam a altura da página.
+- Destaques de primeira página (`topStories`) continuam no HTML como referências e não são republicados no PDF, onde as matérias aparecem na manchete ou na editoria correspondente.
+- O layout verifica contagem de matérias, overflow e colisão com o rodapé antes de exportar. Conteúdo excepcional que ainda não couber gera erro de PDF, preservando o HTML, em vez de ser recortado.
+
+A quantidade de páginas depende da extensão dos títulos/resumos e das fontes. A amostra demonstrativa de dez matérias fica em três páginas no ambiente de referência; isso não é uma meta rígida para toda edição. Editoriais densos podem exigir mais páginas para manter a legibilidade.
+
+## Ver ou aplicar em uma edição existente
+
+```bash
+npm run layout:preview
+npm run pdf:rerender -- --refresh-template
+npm run pdf:rerender -- 2026-10-15 --refresh-template
+```
+
+`layout:preview` gera `output/layout-preview/index.html` e `highlords-layout-preview.pdf` com **conteúdo fictício identificado**, sem feeds, histórico ou Ollama. Usa o renderer real de produção. `--output diretório` altera o destino. O navegador é necessário para PDF; o HTML fica disponível mesmo se a exportação falhar.
+
+`--refresh-template` reconstrói o HTML de uma edição a partir do `edition.json` existente e gera o PDF com o novo visual, sem reexecutar curadoria. As imagens locais e o logo embutido são preservados. Sem essa opção, HTMLs arquivados mantêm seu visual anterior e continuam renderizáveis pela rota de compatibilidade. Novas edições adotam o design automaticamente.
+
+## Verificação
+
+`npm run test:visual` gera screenshots e PDFs para a amostra aprovada, títulos de 220 caracteres/resumos de 900, edição sem imagens, texto RTL/árabe e HTML legado. Verifica escala, tamanho de fonte, preservação da quantidade de matérias, ausência de overflow e páginas vazias. Com Poppler, a fixture de estresse também exige que início/fim dos cards permaneçam na mesma página e que a numeração corresponda à paginação real.
+
+Os arquivos de inspeção ficam em `data/visual-regression/`; o CI publica os artefatos do job visual. Os testes não precisam de Ollama ou fontes externas. Para outros alfabetos, as fontes com glifos adequados continuam sendo um requisito do ambiente, conforme `docs/ENGINE.md`.

@@ -1,6 +1,6 @@
 # Highlords Daily — contexto atual
 
-Snapshot: 15/10/2026. Versão do core: 5.1.0.
+Snapshot: 15/10/2026. Versão do core: 5.2.0.
 Repositório: https://github.com/runawayez/highlords-daily, branch `main`.
 O código e os presets da main são a fonte de verdade. Este arquivo substitui conceitualmente o contexto 4.0.0 de 07/10/2026; não é uma cópia daquele snapshot.
 
@@ -29,6 +29,10 @@ Dez categorias. Núcleos obrigatórios: Tecnologia, IA & Desenvolvimento, Games,
 - `src/services/delivery.mjs`: entregas explícitas e controle de repetição/estado incerto.
 
 O pipeline faz coleta → classificação → revisão/deduplicação/ranking → curadoria → cache/apresentação/quality gate → HTML/PDF/exportadores → publicação → memória/arquivo. O estado permite retomar etapas já concluídas. Falhas de plugins opcionais são isoladas; `fatal: true` no plugin ou erro interrompe a execução. Não remova a validação fatal por conveniência de preenchimento.
+
+## Design 5.2
+
+Layout editorial aprovado aplicado ao HTML e PDF: fundo de papel, wordmark tipográfico, duas colunas, imagem horizontal da manchete e menos caixas. O PDF usa páginas A4 medidas em Chromium, cabeçalhos e numeração com escala fixa 1. HTMLs antigos continuam re-renderizáveis; `pdf:rerender -- --refresh-template` aplica o novo visual a uma edição salva. `layout:preview` gera uma amostra identificada como fictícia sem Ollama. Estilos e paginação ficam em `src/presentation/`. Ver `docs/EDITORIAL_DESIGN.md`.
 
 ## Novidades 5.1
 

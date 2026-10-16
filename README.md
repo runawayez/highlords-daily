@@ -36,6 +36,19 @@ npm run test:visual
 A avaliação padrão não chama IA; `--live` usa Ollama em estado isolado. O benchmark padrão reproduz respostas de referência; apenas `--live` mede o modelo. Consistência numérica não equivale a checagem factual. Veja [qualidade editorial e limitações](docs/EDITORIAL_QUALITY.md) e o [contexto atualizado do projeto](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
 
 
+
+## Novo layout editorial (5.2)
+
+HTML e PDF seguem uma apresentação de jornal: tipografia serifada, fundo de papel, vermelho nos detalhes, manchete com imagem horizontal e matérias em duas colunas. O PDF agora compõe páginas A4 medidas pelo conteúdo, com margens, cabeçalhos e numeração, sem reduzir a tela desktop inteira.
+
+```bash
+npm run layout:preview
+npm run pdf:rerender -- --refresh-template
+```
+
+A prévia usa textos fictícios e o renderer real. O segundo comando aplica o novo template à última edição já gerada, sem chamar Ollama. Novas edições adotam o layout automaticamente. Veja [design e paginação](docs/EDITORIAL_DESIGN.md).
+
+
 ---
 
 ## O que mudou no fluxo editorial atual

@@ -1,3 +1,4 @@
+import { paginateEditorialDocument } from "../presentation/paginate.mjs";
 import { findBrowser } from "./browser.mjs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -49,9 +50,13 @@ function expectedStoryImageCount(html) {
   return (String(html).match(/class=["']story-image["']/g) || []).length;
 }
 
-async function assertStoryImagesLoaded(page, expected) {
-  const state = await page.evaluate(() => {
-    const images = [...document.querySelectorAll(".story-image img")];
+async function assertStoryImagesLoaded(
+  page,
+  expected,
+  selector = ".story-image img",
+) {
+  const state = await page.evaluate((selector) => {
+    const images = [...document.querySelectorAll(selector)];
     return {
       total: images.length,
       failed: images
@@ -63,7 +68,7 @@ async function assertStoryImagesLoaded(page, expected) {
         )
         .map((image) => image.currentSrc || image.src || "(sem src)"),
     };
-  });
+  }, selector);
 
   if (state.total !== expected || state.failed.length) {
     const detail = state.failed.slice(0, 3).join(", ");
@@ -102,7 +107,7 @@ async function loadNewsletterPage(page, html, baseDir) {
   };
 }
 
-async function preparePdfLayout(page) {
+async function prepareLegacyPdfLayout(page) {
   await page.evaluate(() => {
     const language = String(document.documentElement.lang || "en")
       .toLowerCase()
@@ -257,7 +262,8 @@ function adaptivePdfScale({ contentHeight }) {
   return Math.min(BASE_PDF_SCALE, targetScale * 0.998);
 }
 
-export async function renderHtmlPdf(html, { baseDir } = {}) {
+export async function renderHtmlPdf(html, { baseDir, onLayout } = {}) {
+  const editorial = /data-design=["']editorial-v2["']/.test(html);
   const executablePath = findBrowser();
   const browser = await puppeteer.launch({
     executablePath,
@@ -275,8 +281,8 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
   try {
     const page = await browser.newPage();
     await page.setViewport({
-      width: PDF_VIEWPORT_WIDTH,
-      height: PDF_VIEWPORT_HEIGHT,
+      width: editorial ? 794 : PDF_VIEWPORT_WIDTH,
+      height: editorial ? 1123 : PDF_VIEWPORT_HEIGHT,
       deviceScaleFactor: 1,
     });
 
@@ -284,15 +290,31 @@ export async function renderHtmlPdf(html, { baseDir } = {}) {
     cleanup = await loadNewsletterPage(page, html, baseDir);
     await Promise.all([waitForImages(page), waitForFonts(page)]);
     await assertStoryImagesLoaded(page, expectedStoryImageCount(html));
-    await preparePdfLayout(page);
-
-    const metrics = await layoutMetrics(page);
-    const scale = adaptivePdfScale(metrics);
+    let scale = BASE_PDF_SCALE;
+    if (editorial) {
+      await page.addStyleTag({
+        content: "@page{size:A4;margin:0}html{scroll-behavior:auto}",
+      });
+      const layout = await page.evaluate(paginateEditorialDocument);
+      await Promise.all([waitForImages(page), waitForFonts(page)]);
+      await assertStoryImagesLoaded(
+        page,
+        expectedStoryImageCount(html),
+        ".pdf-document .story-image img",
+      );
+      if (onLayout) await onLayout(layout);
+      scale = 1;
+    } else {
+      // Existing archived HTML remains re-renderable without migration.
+      await prepareLegacyPdfLayout(page);
+      scale = adaptivePdfScale(await layoutMetrics(page));
+      if (onLayout) await onLayout({ design: "legacy", scale });
+    }
 
     return await page.pdf({
       format: "A4",
       printBackground: true,
-      preferCSSPageSize: false,
+      preferCSSPageSize: editorial,
       displayHeaderFooter: false,
       scale,
       margin: { top: "0mm", right: "0mm", bottom: "0mm", left: "0mm" },

@@ -14,7 +14,7 @@ export function createContext(options = {}) {
     : editionDate(config.timeZone);
   const settings = Object.freeze({ ...config });
   const fingerprint = digest({
-    engine: "5.1-editorial-evidence",
+    engine: "5.2-editorial-layout",
     config: settings,
     categories,
     feeds,

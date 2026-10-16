@@ -1,13 +1,14 @@
 import fs from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
-import { spawnSync } from "node:child_process";
+import { spawn, spawnSync } from "node:child_process";
 import { pathToFileURL } from "node:url";
 import puppeteer from "puppeteer-core";
 import { findBrowser } from "../src/services/browser.mjs";
 import { renderNewsletterHtml } from "../src/template.mjs";
 import { renderHtmlPdf } from "../src/services/html-pdf.mjs";
 import { updateArchive } from "../src/services/archive.mjs";
+import { designPreview } from "../tests/fixtures/design-preview.mjs";
 import { layoutFixture } from "../tests/fixtures/layout.mjs";
 import { editionStories } from "../src/editorial/audit.mjs";
 import { option } from "./editorial-fixture-run.mjs";
@@ -18,7 +19,8 @@ const directory = path.resolve(
 const edition = layoutFixture();
 const editionDir = path.join(directory, edition.editionDate);
 await fs.mkdir(editionDir, { recursive: true });
-const html = renderNewsletterHtml(edition);
+const logo = `data:image/svg+xml;base64,${(await fs.readFile(new URL("../public/assets/highlords-logo.svg", import.meta.url))).toString("base64")}`;
+const html = renderNewsletterHtml(edition, logo);
 await fs.writeFile(path.join(editionDir, "index.html"), html);
 await fs.writeFile(
   path.join(editionDir, "edition.json"),
@@ -104,7 +106,21 @@ try {
   await browser.close();
 }
 const pdfPath = path.join(directory, "layout.pdf");
-await fs.writeFile(pdfPath, await renderHtmlPdf(html, { baseDir: editionDir }));
+let pagination;
+await fs.writeFile(
+  pdfPath,
+  await renderHtmlPdf(html, {
+    baseDir: editionDir,
+    onLayout: (value) => {
+      pagination = value;
+    },
+  }),
+);
+assert.equal(pagination.design, "editorial-v2");
+assert.equal(pagination.scale, 1);
+assert.deepEqual(pagination.issues, []);
+assert.ok(pagination.minimumBodyFontPx >= 13.3);
+assert.equal(pagination.stories, editionStories(edition).length);
 // Poppler is optional for local previews, required in the visual CI job.
 const text = spawnSync("pdftotext", ["-layout", pdfPath, "-"], {
   encoding: "utf8",
@@ -113,6 +129,15 @@ let pdfChecks =
   "skipped: install Poppler (pdftotext) for pagination assertions";
 if (!text.error && text.status === 0) {
   const pages = text.stdout.split("\f").filter((content) => content.trim());
+  assert.equal(pages.length, pagination.pages);
+  pages.forEach((content, index) =>
+    assert.ok(
+      content.includes(
+        `${String(index + 1).padStart(2, "0")} / ${String(pages.length).padStart(2, "0")}`,
+      ),
+      "Missing page number",
+    ),
+  );
   for (const story of editionStories(edition)) {
     const marker = story.stableId;
     const first = pages.findIndex((content) =>
@@ -143,10 +168,139 @@ if (!text.error && text.status === 0) {
   };
 } else if (process.env.REQUIRE_PDF_TEXT_CHECKS === "true")
   throw new Error(text.error?.message || text.stderr);
+const variants = [];
+for (const name of [
+  "approved-design",
+  "maximum-copy",
+  "text-only",
+  "rtl",
+  "legacy",
+]) {
+  let sample = designPreview();
+  if (name === "maximum-copy") {
+    for (const story of editionStories(sample)) {
+      story.headline =
+        `${story.stableId} ${"Um título extenso para verificar a composição editorial e os limites de leitura. ".repeat(4)}`.slice(
+          0,
+          220,
+        );
+      story.summary =
+        `${"Texto integral da fonte com contexto para verificar a paginação sem cortes nem redução global do tamanho das letras. ".repeat(10)}`.slice(
+          0,
+          900,
+        );
+    }
+  }
+  if (name === "text-only")
+    for (const story of editionStories(sample)) {
+      story.imageUrl = null;
+      story.displayImage = false;
+    }
+  if (name === "rtl")
+    for (const story of editionStories(sample)) {
+      story.headline = "التقنية والمجتمع في حياتنا اليومية";
+      story.summary =
+        "تتناول هذه المادة تطورات التقنية وتأثيرها على المجتمع والعمل والحياة اليومية، مع تقديم سياق واضح يساعد القارئ على فهم الموضوع.";
+      story.source = "مصدر توضيحي";
+    }
+  let sampleHtml = renderNewsletterHtml(sample);
+  if (name === "rtl")
+    sampleHtml = sampleHtml.replace(
+      /<html[^>]*>/,
+      '<html lang="ar-EG" dir="rtl">',
+    );
+  if (name === "legacy")
+    sampleHtml =
+      '<!doctype html><html lang="en"><head><style>body{margin:0}.shell{width:1060px;background:#f7f3e9;padding:30px}.story-card{padding:30px}h3{font-size:28px}</style></head><body><div class="shell"><article class="story-card"><h3>Legacy edition remains readable</h3><p>An archived HTML edition can still be exported.</p></article></div></body></html>';
+  await fs.writeFile(path.join(directory, `${name}.html`), sampleHtml);
+  let layout;
+  await fs.writeFile(
+    path.join(directory, `${name}.pdf`),
+    await renderHtmlPdf(sampleHtml, {
+      baseDir: directory,
+      onLayout: (value) => {
+        layout = value;
+      },
+    }),
+  );
+  if (name === "legacy") assert.equal(layout.design, "legacy");
+  else {
+    assert.equal(
+      layout.stories,
+      editionStories(sample).length,
+      `${name}: missing story`,
+    );
+    assert.deepEqual(layout.issues, [], `${name}: invalid pagination`);
+    assert.ok(layout.minimumBodyFontPx >= 13.3, `${name}: body text too small`);
+    assert.ok(
+      layout.pageSummaries.every((page) => page.stories > 0),
+      `${name}: empty page`,
+    );
+    if (name === "approved-design")
+      assert.ok(layout.pages <= 3, "Normal edition should remain compact");
+  }
+  variants.push({ name, ...layout });
+}
+// Upgrade an existing edition through the public CLI without inference or data loss.
+const upgradeDirectory = path.join(directory, "upgrade");
+const upgradeEdition = path.join(upgradeDirectory, "output", "2026-10-15");
+await fs.mkdir(upgradeEdition, { recursive: true });
+const preservedJson = JSON.stringify(designPreview());
+await fs.writeFile(path.join(upgradeEdition, "edition.json"), preservedJson);
+await fs.writeFile(
+  path.join(upgradeEdition, "index.html"),
+  '<html><body><div class="shell">Archived layout</div></body></html>',
+);
+const upgradeProfile = path.join(upgradeDirectory, "profile.json");
+await fs.writeFile(
+  upgradeProfile,
+  JSON.stringify({
+    preset: "br",
+    dataDir: "data",
+    outputDir: "output",
+    autoOpen: false,
+  }),
+);
+await new Promise((resolve, reject) => {
+  const child = spawn(
+    process.execPath,
+    [
+      "src/cli/run.mjs",
+      "pdf",
+      "--config",
+      upgradeProfile,
+      "--refresh-template",
+    ],
+    { env: { ...process.env, OLLAMA_HOST: "http://127.0.0.1:1" } },
+  );
+  let output = "";
+  child.stdout.on("data", (chunk) => (output += chunk));
+  child.stderr.on("data", (chunk) => (output += chunk));
+  child.on("error", reject);
+  child.on("close", (code) =>
+    code === 0 ? resolve() : reject(new Error(output)),
+  );
+});
+assert.equal(
+  await fs.readFile(path.join(upgradeEdition, "edition.json"), "utf8"),
+  preservedJson,
+);
+assert.ok(
+  (await fs.readFile(path.join(upgradeEdition, "index.html"), "utf8")).includes(
+    'data-design="editorial-v2"',
+  ),
+);
+assert.ok(
+  (await fs.readdir(upgradeEdition)).some((name) => name.endsWith(".pdf")),
+);
 const report = {
   html: results,
   archive: "search/filter/persistent-feedback passed",
   pdf: pdfChecks,
+  pagination,
+  variants,
+  archivedEditionUpgrade:
+    "public CLI passed; JSON preserved; no Ollama required",
 };
 await fs.writeFile(
   path.join(directory, "checks.json"),

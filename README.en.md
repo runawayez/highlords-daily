@@ -36,6 +36,19 @@ npm run test:visual
 Default evaluation runs without a model; `--live` uses Ollama with isolated state. The default benchmark replays reference responses; only `--live` measures real model work. Numeric consistency is not factual verification. See [editorial quality and limitations](docs/EDITORIAL_QUALITY.md) and [updated project context](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
 
 
+
+## Editorial layout (5.2)
+
+HTML and PDF now use a newspaper presentation: serif headlines, paper background, restrained red accents, a horizontal lead image and two-column stories. PDF pages are measured and composed for A4, with margins, running headers and page numbers, instead of shrinking a desktop screen.
+
+```bash
+npm run layout:preview
+npm run pdf:rerender -- --refresh-template
+```
+
+The preview uses labeled fictional content and the production renderer. The second command refreshes the last saved edition without Ollama. New editions adopt the layout automatically. See [design and pagination](docs/EDITORIAL_DESIGN.md).
+
+
 ---
 
 ## Current editorial model
