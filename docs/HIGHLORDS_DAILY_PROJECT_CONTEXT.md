@@ -1,6 +1,6 @@
 # Highlords Daily — contexto atual
 
-Snapshot: 15/10/2026. Versão do core: 5.3.0.
+Snapshot: 16/10/2026. Versão do core: 5.3.1.
 Repositório: https://github.com/runawayez/highlords-daily, branch `main`.
 O código e os presets da main são a fonte de verdade. Este arquivo substitui conceitualmente o contexto 4.0.0 de 07/10/2026; não é uma cópia daquele snapshot.
 
@@ -8,7 +8,9 @@ O código e os presets da main são a fonte de verdade. Este arquivo substitui c
 
 Motor universal de newsletter diária local-first em Node.js ESM. RSS/Atom, Ollama local (`qwen3:4b` por padrão), curadoria em várias etapas, memória SQLite com fallback JSON, templates HTML determinísticos e PDF via Chromium. Tagline: Informação sem ruído. Nenhuma API paga de IA é obrigatória. Categorias, região, timezone, fontes, idioma, perfis e branding são configuráveis. HTML é a apresentação principal, PDF deriva dele. A interface Electron continua experimental.
 
-Novidades 5.3: limpeza de RSS antes do resumo, limites por frase/palavra, deduplicação de eventos entre categorias, fluxo por matéria na paginação e otimização das imagens na cópia do PDF. Sem chamadas extras de IA ou dependências nativas. Veja `docs/EDITORIAL_DESIGN.md`.
+Novidades 5.3: limpeza de RSS antes do resumo, limites por frase/palavra, deduplicação de eventos entre categorias, fluxo por matéria na paginação e otimização das imagens na cópia do PDF. Os ajustes de layout não adicionam chamadas de IA ou dependências nativas. Veja `docs/EDITORIAL_DESIGN.md`.
+
+Correção 5.3.1: a checagem numérica distingue `R$` de letras em palavras como `September`. Fallbacks estrangeiros passam por recuperação individual de tradução com cache e validação; falhas são retiradas das candidatas, e o contrato bloqueia fallback original ainda não localizado.
 
 ## Preset BR atual
 

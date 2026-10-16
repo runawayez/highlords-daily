@@ -1,5 +1,7 @@
 import { decision } from "../editorial/audit.mjs";
 import { enforceCopyProvenance } from "../editorial/provenance.mjs";
+import { limitCopy } from "../editorial/source-text.mjs";
+import { recoverLocalizedCopy } from "./localized-copy.mjs";
 import { requestChat, itemsSchema } from "./ollama-client.mjs";
 import { DiskCache, digest } from "../utils/storage.mjs";
 import { count } from "../engine/metrics.mjs";
@@ -51,7 +53,7 @@ LOCALIZAÇÃO DA EDIÇÃO:
 - região editorial: ${config.region}; cobertura: ${config.coverage.join(", ")};
 - publicação: ${publication.name};
 - todo texto editorial visível ao leitor deve soar natural para esse locale, incluindo ortografia, vocabulário, terminologia e tom regional;
-- traduza headline, summary, tags, título da edição, introdução, nomes de seções e rótulos de interface quando solicitado;
+- traduza headline, summary e tags de toda fonte estrangeira para o idioma da edição; título da edição, introdução, nomes de seções e rótulos de interface também devem usar esse idioma;
 - preserve fatos, marcas, nomes próprios e valores originais;
 - NÃO converta moedas, preços ou unidades inventando uma cotação. Se um preço estiver em moeda estrangeira, mantenha a moeda correta e deixe claro o mercado/contexto quando isso evitar uma interpretação errada;
 - não sugira que preço, disponibilidade, legislação ou serviço valem para ${config.editorialContext} se a matéria não disser isso;
@@ -774,17 +776,40 @@ ${JSON.stringify(responseExample)}`;
 }
 
 const analysisCache = new DiskCache(config.cacheDir);
+async function finalizeCopy(articles) {
+  const results = [];
+  for (const article of articles) {
+    const backed = enforceCopyProvenance(article, config.language);
+    const result = await recoverLocalizedCopy(backed);
+    if (!result) {
+      decision(backed, "copy", "localization-failed", {
+        language: config.language,
+        sourceLanguage: article.language,
+      });
+      console.warn(
+        `  Tradução rejeitada (${config.language}): ${article.originalTitle || article.headline}. A candidata não será publicada no idioma original.`,
+      );
+      continue;
+    }
+    decision(result, "copy", result.provenance.action, {
+      status: result.provenance.status,
+      issues:
+        result.provenance.originalIssues ||
+        result.provenance.unsupportedNumbers,
+    });
+    results.push(result);
+  }
+  return results;
+}
 export async function analyzeArticles(articles, onProgress = () => {}) {
   if (!config.analysisCacheDays)
-    return (await analyzeArticlesUncached(articles, onProgress)).map(
-      (article) => enforceCopyProvenance(article, config.language),
-    );
+    return finalizeCopy(await analyzeArticlesUncached(articles, onProgress));
   const keys = new Map();
   const hits = [];
   const pending = [];
   for (const article of articles) {
     const key = digest({
-      version: 3,
+      version: 4,
       model: config.ollamaModel,
       prompt: analysisSystem,
       language: config.language,
@@ -826,17 +851,5 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
       config.analysisCacheDays * 86400000,
     );
   }
-  return [...hits, ...analyzed]
-    .sort((a, b) => a.id - b.id)
-    .map((article) => {
-      const result = enforceCopyProvenance(article, config.language);
-      decision(result, "copy", result.provenance.action, {
-        status: result.provenance.status,
-        issues:
-          result.provenance.originalIssues ||
-          result.provenance.unsupportedNumbers,
-      });
-      return result;
-    });
+  return finalizeCopy([...hits, ...analyzed].sort((a, b) => a.id - b.id));
 }
-import { limitCopy } from "../editorial/source-text.mjs";

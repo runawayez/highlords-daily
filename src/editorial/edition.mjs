@@ -361,6 +361,14 @@ export function validateNewsletterContract(edition) {
   const seenSectionNames = new Set();
   const seenStoryIds = new Set();
   const leadId = edition?.lead ? Number(edition.lead.id) : null;
+  for (const article of [
+    edition?.lead,
+    ...(edition?.topStories || []),
+    ...(edition?.sections || []).flatMap((section) => section.articles || []),
+  ].filter(Boolean)) {
+    if (article.provenance?.languageFallback)
+      errors.push(`unlocalized-source-fallback:${article.id}`);
+  }
 
   for (const section of edition?.sections || []) {
     if (!categoryBySlug.has(section.slug))

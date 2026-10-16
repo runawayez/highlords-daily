@@ -38,7 +38,9 @@ A avaliação padrão não chama IA; `--live` usa Ollama em estado isolado. O be
 
 HTML e PDF seguem uma apresentação de jornal: tipografia serifada, fundo de papel, vermelho nos detalhes, manchete com imagem horizontal e matérias em duas colunas. O PDF agora compõe páginas A4 medidas pelo conteúdo, com margens, cabeçalhos e numeração, sem reduzir a tela desktop inteira.
 
-A versão 5.3 limpa propaganda e links relacionados do RSS antes do resumo, evita cortes no meio de palavras e reconhece o mesmo evento entre categorias mesmo com títulos diferentes. A paginação aproveita espaços com matérias inteiras, e a cópia das imagens usada no PDF é redimensionada/comprimida sem alterar os arquivos originais. Não há chamadas adicionais ao Ollama.
+A versão 5.3 limpa propaganda e links relacionados do RSS antes do resumo, evita cortes no meio de palavras e reconhece o mesmo evento entre categorias mesmo com títulos diferentes. A paginação aproveita espaços com matérias inteiras, e a cópia das imagens usada no PDF é redimensionada/comprimida sem alterar os arquivos originais. Esses ajustes de layout e limpeza não adicionam chamadas ao Ollama.
+
+Na 5.3.1, um fallback para texto estrangeiro é retraduzido individualmente e validado antes da curadoria; se a recuperação falhar, a candidata é rejeitada em vez de publicar o idioma original. Essa recuperação usa chamadas adicionais somente quando necessárias e mantém traduções válidas em cache. A checagem numérica também deixa de confundir o final de palavras como `September` com um marcador de moeda.
 
 ```bash
 npm run layout:preview

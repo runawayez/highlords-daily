@@ -81,7 +81,16 @@ test(
         assert.equal(typeof query.format, "object");
         const properties = query.format.properties;
         let result;
-        if (properties.items) {
+        if (properties.language) {
+          const source = JSON.parse(query.messages[1].content);
+          result = {
+            language: properties.language.enum[0],
+            headline: `خبر مترجم ${source.title.match(/\d+$/)[0]}`,
+            summary:
+              "ملخص مترجم يحافظ على معلومات المصدر دون إضافة أرقام جديدة.",
+            tags: ["العلم"],
+          };
+        } else if (properties.items) {
           const rows = JSON.parse(query.messages[1].content);
           const fields = properties.items.items.properties;
           if (fields.category)
@@ -226,6 +235,16 @@ test(
       assert.equal(edition.topStories.length, 2);
       assert.ok(edition.lead.stableId);
       assert.equal(edition.lead.language, "ja-JP");
+      for (const story of [
+        edition.lead,
+        ...edition.sections.flatMap((section) => section.articles),
+      ]) {
+        assert.equal(Boolean(story.provenance?.languageFallback), false);
+        assert.ok(
+          /[\u0600-\u06ff]/u.test(story.summary),
+          "Foreign fallback must be recovered into Arabic",
+        );
+      }
       const html = await fs.readFile(
         path.join(editionDir, "index.html"),
         "utf8",

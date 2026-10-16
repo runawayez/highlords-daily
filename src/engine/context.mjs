@@ -14,7 +14,7 @@ export function createContext(options = {}) {
     : editionDate(config.timeZone);
   const settings = Object.freeze({ ...config });
   const fingerprint = digest({
-    engine: "5.3-source-copy-and-page-flow",
+    engine: "5.3.1-localized-source-recovery",
     config: settings,
     categories,
     feeds,

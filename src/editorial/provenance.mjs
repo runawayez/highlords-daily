@@ -6,7 +6,7 @@ function numbers(text) {
   // Preserve the unit/currency marker to avoid treating 5% as the same as $5.
   return [
     ...String(text).matchAll(
-      /(?:[R$€£¥]+\s*)?\d+(?:[.,:/-]\d+)*(?:\s*[%€£¥]|\s*(?:milh[oõ]es|bilh[oõ]es|million|billion))?/giu,
+      /(?:(?:R\$|US\$|[$€£¥])\s*)?\d+(?:[.,:/-]\d+)*(?:\s*[%€£¥]|\s*(?:milh[oõ]es|bilh[oõ]es|million|billion))?/giu,
     ),
   ].map(([value]) => value.replace(/\s+/g, "").toLowerCase());
 }

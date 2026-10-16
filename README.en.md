@@ -38,7 +38,9 @@ Default evaluation runs without a model; `--live` uses Ollama with isolated stat
 
 HTML and PDF now use a newspaper presentation: serif headlines, paper background, restrained red accents, a horizontal lead image and two-column stories. PDF pages are measured and composed for A4, with margins, running headers and page numbers, instead of shrinking a desktop screen.
 
-Version 5.3 cleans promotional calls and related links from RSS before summarization, avoids mid-word cuts and recognizes the same event across categories despite different headlines. Pagination uses complete individual stories to fill remaining space, and PDF raster images are resized/compressed without modifying original assets. No additional Ollama calls are required.
+Version 5.3 cleans promotional calls and related links from RSS before summarization, avoids mid-word cuts and recognizes the same event across categories despite different headlines. Pagination uses complete individual stories to fill remaining space, and PDF raster images are resized/compressed without modifying original assets. These layout and source-cleanup changes do not add Ollama calls.
+
+In 5.3.1, a foreign-source fallback is individually translated and validated before curation; failed recovery rejects the candidate instead of publishing untranslated prose. Only suspect copy requires additional model calls, and valid translations are cached. Numeric validation also stops treating the trailing letter in words such as `September` as a currency marker.
 
 ```bash
 npm run layout:preview
