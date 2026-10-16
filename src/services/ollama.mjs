@@ -333,16 +333,24 @@ function parseBatch(parsed, batch) {
           article.originalTitle,
         ),
       ),
-      headline: textField(
-        row,
-        ["headline", "title", "titulo", "manchete"],
-        article.originalTitle,
-      ).slice(0, 220),
-      summary: textField(
-        row,
-        ["summary", "resumo", "description", "descricao"],
-        article.excerpt || "",
-      ).slice(0, 900),
+      headline: limitCopy(
+        textField(
+          row,
+          ["headline", "title", "titulo", "manchete"],
+          article.originalTitle,
+        ),
+        220,
+        config.language,
+      ),
+      summary: limitCopy(
+        textField(
+          row,
+          ["summary", "resumo", "description", "descricao"],
+          article.excerpt || "",
+        ),
+        900,
+        config.language,
+      ),
       tags: tagsField(row),
     };
     decision(
@@ -831,3 +839,4 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
       return result;
     });
 }
+import { limitCopy } from "../editorial/source-text.mjs";

@@ -95,7 +95,7 @@ export function paginateEditorialDocument() {
   }
 
   function addRow(section, row, heading, name) {
-    const attach = () => {
+    const attach = (candidate = row) => {
       let unit = current.content.lastElementChild;
       const fresh =
         !unit?.classList.contains("pdf-section-unit") ||
@@ -107,24 +107,39 @@ export function paginateEditorialDocument() {
         unit.append(copy(heading));
         current.content.append(unit);
       }
-      unit.append(row);
-      window.highlordsFitRow?.(row);
+      unit.append(candidate);
+      window.highlordsFitRow?.(candidate);
       if (fits(current)) {
         registerSection(current, name);
         return true;
       }
-      row.remove();
+      candidate.remove();
       if (fresh) unit.remove();
       return false;
     };
     if (attach()) return;
+    const cards = [...row.querySelectorAll(":scope > .story-card")];
+    // Before moving an entire pair, try spending the remaining space on one
+    // complete story. The second story keeps the section heading on continuation.
+    if (cards.length === 2 && hasContent(current)) {
+      const singles = cards.map((card) => {
+        const single = document.createElement("div");
+        single.className = `section-grid single ${card.querySelector(".story-image") ? "solo-visual" : "solo-text"}`;
+        single.dataset.flowSingle = "true";
+        single.append(copy(card));
+        return single;
+      });
+      if (attach(singles[0])) {
+        addRow(section, singles[1], heading, name);
+        return;
+      }
+    }
     if (hasContent(current)) {
       newPage();
       if (attach()) return;
     }
     // A pair too tall at column width gets full-width individual stories.
     // It is never clipped or reduced to unreadable global scale.
-    const cards = [...row.querySelectorAll(":scope > .story-card")];
     if (cards.length > 1) {
       for (const card of cards) {
         const single = document.createElement("div");
@@ -156,6 +171,16 @@ export function paginateEditorialDocument() {
     }
     const attach = () => {
       current.content.append(pair);
+      const heights = [...pair.children].map(
+        (child) => child.getBoundingClientRect().height,
+      );
+      if (
+        Math.max(...heights) - Math.min(...heights) > 100 &&
+        Math.max(...heights) > Math.min(...heights) * 1.5
+      ) {
+        pair.remove();
+        return false;
+      }
       if (fits(current)) {
         for (const section of [left, right])
           registerSection(
@@ -168,11 +193,8 @@ export function paginateEditorialDocument() {
       return false;
     };
     if (attach()) return;
-    if (hasContent(current)) {
-      newPage();
-      if (attach()) return;
-    }
-    // Long single stories remain independent full-width units if a pair is too tall.
+    // Independent units can use the existing page rather than moving both
+    // editorias to the next one. Their headings travel with their own story.
     for (const section of [left, right]) {
       const heading = section.querySelector(".section-title");
       const row = copy(section.querySelector(".section-grid"));
@@ -227,7 +249,7 @@ export function paginateEditorialDocument() {
     if (
       occupied(last) < last.content.clientHeight * 0.42 &&
       before.content.children.length > 1 &&
-      unit?.classList.contains("pdf-section-unit")
+      unit?.matches(".pdf-section-unit,.pdf-cross-section-grid")
     ) {
       last.content.prepend(unit);
       if (
@@ -281,6 +303,8 @@ export function paginateEditorialDocument() {
     issues,
     highlights: "references-not-reprinted",
     compactBlocks: documentRoot.querySelectorAll(".pdf-compact").length,
+    flowSplitStories:
+      documentRoot.querySelectorAll("[data-flow-single]").length,
     fittedRows: [...documentRoot.querySelectorAll("[data-fit]")].map((row) => ({
       mode: row.dataset.fit,
       stories: [...row.querySelectorAll(":scope > .story-card")].map(

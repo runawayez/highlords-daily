@@ -1,4 +1,5 @@
 import { paginateEditorialDocument } from "../presentation/paginate.mjs";
+import { optimizePdfImages } from "./pdf-images.mjs";
 import { findBrowser } from "./browser.mjs";
 import fsp from "node:fs/promises";
 import path from "node:path";
@@ -290,12 +291,14 @@ export async function renderHtmlPdf(html, { baseDir, onLayout } = {}) {
     cleanup = await loadNewsletterPage(page, html, baseDir);
     await Promise.all([waitForImages(page), waitForFonts(page)]);
     await assertStoryImagesLoaded(page, expectedStoryImageCount(html));
+    const imageCompression = editorial ? await optimizePdfImages(page) : null;
     let scale = BASE_PDF_SCALE;
     if (editorial) {
       await page.addStyleTag({
         content: "@page{size:A4;margin:0}html{scroll-behavior:auto}",
       });
       const layout = await page.evaluate(paginateEditorialDocument);
+      layout.imageCompression = imageCompression;
       await Promise.all([waitForImages(page), waitForFonts(page)]);
       await assertStoryImagesLoaded(
         page,

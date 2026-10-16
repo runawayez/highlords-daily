@@ -37,9 +37,11 @@ Default evaluation runs without a model; `--live` uses Ollama with isolated stat
 
 
 
-## Editorial layout (5.2)
+## Editorial layout and finishing (5.3)
 
 HTML and PDF now use a newspaper presentation: serif headlines, paper background, restrained red accents, a horizontal lead image and two-column stories. PDF pages are measured and composed for A4, with margins, running headers and page numbers, instead of shrinking a desktop screen.
+
+Version 5.3 cleans promotional calls and related links from RSS before summarization, avoids mid-word cuts and recognizes the same event across categories despite different headlines. Pagination uses complete individual stories to fill remaining space, and PDF raster images are resized/compressed without modifying original assets. No additional Ollama calls are required.
 
 ```bash
 npm run layout:preview
@@ -47,6 +49,8 @@ npm run pdf:rerender -- --refresh-template
 ```
 
 The preview uses labeled fictional content and the production renderer. The second command refreshes the last saved edition without Ollama. New editions adopt the layout automatically. See [design and pagination](docs/EDITORIAL_DESIGN.md).
+
+Generate an edition with the updated core to apply source cleanup and event deduplication as well. `--refresh-template` preserves the saved JSON copy and selection.
 
 
 ---

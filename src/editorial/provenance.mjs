@@ -1,4 +1,6 @@
 import { digest } from "../utils/storage.mjs";
+import { sourceSummary } from "./summary.mjs";
+import { limitCopy } from "./source-text.mjs";
 
 function numbers(text) {
   // Preserve the unit/currency marker to avoid treating 5% as the same as $5.
@@ -47,8 +49,12 @@ export function enforceCopyProvenance(article, language = "en") {
   if (needsFallback && article.originalTitle) {
     const result = {
       ...article,
-      headline: article.originalTitle.slice(0, 220),
-      summary: String(article.excerpt || "").slice(0, 900),
+      headline: limitCopy(
+        article.originalTitle,
+        220,
+        article.language || language,
+      ),
+      summary: sourceSummary(article.excerpt, article.language || language),
     };
     return {
       ...result,

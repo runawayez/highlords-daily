@@ -1,4 +1,5 @@
 import { materialDevelopment } from "../editorial/developments.mjs";
+import { sourceEventRelation } from "../editorial/event-match.mjs";
 import { decision } from "../editorial/audit.mjs";
 import { atomicWrite } from "../utils/storage.mjs";
 import { normalizeText as normalizeText, wordTokens } from "../utils/text.mjs";
@@ -105,6 +106,8 @@ export function storyFingerprint(article = {}) {
 
 export function articleSimilarity(a = {}, b = {}) {
   if (a.link && b.link && String(a.link) === String(b.link)) return 1;
+  const sourceRelation = sourceEventRelation(a, b);
+  if (sourceRelation === "different") return 0;
   const topicA = normalizeText(a.topicKey || "");
   const topicB = normalizeText(b.topicKey || "");
   if (topicA && topicB && topicA === topicB) return 1;
@@ -121,7 +124,11 @@ export function articleSimilarity(a = {}, b = {}) {
     storyFingerprint(a),
     storyFingerprint(b),
   );
-  return Math.max(titleScore, fingerprintScore);
+  return Math.max(
+    titleScore,
+    fingerprintScore,
+    sourceRelation === "same" ? 0.94 : 0,
+  );
 }
 
 function betterArticle(a, b) {

@@ -1,4 +1,5 @@
 import { decision } from "../editorial/audit.mjs";
+import { cleanSourceText, limitCopy } from "../editorial/source-text.mjs";
 import { fetchFeedXml, recordFeedHealth } from "./feed-cache.mjs";
 import { mapLimit } from "../utils/concurrency.mjs";
 import { digest } from "../utils/storage.mjs";
@@ -132,11 +133,12 @@ export async function fetchFeed(feed) {
     .map((item, index) => {
       const published = itemDate(item);
       const link = item.link || item.guid;
-      const excerpt = stripHtml(
-        item.contentSnippet ||
+      const excerpt = cleanSourceText(
+        item["content:encoded"] ||
           item.content ||
           item.summary ||
           item.description ||
+          item.contentSnippet ||
           "",
       );
       return {
@@ -156,7 +158,11 @@ export async function fetchFeed(feed) {
         originalTitle: stripHtml(item.title || "(untitled)"),
         link,
         publishedAt: published.toISOString(),
-        excerpt: excerpt.slice(0, 1400),
+        excerpt: limitCopy(
+          excerpt,
+          1400,
+          feed.language || parsed.language || "en",
+        ),
         imageUrl:
           feed.imageMode === "off"
             ? null

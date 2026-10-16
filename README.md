@@ -37,9 +37,11 @@ A avaliação padrão não chama IA; `--live` usa Ollama em estado isolado. O be
 
 
 
-## Novo layout editorial (5.2)
+## Layout e acabamento editorial (5.3)
 
 HTML e PDF seguem uma apresentação de jornal: tipografia serifada, fundo de papel, vermelho nos detalhes, manchete com imagem horizontal e matérias em duas colunas. O PDF agora compõe páginas A4 medidas pelo conteúdo, com margens, cabeçalhos e numeração, sem reduzir a tela desktop inteira.
+
+A versão 5.3 limpa propaganda e links relacionados do RSS antes do resumo, evita cortes no meio de palavras e reconhece o mesmo evento entre categorias mesmo com títulos diferentes. A paginação aproveita espaços com matérias inteiras, e a cópia das imagens usada no PDF é redimensionada/comprimida sem alterar os arquivos originais. Não há chamadas adicionais ao Ollama.
 
 ```bash
 npm run layout:preview
@@ -47,6 +49,8 @@ npm run pdf:rerender -- --refresh-template
 ```
 
 A prévia usa textos fictícios e o renderer real. O segundo comando aplica o novo template à última edição já gerada, sem chamar Ollama. Novas edições adotam o layout automaticamente. Veja [design e paginação](docs/EDITORIAL_DESIGN.md).
+
+Para aplicar também a limpeza dos textos e a deduplicação, gere uma edição com o core atualizado. `--refresh-template` preserva a cópia e a seleção salvas no JSON.
 
 
 ---

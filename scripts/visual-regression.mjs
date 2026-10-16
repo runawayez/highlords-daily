@@ -7,6 +7,7 @@ import puppeteer from "puppeteer-core";
 import { findBrowser } from "../src/services/browser.mjs";
 import { renderNewsletterHtml } from "../src/template.mjs";
 import { renderHtmlPdf } from "../src/services/html-pdf.mjs";
+import { optimizePdfImages } from "../src/services/pdf-images.mjs";
 import { updateArchive } from "../src/services/archive.mjs";
 import { designPreview } from "../tests/fixtures/design-preview.mjs";
 import { unevenCopy } from "../tests/fixtures/uneven-copy.mjs";
@@ -31,9 +32,15 @@ const archive = await updateArchive(directory);
 const browser = await puppeteer.launch({
   executablePath: findBrowser(),
   headless: true,
-  args: ["--no-sandbox", "--disable-dev-shm-usage"],
+  args: [
+    "--no-sandbox",
+    "--disable-dev-shm-usage",
+    "--allow-file-access-from-files",
+  ],
 });
 const results = [];
+let rasterPreview;
+let rasterCompression;
 try {
   const page = await browser.newPage();
   for (const width of [1120, 390]) {
@@ -156,6 +163,96 @@ try {
     path: path.join(directory, "archive-mobile.png"),
     fullPage: true,
   });
+  // Exercise the real local-file image path: raster photos are compressed,
+  // alpha is retained, SVG art and the original files remain untouched.
+  const rasters = await page.evaluate(() => {
+    return [false, true].map((alpha) => {
+      const canvas = document.createElement("canvas");
+      canvas.width = 1800;
+      canvas.height = 1500;
+      const context = canvas.getContext("2d");
+      const pixels = context.createImageData(canvas.width, canvas.height);
+      let seed = 42;
+      for (let offset = 0; offset < pixels.data.length; offset += 4) {
+        seed = (Math.imul(seed, 1664525) + 1013904223) >>> 0;
+        const noise = (seed >>> 24) % 50;
+        const x = (offset / 4) % canvas.width;
+        pixels.data[offset] = 40 + noise + (Math.floor(x / 20) % 80);
+        pixels.data[offset + 1] = 90 + noise;
+        pixels.data[offset + 2] = 140 + noise;
+        pixels.data[offset + 3] = alpha ? 120 : 255;
+      }
+      context.putImageData(pixels, 0, 0);
+      return canvas.toDataURL("image/png");
+    });
+  });
+  const files = await Promise.all(
+    rasters.map(async (src, index) => {
+      const filename = path.join(directory, `raster-${index}.png`);
+      await fs.writeFile(filename, Buffer.from(src.split(",")[1], "base64"));
+      return filename;
+    }),
+  );
+  rasterPreview = designPreview();
+  rasterPreview.lead.imageUrl = pathToFileURL(files[0]).href;
+  const photo = rasterPreview.sections
+    .find((section) => section.articles.some((story) => story.imageUrl))
+    .articles.find((story) => story.imageUrl);
+  photo.imageUrl = pathToFileURL(files[1]).href;
+  const rasterPath = path.join(directory, "raster-images.html");
+  await fs.writeFile(rasterPath, renderNewsletterHtml(rasterPreview));
+  await page.goto(pathToFileURL(rasterPath).href);
+  rasterCompression = await optimizePdfImages(page);
+  assert.equal(rasterCompression.optimized, 2);
+  assert.ok(
+    rasterCompression.savedBytes > rasterCompression.originalBytes * 0.4,
+    "Raster optimization must materially reduce the image payload",
+  );
+  const decoded = await page.$$eval(
+    '.story-image img[src^="data:image/"]',
+    async (images) => {
+      const checks = [];
+      for (const image of images.filter(
+        (image) => !image.src.startsWith("data:image/svg"),
+      )) {
+        await image.decode();
+        const canvas = document.createElement("canvas");
+        canvas.width = 1;
+        canvas.height = 1;
+        const context = canvas.getContext("2d");
+        context.drawImage(image, 0, 0, 1, 1);
+        checks.push({
+          width: image.naturalWidth,
+          height: image.naturalHeight,
+          alpha: context.getImageData(0, 0, 1, 1).data[3],
+          type: image.src.slice(0, 22),
+        });
+      }
+      return checks;
+    },
+  );
+  assert.ok(
+    decoded.every((image) => Math.max(image.width, image.height) <= 1400),
+  );
+  assert.ok(
+    decoded.some(
+      (image) =>
+        image.type.startsWith("data:image/jpeg") && image.alpha === 255,
+    ),
+  );
+  assert.ok(
+    decoded.some(
+      (image) =>
+        image.type.startsWith("data:image/png") &&
+        image.alpha > 0 &&
+        image.alpha < 255,
+    ),
+  );
+  for (let index = 0; index < files.length; index++)
+    assert.equal(
+      (await fs.readFile(files[index])).toString("base64"),
+      rasters[index].split(",")[1],
+    );
 } finally {
   await browser.close();
 }
@@ -227,12 +324,14 @@ for (const name of [
   "approved-design",
   "maximum-copy",
   "uneven-copy",
+  "raster-images",
   "text-only",
   "rtl",
   "legacy",
 ]) {
   let sample = designPreview();
   if (name === "uneven-copy") sample = unevenCopy();
+  if (name === "raster-images") sample = rasterPreview;
   if (name === "maximum-copy") {
     for (const story of editionStories(sample)) {
       story.headline =
@@ -300,6 +399,18 @@ for (const name of [
         2,
         "PDF must fit both long/short article orders",
       );
+    if (name === "raster-images")
+      assert.equal(layout.imageCompression.optimized, 2);
+    if (name === "text-only") {
+      assert.ok(
+        layout.flowSplitStories > 0,
+        "Whole stories should use space that a complete pair could not occupy",
+      );
+      assert.ok(
+        layout.pageSummaries.at(-1).stories >= 2,
+        "A short last story should share its page after rebalancing adjacent editorias",
+      );
+    }
   }
   variants.push({ name, ...layout });
 }
@@ -361,6 +472,7 @@ const report = {
   pdf: pdfChecks,
   pagination,
   variants,
+  rasterCompression,
   archivedEditionUpgrade:
     "public CLI passed; JSON preserved; no Ollama required",
 };
