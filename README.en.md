@@ -20,8 +20,7 @@ AI runs locally through **Ollama**. No external AI API is required.
 
 The default **Vanilla/BR** preset is ready to use in `pt-BR`, with Brazil as its editorial context, curated Brazilian and international sources, a compact daily taxonomy and BR-specific coverage rules. The engine remains universal: locale, region, timezone, categories, feeds, editorial profile, visual identity and exporters can be changed without editing the core JavaScript.
 
-
-## Editorial quality and evaluation (5.1)
+## Editorial quality and evaluation
 
 New editions include HTML/JSON decision reports, source-text provenance, numeric consistency protection and conservative follow-up detection in publication history. The static archive supports search, category/source filters and exportable browser-local feedback. Publisher diversity is separate from declared reporting-origin diversity.
 
@@ -34,8 +33,6 @@ npm run test:visual
 ```
 
 Default evaluation runs without a model; `--live` uses Ollama with isolated state. The default benchmark replays reference responses; only `--live` measures real model work. Numeric consistency is not factual verification. See [editorial quality and limitations](docs/EDITORIAL_QUALITY.md) and [updated project context](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
-
-
 
 ## Editorial layout and finishing (5.3)
 
@@ -51,7 +48,6 @@ npm run pdf:rerender -- --refresh-template
 The preview uses labeled fictional content and the production renderer. The second command refreshes the last saved edition without Ollama. New editions adopt the layout automatically. See [design and pagination](docs/EDITORIAL_DESIGN.md).
 
 Generate an edition with the updated core to apply source cleanup and event deduplication as well. `--refresh-template` preserves the saved JSON copy and selection.
-
 
 ---
 
@@ -89,37 +85,15 @@ The current BR preset considers up to **160 candidates** per run and up to **20 
 
 The current pipeline combines deterministic rules with local AI evaluation:
 
-```text
-Preset / YAML / .env
-        ↓
-RSS / Atom
-        ↓
-source normalization + strict_focus + guardrails
-        ↓
-image validation + editorial history
-        ↓
-Ollama classification + score + headline + summary + topicKey
-        ↓
-per-category coverage recovery
-        ↓
-semantic editorial review
-        ↓
-semantic deduplication
-        ↓
-human-oriented multidimensional ranking
-        ↓
-global front-page calibration
-        ↓
-edition curation
-        ↓
-editorial quality gate
-        ↓
-local cache for selected images
-        ↓
-HTML + PDF + JSON + Markdown + email + social
-        ↓
-memory + browsable archive + plugins
-```
+1. Load the preset, publication profile, YAML and environment settings.
+2. Collect RSS/Atom, clean source text, apply scope guardrails, validate candidate images and consult publication history.
+3. Classify and summarize through Ollama, including per-category coverage recovery and source-copy checks.
+4. Deduplicate the candidate pool across categories using links, titles, `topicKey` and conservative source-event evidence.
+5. Run the `afterAnalyze` plugins: strict-focus audit, same-language source-copy protection, semantic review, multidimensional ranking and global front-page calibration.
+6. Curate and normalize the edition; cache and validate selected images, replacing failed images with same-category reserve stories when possible.
+7. Run the `beforeRender` plugins: presentation planning and the final editorial quality gate.
+8. Render HTML/JSON and optional exports; compose A4 pages and optimize raster images for PDF. A PDF failure preserves the HTML/JSON edition and is reported for recovery.
+9. Publish the complete staged edition, update the archive and history, and run post-publication plugin hooks.
 
 ### Classification and `strict_focus`
 
@@ -209,14 +183,22 @@ bash RUN-DAILY.sh
 
 ### Manual execution
 
-If you prefer to control services yourself:
+If Ollama is not already running, start it in one terminal and leave it open:
+
+```bash
+ollama serve
+```
+
+In another terminal, install dependencies and the default model, then validate and generate:
 
 ```bash
 npm ci
+ollama pull qwen3:4b
 npm run doctor
-ollama serve
 npm run daily
 ```
+
+Use your configured model instead of `qwen3:4b` when applicable. The pull step is only needed when that model is missing.
 
 On PowerShell, use `npm.cmd` if the execution policy blocks `npm.ps1`:
 
@@ -256,7 +238,7 @@ Editorial history is stored separately under `data/`, including the configured m
 
 ## Installation and diagnostics
 
-The BR preset works without a `.env` file. For a manual installation:
+The BR preset works without a `.env` file. With Ollama running and the configured model installed:
 
 ```bash
 npm ci
@@ -425,7 +407,9 @@ When image caching is enabled, files are stored under:
 output/YYYY-MM-DD/assets/
 ```
 
-This keeps HTML/PDF editions from permanently depending on third-party hotlinks. If the final cache write fails, the remote URL can remain as a fallback.
+This keeps HTML/PDF editions from permanently depending on third-party hotlinks. By default, `REQUIRE_IMAGES=true`: a failed image triggers replacement with a valid same-category reserve story, or removal of that slot; the final quality gate checks mandatory coverage again. Sources explicitly configured with `images: off` remain text-only. The remote URL fallback is available when `REQUIRE_IMAGES=false`.
+
+PDF generation optimizes a print-only copy of supported local/embedded raster images; original assets remain unchanged.
 
 ---
 
@@ -526,12 +510,17 @@ npm run sources:discover
 npm run config:show
 npm run cache:prune
 npm run benchmark
+npm run editorial:evaluate
+npm run feedback:import -- --file highlords-editorial-feedback.json
+npm run layout:preview
 npm run pdf:rerender
+npm run pdf:rerender -- --refresh-template
 npm run deliver
 npm run schedule -- --time 07:00
 npm run schedule:remove
 npm run check
 npm test
+npm run test:visual
 ```
 
 Use `node src/cli/run.mjs <command> --help` for additional options on commands routed through the main CLI.
@@ -562,6 +551,8 @@ output/
    ├─ highlords-daily-YYYY-MM-DD.pdf
    └─ assets/
 ```
+
+The edition directory also contains `editorial-report.html` and `editorial-report.json`. `output/status.json` records generation status; run checkpoints and metrics are stored under `data/runs/`.
 
 Markdown, email, social and archive exporters can be enabled or disabled through configuration.
 
@@ -613,7 +604,7 @@ npm run check
 npm test
 ```
 
-CI validates Windows, macOS and Linux on Node.js 22 and 24, including desktop-core preparation. Tests do not depend on Ollama or live feeds.
+CI validates Windows, macOS and Linux on Node.js 22 and 24, including desktop-core preparation. A separate visual job checks HTML/PDF rendering, pagination, article preservation and image compression with Chromium and Poppler. Tests do not depend on Ollama or live feeds.
 
 The project requires **Node.js 22.12+** and uses `package-lock.json` for reproducible installs.
 
