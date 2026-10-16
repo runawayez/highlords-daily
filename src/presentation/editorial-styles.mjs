@@ -20,5 +20,32 @@ html.pdf-mode,html.pdf-mode body{margin:0!important;padding:0!important;backgrou
 .pdf-page .long-headline h3{font-size:22px}.pdf-page .lead-card.long-headline h2{font-size:32px}.pdf-page .solo-text .long-headline h3{font-size:25px}
 
 .pdf-cross-section-grid{display:grid;grid-template-columns:repeat(2,minmax(0,1fr));gap:28px;border-top:1px solid var(--ink);padding:18px 0 25px}.pdf-teaser{min-width:0}.pdf-page .pdf-teaser .section-title{border:0;display:block;padding:0 0 13px}.pdf-page .pdf-teaser .section-title h2{font-family:var(--sans);font-size:8px;font-weight:700;color:var(--red);letter-spacing:.12em;text-transform:uppercase;line-height:1.5}.pdf-page .pdf-teaser .section-number{display:none}.pdf-page .pdf-teaser h3{font-size:24px}.pdf-page .pdf-teaser .story-meta span:not(.source){display:none}
+
+/* Content fitting changes geometry, never text, font size or article order. */
+@media(min-width:761px){
+.section-grid.fit-wide-first{grid-template-columns:minmax(0,1.45fr) minmax(0,1fr)!important}
+.section-grid.fit-wide-last{grid-template-columns:minmax(0,1fr) minmax(0,1.45fr)!important}
+.section-grid.fit-stack{grid-template-columns:1fr!important;gap:24px}
+.section-grid.fit-stack>.story-card+.story-card{border-top:1px solid var(--line);padding-top:22px}
+.section-grid.fit-stack>.has-image{display:grid;grid-template-columns:minmax(0,.8fr) minmax(0,1.2fr);grid-template-rows:auto auto 1fr;gap:14px 26px;align-items:start}
+.section-grid.fit-stack>.has-image .story-body{display:contents}
+.section-grid.fit-stack>.has-image .story-image{grid-column:1;grid-row:1/4}
+.section-grid.fit-stack>.has-image .story-meta{grid-column:2;grid-row:1;margin:0}
+.section-grid.fit-stack>.has-image h3{grid-column:2;grid-row:2;margin:0}
+.section-grid.fit-stack>.has-image p{grid-column:1/-1;grid-row:4}
+.section-grid.fit-stack>.has-image .tags{grid-column:1/-1;grid-row:5;margin:0}
+.section-grid.fit-stack>.has-image .read-link{grid-column:1/-1;grid-row:6;justify-self:start;margin:0}
+.section-grid.fit-stack>.has-image .story-image{height:190px;aspect-ratio:auto;margin:0}
+.section-grid.fit-stack>.no-image .story-body{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,1.2fr);grid-template-areas:"meta meta" "title summary" "read summary" "tags tags";column-gap:26px}
+.section-grid.fit-stack>.no-image .story-meta{grid-area:meta}
+.section-grid.fit-stack>.no-image h3{grid-area:title}
+.section-grid.fit-stack>.no-image p{grid-area:summary}
+.section-grid.fit-stack>.no-image .read-link{grid-area:read;justify-self:start;align-self:start}
+.section-grid.fit-stack>.no-image .tags{grid-area:tags}
+.pdf-page .section-grid.fit-stack>.story-card{padding:0}
+.pdf-page .section-grid.fit-stack>.story-card+.story-card{padding-top:18px}
+.pdf-page .section-grid.fit-stack>.has-image .story-image{height:165px;margin:0}
+}
+
 `;
 }

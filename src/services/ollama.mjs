@@ -233,7 +233,7 @@ EDITORIAL:
 - notícia válida e comum pode ficar entre 4 e 7; reserve 8–10 para grandes destaques;
 - fora do escopo recebe category null e score 0;
 - headline curta e natural em ${config.language};
-- summary com 1 ou 2 frases curtas;
+- summary com 1 ou 2 frases curtas, idealmente 200 a 420 caracteres quando a fonte tiver contexto suficiente; nunca invente detalhes nem repita informação para atingir tamanho;
 - tags com 2 a 6 termos específicos.
 
 Retorne SOMENTE:

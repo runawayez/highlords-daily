@@ -108,6 +108,7 @@ export function paginateEditorialDocument() {
         current.content.append(unit);
       }
       unit.append(row);
+      window.highlordsFitRow?.(row);
       if (fits(current)) {
         registerSection(current, name);
         return true;
@@ -280,6 +281,12 @@ export function paginateEditorialDocument() {
     issues,
     highlights: "references-not-reprinted",
     compactBlocks: documentRoot.querySelectorAll(".pdf-compact").length,
+    fittedRows: [...documentRoot.querySelectorAll("[data-fit]")].map((row) => ({
+      mode: row.dataset.fit,
+      stories: [...row.querySelectorAll(":scope > .story-card")].map(
+        (card) => card.dataset.storyId,
+      ),
+    })),
     minimumBodyFontPx: Math.min(
       ...[...documentRoot.querySelectorAll(".story-card p")].map((element) =>
         parseFloat(getComputedStyle(element).fontSize),

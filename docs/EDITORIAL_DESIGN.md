@@ -8,6 +8,12 @@ O layout aplica a direção visual aprovada na prévia conceitual: fundo de pape
 
 A manchete é apresentada antes de uma imagem horizontal de destaque. Fontes, categorias e links permanecem visíveis. Matérias com imagem, notas tipográficas e editorias de uma ou várias matérias usam composições distintas. Em celular, as colunas empilham. Scores continuam disponíveis nos dados/relatórios, sem entrar na apresentação de leitura.
 
+### Encaixe por conteúdo
+
+`src/presentation/fit-row.mjs` mede cada par com as fontes e imagens carregadas. Quando há diferença relevante de altura, compara colunas iguais, colunas 59/41 em ambos os sentidos e blocos horizontais empilhados. O custo considera altura e espaço vazio; uma mudança precisa trazer ganho real sem aumentar significativamente a altura da linha. A composição horizontal coloca imagem e título no topo e libera a largura para o resumo, em vez de deixar uma nota curta ao lado de uma parede de texto. A ordem editorial, palavras e tamanhos de fonte são preservados. A medição é refeita ao redimensionar o HTML e ao inserir cada linha na página A4. No celular, permanece o fluxo simples de uma coluna.
+
+Na geração de novas edições, a proteção de cópia no idioma da fonte seleciona frases completas do RSS, com referência de 420 caracteres, e remove chamadas promocionais explícitas. Uma primeira frase maior é preservada inteira; fontes curtas não são preenchidas. O `excerpt` original permanece nos dados para auditoria. Não há chamada adicional ao Ollama. Resumos traduzidos continuam sob responsabilidade do modelo, que recebe a mesma orientação de extensão; o editor de arte recebe `summaryLength` completo mesmo quando o texto enviado está abreviado. `--refresh-template` altera somente a apresentação da cópia arquivada, mantendo o JSON e o texto existentes.
+
 ## PDF
 
 Novos HTMLs possuem `data-design="editorial-v2"`. Ao gerar PDF, `src/services/html-pdf.mjs` usa Chromium para compor páginas A4 com `src/presentation/paginate.mjs`. Os mesmos componentes/conteúdos do HTML são clonados e medidos; os títulos, resumos e fatos não são reescritos.
@@ -37,6 +43,6 @@ npm run pdf:rerender -- 2026-10-15 --refresh-template
 
 ## Verificação
 
-`npm run test:visual` gera screenshots e PDFs para a amostra aprovada, títulos de 220 caracteres/resumos de 900, edição sem imagens, texto RTL/árabe e HTML legado. Verifica escala, tamanho de fonte, preservação da quantidade de matérias, ausência de overflow e páginas vazias. Com Poppler, a fixture de estresse também exige que início/fim dos cards permaneçam na mesma página e que a numeração corresponda à paginação real.
+`npm run test:visual` gera screenshots e PDFs para a amostra aprovada, títulos de 220 caracteres/resumos de 900, pares com matéria longa e nota curta nas duas ordens, edição sem imagens, texto RTL/árabe e HTML legado. Compara o custo antes/depois do encaixe em desktop e tablet, preservação de todo o texto e retorno ao fluxo simples no celular. Verifica escala, tamanho de fonte, preservação da quantidade de matérias, ausência de overflow e páginas vazias. Com Poppler, a fixture de estresse também exige que início/fim dos cards permaneçam na mesma página e que a numeração corresponda à paginação real.
 
 Os arquivos de inspeção ficam em `data/visual-regression/`; o CI publica os artefatos do job visual. Os testes não precisam de Ollama ou fontes externas. Para outros alfabetos, as fontes com glifos adequados continuam sendo um requisito do ambiente, conforme `docs/ENGINE.md`.

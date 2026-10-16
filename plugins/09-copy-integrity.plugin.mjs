@@ -1,4 +1,5 @@
 import { config } from "../src/config.mjs";
+import { sourceSummary } from "../src/editorial/summary.mjs";
 
 function baseLanguage(value) {
   return String(value || "")
@@ -46,7 +47,7 @@ export function applyCopyIntegrity(article, targetLanguage = config.language) {
   return {
     ...article,
     headline: (originalTitle || article.headline || "").slice(0, 220),
-    summary: (originalExcerpt || article.summary || "").slice(0, 900),
+    summary: sourceSummary(originalExcerpt || article.summary, targetLanguage),
     tags: sourceBackedTags(article),
     copyIntegrity: "source-preserved",
   };
@@ -65,7 +66,7 @@ export function afterAnalyze(payload) {
 
   if (restored) {
     console.log(
-      `  Copy integrity: ${restored} matéria(s) no idioma da edição preservaram título e resumo da fonte.`,
+      `  Copy integrity: ${restored} matéria(s) no idioma da edição preservaram título e frases da fonte.`,
     );
   }
 

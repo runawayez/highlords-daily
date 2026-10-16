@@ -1,4 +1,5 @@
 import { editorialStyles } from "./presentation/editorial-styles.mjs";
+import { fitEditorialRow } from "./presentation/fit-row.mjs";
 import { uiCatalog, direction } from "./services/i18n.mjs";
 import { escapeHtml, safeUrl } from "./utils/html.mjs";
 import { categories, config, publication } from "./config.mjs";
@@ -287,6 +288,19 @@ ${editorialStyles(publication)}
   </main>
   <footer class="footer"><strong>${escapeHtml(publication.name)}</strong><a href="../index.html">${escapeHtml(ui.archiveTitle)}</a><span>${escapeHtml(formatDate(edition.editionDate))}</span></footer>
 </div>
+<script>
+window.highlordsFitRow = ${fitEditorialRow.toString()};
+(() => {
+  const fit = () => {
+    if (document.documentElement.classList.contains('pdf-mode')) return;
+    document.querySelectorAll('.newsletter-section .section-grid').forEach(window.highlordsFitRow);
+  };
+  document.fonts.ready.then(fit);
+  window.addEventListener('load', fit);
+  let timer;
+  window.addEventListener('resize', () => { clearTimeout(timer); timer = setTimeout(fit, 120); });
+})();
+</script>
 </body>
 </html>`;
 }

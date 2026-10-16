@@ -307,6 +307,7 @@ function compactForEditor(sections) {
       id: Number(article.id),
       headline: article.headline || article.originalTitle,
       summary: String(article.summary || article.excerpt || "").slice(0, 260),
+      summaryLength: String(article.summary || article.excerpt || "").length,
       source: article.source,
       sectionPriority: storyPriority(article),
       frontPagePriority:
@@ -375,6 +376,7 @@ Para cada seção:
 - imageFitness abaixo de 0.55 indica visual fraco: evite escolher essa matéria como feature por causa da imagem;
 - prefira uma boa imagem + uma nota tipográfica a dois cards visualmente desequilibrados;
 - textos longos e manchetes longas pedem mais espaço horizontal;
+- summaryLength informa a extensão completa; o campo summary é apenas uma amostra. Ao ordenar, prefira pares de extensão e presença de imagem semelhantes, sem sacrificar a prioridade editorial;
 - featureId é opcional e, quando usado, deve pertencer à própria seção;
 - não altere a ordem das seções;
 - devolva somente JSON válido.`,

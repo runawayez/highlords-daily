@@ -9,6 +9,7 @@ import { renderNewsletterHtml } from "../src/template.mjs";
 import { renderHtmlPdf } from "../src/services/html-pdf.mjs";
 import { updateArchive } from "../src/services/archive.mjs";
 import { designPreview } from "../tests/fixtures/design-preview.mjs";
+import { unevenCopy } from "../tests/fixtures/uneven-copy.mjs";
 import { layoutFixture } from "../tests/fixtures/layout.mjs";
 import { editionStories } from "../src/editorial/audit.mjs";
 import { option } from "./editorial-fixture-run.mjs";
@@ -61,6 +62,59 @@ try {
       fullPage: true,
     });
     results.push({ width, ...issues });
+  }
+  const unevenPath = path.join(directory, "uneven-copy.html");
+  await fs.writeFile(unevenPath, renderNewsletterHtml(unevenCopy()));
+  for (const width of [1120, 794, 390]) {
+    await page.setViewport({ width, height: 1100 });
+    await page.goto(pathToFileURL(unevenPath).href);
+    await page.evaluate(() => document.fonts.ready);
+    const fitting = await page.evaluate(() => {
+      return [
+        ...document.querySelectorAll(".newsletter-section .section-grid"),
+      ].map((row) => {
+        window.highlordsFitRow(row);
+        const mode = row.dataset.fit;
+        const before = row.textContent;
+        const score = () => {
+          const height = row.getBoundingClientRect().height;
+          const waste = row.classList.contains("fit-stack")
+            ? 0
+            : [...row.children].reduce((sum, card) => {
+                const rect = card.getBoundingClientRect();
+                return sum + (height - rect.height) * rect.width;
+              }, 0) / row.getBoundingClientRect().width;
+          return height + waste * 0.8;
+        };
+        const fitted = score();
+        row.classList.remove("fit-wide-first", "fit-wide-last", "fit-stack");
+        const baseline = score();
+        window.highlordsFitRow(row);
+        return {
+          mode,
+          improved: fitted < baseline - 16,
+          sameText: row.textContent === before,
+        };
+      });
+    });
+    for (const row of fitting) {
+      assert.ok(row.sameText, "Fitting must preserve every word");
+      if (width > 760)
+        assert.ok(
+          row.mode && row.improved,
+          "Uneven rows must improve in either story order",
+        );
+      else
+        assert.equal(
+          row.mode,
+          undefined,
+          "Mobile keeps a natural single-column flow",
+        );
+    }
+    await page.screenshot({
+      path: path.join(directory, `uneven-copy-${width}.png`),
+      fullPage: true,
+    });
   }
   // Browser-level regression: search, accents, category/source filters, feedback.
   await page.goto(pathToFileURL(archive).href);
@@ -172,11 +226,13 @@ const variants = [];
 for (const name of [
   "approved-design",
   "maximum-copy",
+  "uneven-copy",
   "text-only",
   "rtl",
   "legacy",
 ]) {
   let sample = designPreview();
+  if (name === "uneven-copy") sample = unevenCopy();
   if (name === "maximum-copy") {
     for (const story of editionStories(sample)) {
       story.headline =
@@ -238,6 +294,12 @@ for (const name of [
     );
     if (name === "approved-design")
       assert.ok(layout.pages <= 3, "Normal edition should remain compact");
+    if (name === "uneven-copy")
+      assert.equal(
+        layout.fittedRows.length,
+        2,
+        "PDF must fit both long/short article orders",
+      );
   }
   variants.push({ name, ...layout });
 }
