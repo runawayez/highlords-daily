@@ -105,7 +105,10 @@ export async function runPipeline(context, services) {
         imageRejected: collected.imageRejected || 0,
         feedErrors: collected.errors || [],
       };
-      const staging = path.join(runDirectory, "edition");
+      // Keep staging/backup on the output filesystem, even when dataDir is on another disk.
+      const stagingRoot = path.join(config.outputDir, ".staging", date);
+      const staging = path.join(stagingRoot, "edition");
+      await fs.rm(staging, { recursive: true, force: true });
       await fs.mkdir(staging, { recursive: true });
       const edition = await measure("images", () =>
         services.images(selected, staging, context),
@@ -140,7 +143,12 @@ export async function runPipeline(context, services) {
       if (config.exportPdf) {
         try {
           const pdf = await measure("pdf", () =>
-            services.pdf(html, { baseDir: staging }),
+            services.pdf(html, {
+              baseDir: staging,
+              onLayout: (layout) => {
+                edition.stats.pdfLayout = layout;
+              },
+            }),
           );
           await atomicWrite(
             path.join(staging, `${publication.slug}-${date}.pdf`),
@@ -152,6 +160,10 @@ export async function runPipeline(context, services) {
           console.warn(`PDF failed; HTML/JSON preserved: ${pdfError}`);
         }
       }
+      await atomicWrite(
+        path.join(staging, "edition.json"),
+        JSON.stringify(edition, null, 2),
+      );
       await saveReport(
         staging,
         editorialReport(
@@ -163,7 +175,7 @@ export async function runPipeline(context, services) {
       );
       await fs.mkdir(config.outputDir, { recursive: true });
       const finalDirectory = path.join(config.outputDir, date);
-      const backup = path.join(runDirectory, "previous-edition");
+      const backup = path.join(stagingRoot, "previous-edition");
       // Never expose partial HTML/assets: stage a complete edition, then swap directories.
       await fs.rm(backup, { recursive: true, force: true });
       try {
@@ -186,6 +198,7 @@ export async function runPipeline(context, services) {
       state.state.pdfError = pdfError;
       state.state.completedAt = new Date().toISOString();
       await state.save();
+      await fs.rm(backup, { recursive: true, force: true });
       await services.status?.(
         {
           status: pdfError ? "pdf-pending" : "completed",

@@ -2,61 +2,7 @@ import { parseEnv } from "node:util";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
-const fields = {
-  preset: "PRESET",
-  presetDir: "PRESET_DIR",
-  language: "LANGUAGE",
-  region: "REGION",
-  coverage: "COVERAGE",
-  sourceLanguages: "SOURCE_LANGUAGES",
-  timeZone: "TIME_ZONE",
-  editorialContext: "EDITORIAL_CONTEXT",
-  publicationName: "PUBLICATION_NAME",
-  publicationSlug: "PUBLICATION_SLUG",
-  publicationTagline: "PUBLICATION_TAGLINE",
-  categoriesFile: "CATEGORIES_FILE",
-  feedsFile: "FEEDS_FILE",
-  dataDir: "DATA_DIR",
-  outputDir: "OUTPUT_DIR",
-  memoryFile: "MEMORY_FILE",
-  cacheDir: "CACHE_DIR",
-  routingFile: "ROUTING_FILE",
-  pluginsDir: "PLUGINS_DIR",
-  enabledPlugins: "ENABLED_PLUGINS",
-  uiLocaleFile: "UI_LOCALE_FILE",
-  ollamaHost: "OLLAMA_HOST",
-  ollamaModel: "OLLAMA_MODEL",
-  editorialProfile: "EDITORIAL_PROFILE",
-  feedConcurrency: "FEED_CONCURRENCY",
-  domainConcurrency: "DOMAIN_CONCURRENCY",
-  imageConcurrency: "IMAGE_CONCURRENCY",
-  maxCandidates: "MAX_CANDIDATES",
-  maxItemsPerFeed: "MAX_ITEMS_PER_FEED",
-  aiBatchSize: "AI_BATCH_SIZE",
-  itemsPerCategory: "ITEMS_PER_CATEGORY",
-  llmMinScore: "LLM_MIN_SCORE",
-  requireImages: "REQUIRE_IMAGES",
-  cacheImages: "CACHE_IMAGES",
-  exportPdf: "EXPORT_PDF",
-  exportEmail: "EXPORT_EMAIL",
-  exportSocial: "EXPORT_SOCIAL",
-  exportMarkdown: "EXPORT_MARKDOWN",
-  autoOpen: "AUTO_OPEN",
-  historyEnabled: "HISTORY_ENABLED",
-  analysisCacheDays: "ANALYSIS_CACHE_DAYS",
-};
-const fileFields = new Set([
-  "presetDir",
-  "categoriesFile",
-  "feedsFile",
-  "dataDir",
-  "outputDir",
-  "memoryFile",
-  "cacheDir",
-  "routingFile",
-  "pluginsDir",
-  "uiLocaleFile",
-]);
+import { fields, fileFields } from "../config-options.mjs";
 export async function profileEnvironment(file, baseEnv = process.env) {
   const absolute = path.resolve(file);
   const base = path.dirname(absolute);
@@ -64,11 +10,20 @@ export async function profileEnvironment(file, baseEnv = process.env) {
   if (!document || typeof document !== "object" || Array.isArray(document))
     throw new Error("Profile must be a YAML/JSON object.");
   const environment = { ...baseEnv };
-  for (const field of Object.values(fields)) delete environment[field];
+  // Browser installation paths are machine capabilities, like PATH, and may
+  // be shared. Publication identity, policy, state and delivery never inherit.
+  for (const field of Object.values(fields))
+    if (!["BROWSER_PATH", "PUPPETEER_EXECUTABLE_PATH"].includes(field))
+      delete environment[field];
+  for (const name of Object.keys(environment))
+    if (/^(EDITORIAL_|SMTP_|EMAIL_|TELEGRAM_|DISCORD_)/.test(name))
+      delete environment[name];
   environment.HIGHLORDS_PROFILE = "true";
   environment.PRESET = document.preset || "global";
   for (const [key, value] of Object.entries(document)) {
     if (key === "secretsFile") {
+      if (typeof value !== "string" || !value.trim())
+        throw new Error("secretsFile must be a path.");
       const secrets = parseEnv(
         await fs.readFile(path.resolve(base, String(value)), "utf8"),
       );

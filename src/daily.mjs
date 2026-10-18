@@ -262,7 +262,7 @@ export async function main(options = {}) {
   );
   if (config.autoOpen)
     await openFile(path.join(result.editionDir, "index.html"));
-  if (result.pdfError && process.env.REQUIRE_PDF === "true")
+  if (result.pdfError && config.requirePdf)
     throw new Error(`Edition saved, PDF pending: ${result.pdfError}`);
   return result;
 }

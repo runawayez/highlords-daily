@@ -55,6 +55,7 @@ export function applyCopyIntegrity(article, targetLanguage = config.language) {
 }
 
 export function afterAnalyze(payload) {
+  if (config.copyMode === "generated") return payload;
   const input = Array.isArray(payload?.articles) ? payload.articles : [];
   if (!input.length) return payload;
 

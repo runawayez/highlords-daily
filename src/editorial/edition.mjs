@@ -6,6 +6,7 @@ import {
   publication,
 } from "../config.mjs";
 import { uiCatalog } from "../services/i18n.mjs";
+import { needsCopyLocalization } from "../services/localized-copy.mjs";
 
 const FRONT_PAGE_TARGET = 4;
 const FRONT_PAGE_MAX = 5;
@@ -368,6 +369,8 @@ export function validateNewsletterContract(edition) {
   ].filter(Boolean)) {
     if (article.provenance?.languageFallback)
       errors.push(`unlocalized-source-fallback:${article.id}`);
+    else if (needsCopyLocalization(article, config.language))
+      errors.push(`unlocalized-copy:${article.id}`);
   }
 
   for (const section of edition?.sections || []) {

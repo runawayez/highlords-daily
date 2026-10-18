@@ -1,6 +1,8 @@
+> Atualização 18/10/2026: o core e os manifests desktop estão em 5.4.0. Consulte [Confiabilidade 5.4](RELIABILITY_5_4.md) para políticas de perfil, datas, cópia, coleta progressiva, cache e recuperação do PDF; os snapshots abaixo registram a evolução anterior.
+
 # Highlords Daily — contexto atual
 
-Snapshot: 16/10/2026. Versão do core: 5.3.1.
+Snapshot: 18/10/2026. Versão do core: 5.4.0.
 Repositório: https://github.com/runawayez/highlords-daily, branch `main`.
 O código e os presets da main são a fonte de verdade. Este arquivo substitui conceitualmente o contexto 4.0.0 de 07/10/2026; não é uma cópia daquele snapshot.
 

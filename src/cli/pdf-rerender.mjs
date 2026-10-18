@@ -5,6 +5,8 @@ import { renderNewsletterHtml } from "../template.mjs";
 import { acquireLock } from "../engine/run-state.mjs";
 import { atomicWrite } from "../utils/storage.mjs";
 import { renderHtmlPdf } from "../services/html-pdf.mjs";
+import { recordPdfRecovery } from "../services/pdf-recovery.mjs";
+import { updateArchive } from "../services/archive.mjs";
 
 function validDate(value = "") {
   return /^\d{4}-\d{2}-\d{2}$/.test(String(value));
@@ -59,7 +61,13 @@ async function main() {
     console.log(
       `Regenerando PDF da edição ${editionDate} a partir do index.html...`,
     );
-    const pdf = await renderHtmlPdf(html, { baseDir: editionDir });
+    let layout;
+    const pdf = await renderHtmlPdf(html, {
+      baseDir: editionDir,
+      onLayout: (value) => {
+        layout = value;
+      },
+    });
 
     const pdfPath = path.join(
       editionDir,
@@ -73,6 +81,8 @@ async function main() {
     if (refreshTemplate) await atomicWrite(htmlPath, html);
     if (editionDate === (await latestEditionDate()))
       await atomicWrite(latestPdf, pdf);
+    await recordPdfRecovery(editionDate, config, publication, layout);
+    await updateArchive(config.outputDir);
 
     console.log(`PDF: ${pdfPath}`);
   } finally {

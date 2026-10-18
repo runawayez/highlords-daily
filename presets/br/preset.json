@@ -20,5 +20,9 @@
     "editorial-ranking.plugin.mjs",
     "99-editorial-quality-gate.plugin.mjs"
   ],
-  "routing": "routing.mjs"
+  "routing": "routing.mjs",
+  "requiredPlugins": [
+    "05-editorial-contract-bootstrap.plugin.mjs",
+    "99-editorial-quality-gate.plugin.mjs"
+  ]
 }

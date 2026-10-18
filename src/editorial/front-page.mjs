@@ -61,7 +61,7 @@ NÃO invente fatos. Devolva somente JSON válido.`,
         currentIntro,
         stories: compact.slice(0, 10),
       }),
-      { timeoutMs: 90000, schema },
+      { timeoutMs: 90000, schema, purpose: "intro" },
     );
     return readerFacingIntro(response?.intro)
       ? response.intro.trim()
@@ -133,7 +133,7 @@ REGRAS:
       currentIntro: curated?.intro || "",
       candidates: compact,
     }),
-    { timeoutMs: 150000, schema },
+    { timeoutMs: 150000, schema, purpose: "highlights" },
   );
 
   if (!readerFacingIntro(result?.intro)) {

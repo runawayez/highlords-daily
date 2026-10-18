@@ -34,6 +34,23 @@ npm run test:visual
 
 A avaliação padrão não chama IA; `--live` usa Ollama em estado isolado. O benchmark padrão reproduz respostas de referência; apenas `--live` mede o modelo. Consistência numérica não equivale a checagem factual. Veja [qualidade editorial e limitações](docs/EDITORIAL_QUALITY.md) e o [contexto atualizado do projeto](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
 
+## Confiabilidade e desempenho (5.4)
+
+- Título e resumo são verificados separadamente para detectar cópia estrangeira, inclusive com idioma ausente/incorreto. A recuperação continua limitada; sinais linguísticos não são um detector universal nem checagem factual.
+- Perfis isolam identidade, políticas, memória e destinos de entrega. Com `--config`, configure segredos em `secretsFile`; destinos/credenciais do ambiente não são herdados. Caminhos de navegador da máquina podem ser compartilhados.
+- `DATA_DIR` também define o banco padrão; presets inexistentes, focos inválidos, opções numéricas inválidas e plugins obrigatórios ausentes produzem erros claros.
+- Editorias de Gazeta Esportiva, Agência Brasil, Globo e UOL compartilham seus respectivos grupos de publicação. Candidatas são distribuídas por grupo, com oportunidade inicial para focos disponíveis.
+- As imagens são validadas progressivamente; falhas acionam reservas. O motor não precisa consultar a imagem de todo item descartado pelo limite.
+- Revisões de foco e semântica têm cache por conteúdo/prompt/modelo/taxonomia. As métricas distinguem análise, revisão, ranking, calibração, tradução, destaques e apresentação.
+- `COPY_MODE=extractive` preserva título e frases da fonte no mesmo idioma, sem pedir escrita que seria descartada. `generated` permite a cópia gerada, mantendo verificações de procedência e idioma. Fontes estrangeiras continuam exigindo tradução.
+- Datas ausentes/inválidas são rejeitadas por padrão (`FEED_UNKNOWN_DATE=reject`); `allow` aceita com marcação de qualidade da data. Itens são ordenados antes do limite. Respostas vazias/HTML têm diagnóstico próprio; RSS legado sem versão e charsets declarados são normalizados.
+- `pdf:rerender` reconcilia PDF, status, relatórios e estado sem chamar IA. Métricas de páginas, ocupação e compressão ficam em `edition.json`.
+- Os launchers usam o mesmo bootstrap Node, sincronizam dependências quando o lockfile muda e respeitam `EXPORT_PDF=false` e Ollama remoto. Somente um Ollama local iniciado pelo launcher é encerrado por ele.
+
+Execute `git pull --ff-only` e o launcher habitual. Na primeira execução, o bootstrap sincroniza as dependências. Edições já concluídas não são refeitas automaticamente; use `--force` somente para uma regeneração deliberada. Checkpoints incompletos são invalidados quando o código/preset/plugin muda.
+
+Detalhes, migração e limites: [revisão 5.4](docs/RELIABILITY_5_4.md).
+
 ## Layout e acabamento editorial (5.3)
 
 HTML e PDF seguem uma apresentação de jornal: tipografia serifada, fundo de papel, vermelho nos detalhes, manchete com imagem horizontal e matérias em duas colunas. O PDF agora compõe páginas A4 medidas pelo conteúdo, com margens, cabeçalhos e numeração, sem reduzir a tela desktop inteira.
@@ -175,7 +192,7 @@ Esse é o fluxo recomendado para uso diário no Windows.
 
 ### macOS / Linux
 
-Instale Git, Node.js 22.12+, Ollama, `curl` e Chrome/Chromium/Edge.
+Instale Git e Node.js 22.12+. Ollama pode ser local ou remoto; Chrome/Chromium/Edge só é necessário para PDF.
 
 ```bash
 git clone https://github.com/runawayez/highlords-daily.git

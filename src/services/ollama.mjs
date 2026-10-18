@@ -6,10 +6,17 @@ import { requestChat, itemsSchema } from "./ollama-client.mjs";
 import { DiskCache, digest } from "../utils/storage.mjs";
 import { count } from "../engine/metrics.mjs";
 import { hasOllamaModel } from "../utils/ollama-model.mjs";
+import { sourceSummary } from "../editorial/summary.mjs";
 import { categories, config, profile, publication } from "../config.mjs";
 
-async function chatJson(system, user, timeout = 120000, schema = "json") {
-  return requestChat(system, user, { timeoutMs: timeout, schema });
+async function chatJson(
+  system,
+  user,
+  timeout = 120000,
+  schema = "json",
+  purpose = "curation",
+) {
+  return requestChat(system, user, { timeoutMs: timeout, schema, purpose });
 }
 
 export async function ensureOllama() {
@@ -35,6 +42,10 @@ export async function ensureOllama() {
     throw new Error(
       `Modelo ${config.ollamaModel} não encontrado. Execute: ollama pull ${config.ollamaModel}`,
     );
+  config.ollamaModelDigest =
+    data.models?.find((model) =>
+      hasOllamaModel([model.name], config.ollamaModel),
+    )?.digest || null;
 }
 
 const taxonomy = categories
@@ -388,7 +399,7 @@ function parseBatch(parsed, batch) {
 }
 
 async function analyzeBatchOnce(batch, extraInstruction = "") {
-  const system = extraInstruction
+  let system = extraInstruction
     ? `${analysisSystem}\n\n${extraInstruction}`
     : analysisSystem;
   const schema = itemsSchema({
@@ -403,8 +414,43 @@ async function analyzeBatchOnce(batch, extraInstruction = "") {
     summary: { type: "string" },
     tags: { type: "array", items: { type: "string" } },
   });
-  const parsed = await chatJson(system, payloadForBatch(batch), 150000, schema);
-  return parseBatch(parsed, batch);
+  const sameLanguage = (language) =>
+    String(language || "und")
+      .toLowerCase()
+      .split(/[-_]/)[0] === config.language.toLowerCase().split("-")[0];
+  if (
+    config.copyMode === "extractive" &&
+    batch.every((article) => sameLanguage(article.language))
+  ) {
+    delete schema.properties.items.items.properties.headline;
+    delete schema.properties.items.items.properties.summary;
+    schema.properties.items.items.required =
+      schema.properties.items.items.required.filter(
+        (field) => !["headline", "summary"].includes(field),
+      );
+    system +=
+      "\nEXTRACTIVE MODE: Do not return headline or summary. Classify, score, identify the topic and tags only; source sentences will be composed deterministically.";
+  }
+  const parsed = await chatJson(
+    system,
+    payloadForBatch(batch),
+    150000,
+    schema,
+    "analysis",
+  );
+  const result = parseBatch(parsed, batch);
+  if (config.copyMode === "extractive") {
+    for (const article of [...result.approved, ...result.classified])
+      if (sameLanguage(article.language)) {
+        article.headline = limitCopy(
+          article.originalTitle,
+          220,
+          config.language,
+        );
+        article.summary = sourceSummary(article.excerpt, config.language);
+      }
+  }
+  return result;
 }
 
 function betterResult(current, candidate) {
@@ -809,8 +855,10 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
   const pending = [];
   for (const article of articles) {
     const key = digest({
-      version: 4,
+      version: 5,
       model: config.ollamaModel,
+      modelDigest: config.ollamaModelDigest || null,
+      copyMode: config.copyMode,
       prompt: analysisSystem,
       language: config.language,
       context: config.editorialContext,

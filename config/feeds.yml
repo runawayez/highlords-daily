@@ -33,6 +33,7 @@ feeds:
     strict_focus: true
     images: page
   - name: ge
+    publisher_group: Globo
     url: https://ge.globo.com/rss/ge
     focus: [futebol, esportes]
     strict_focus: true
@@ -48,6 +49,7 @@ feeds:
     strict_focus: true
     images: page
   - name: UOL Esporte
+    publisher_group: UOL
     url: https://rss.uol.com.br/feed/esporte.xml
     focus: [futebol, esportes]
     strict_focus: true
@@ -63,6 +65,7 @@ feeds:
     strict_focus: true
     images: page
   - name: Agência Brasil Esportes
+    publisher_group: Agência Brasil
     url: https://agenciabrasil.ebc.com.br/rss/esportes/feed.xml
     focus: [esportes]
     strict_focus: true
@@ -88,11 +91,13 @@ feeds:
     focus: [economia]
     strict_focus: true
   - name: UOL Economia
+    publisher_group: UOL
     url: https://rss.uol.com.br/feed/economia.xml
     focus: [economia]
     strict_focus: true
     images: page
   - name: Agência Brasil Economia
+    publisher_group: Agência Brasil
     url: https://agenciabrasil.ebc.com.br/rss/economia/feed.xml
     focus: [economia]
     strict_focus: true

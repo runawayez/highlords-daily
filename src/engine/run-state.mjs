@@ -75,7 +75,9 @@ export class RunState {
     this.file = path.join(this.directory, "run.json");
     const previous = await readJson(this.file);
     this.state =
-      !this.force && previous?.fingerprint === this.fingerprint
+      !this.force &&
+      (previous?.status === "completed" ||
+        previous?.fingerprint === this.fingerprint)
         ? previous
         : {
             fingerprint: this.fingerprint,

@@ -25,6 +25,12 @@ await check("Configuração", async () => {
   return `${categories.length} categorias, ${feeds.length} feeds; ${config.language}, ${config.region}, ${config.timeZone}; ${config.maxCandidates} candidatas`;
 });
 if (settings?.exportPdf) await check("Navegador para PDF", findBrowser);
+if (settings)
+  await check(
+    "Plugins editoriais",
+    async () =>
+      `${(await (await import("../plugins.mjs")).loadPlugins()).length} carregados`,
+  );
 if (settings) {
   await check("Ollama e modelo", async () => {
     const response = await fetch(`${settings.ollamaHost}/api/tags`, {

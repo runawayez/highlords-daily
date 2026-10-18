@@ -5,6 +5,7 @@ import { mapLimit } from "../utils/concurrency.mjs";
 import { digest } from "../utils/storage.mjs";
 import { filterPreviouslyPublished } from "./memory.mjs";
 import { applyEditorialGuardrails } from "../editorial/routing.mjs";
+import { count } from "../engine/metrics.mjs";
 import { normalizeText } from "../utils/text.mjs";
 import Parser from "rss-parser";
 import { categories, config, feeds } from "../config.mjs";
@@ -43,10 +44,15 @@ function stripHtml(value = "") {
     .trim();
 }
 
-function itemDate(item) {
+export function itemDate(item, now = new Date()) {
   const raw = item.isoDate || item.pubDate || item.published || item.updated;
-  const date = raw ? new Date(raw) : new Date();
-  return Number.isNaN(date.getTime()) ? new Date() : date;
+  const parsed = raw ? new Date(raw) : null;
+  if (parsed && Number.isFinite(parsed.getTime()))
+    return { date: parsed, quality: "provided" };
+  return {
+    date: config.feedUnknownDate === "allow" ? now : null,
+    quality: raw ? "invalid" : "missing",
+  };
 }
 
 function asArray(value) {
@@ -125,13 +131,14 @@ async function resolveArticleImage(article, imageMode) {
   });
 }
 
-export async function fetchFeed(feed) {
-  const parsed = await parser.parseString(await fetchFeedXml(feed.url));
-  const cutoff = Date.now() - config.lookbackHours * 60 * 60 * 1000;
+export async function fetchFeed(feed, { xml, now = new Date() } = {}) {
+  const parsed = await parser.parseString(
+    xml ?? (await fetchFeedXml(feed.url)),
+  );
+  const cutoff = now.getTime() - config.lookbackHours * 60 * 60 * 1000;
   const prepared = (parsed.items || [])
-    .slice(0, config.maxItemsPerFeed)
     .map((item, index) => {
-      const published = itemDate(item);
+      const published = itemDate(item, now);
       const link = item.link || item.guid;
       const excerpt = cleanSourceText(
         item["content:encoded"] ||
@@ -157,7 +164,8 @@ export async function fetchFeed(feed) {
         strictFocus: Boolean(feed.strictFocus),
         originalTitle: stripHtml(item.title || "(untitled)"),
         link,
-        publishedAt: published.toISOString(),
+        publishedAt: published.date?.toISOString() || null,
+        dateQuality: published.quality,
         excerpt: limitCopy(
           excerpt,
           1400,
@@ -172,9 +180,12 @@ export async function fetchFeed(feed) {
     .filter((article) => {
       const eligible =
         /^https?:\/\//i.test(String(article.link || "")) &&
-        new Date(article.publishedAt).getTime() >= cutoff;
+        article.publishedAt &&
+        new Date(article.publishedAt).getTime() >= cutoff &&
+        new Date(article.publishedAt).getTime() <=
+          now.getTime() + 15 * 60 * 1000;
       if (!eligible)
-        decision(article, "collect", "invalid-link-or-outside-window");
+        decision(article, "collect", "invalid-link-or-date-outside-window");
       return eligible;
     })
     .map(applyEditorialGuardrails)
@@ -186,15 +197,23 @@ export async function fetchFeed(feed) {
       return !article.editorialReject;
     });
 
-  return prepared.filter(
-    (article) =>
-      !config.sourceLanguages.length ||
-      article.language === "und" ||
-      config.sourceLanguages.some(
-        (language) =>
-          language.split("-")[0] === String(article.language).split("-")[0],
-      ),
-  );
+  return prepared
+    .filter(
+      (article) =>
+        !config.sourceLanguages.length ||
+        article.language === "und" ||
+        config.sourceLanguages.some(
+          (language) =>
+            language.split("-")[0] ===
+            String(article.language).toLowerCase().split("-")[0],
+        ),
+    )
+    .sort(
+      (a, b) =>
+        new Date(b.publishedAt) - new Date(a.publishedAt) ||
+        a.stableId.localeCompare(b.stableId),
+    )
+    .slice(0, config.maxItemsPerFeed);
 }
 
 function dedupe(articles) {
@@ -244,54 +263,109 @@ function suppressRepeatedSourceImages(articles) {
   });
 }
 
-function balancedLimit(articles, feedList, limit) {
-  if (articles.length <= limit) {
-    return [...articles].sort(
-      (a, b) =>
-        new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0) ||
-        String(a.stableId).localeCompare(String(b.stableId)),
-    );
-  }
-
-  const quota = Math.max(1, Math.floor(limit / Math.max(1, feedList.length)));
-  const selected = [];
-  const selectedLinks = new Set();
-
-  for (const feed of feedList) {
-    const fromFeed = articles
-      .filter((article) => article.source === feed.name)
-      .sort(
-        (a, b) =>
-          new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0) ||
-          String(a.stableId).localeCompare(String(b.stableId)),
-      )
-      .slice(0, quota);
-
-    for (const article of fromFeed) {
-      if (selected.length >= limit) break;
-      selected.push(article);
-      selectedLinks.add(article.link);
-    }
-  }
-
-  const remaining = articles
-    .filter((article) => !selectedLinks.has(article.link))
-    .sort(
-      (a, b) =>
-        new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0) ||
-        String(a.stableId).localeCompare(String(b.stableId)),
-    );
-
-  for (const article of remaining) {
-    if (selected.length >= limit) break;
-    selected.push(article);
-  }
-
-  return selected.sort(
+// Rank within each publisher by recency, and round-robin publishers so multiple
+// desks from the same newsroom cannot consume extra candidate quotas.
+export function balancedLimit(articles, feedList, limit) {
+  const weights = new Map(
+    feedList.map((feed) => [feed.name, feed.weight || 1]),
+  );
+  const groups = new Map();
+  const sorted = [...articles].sort(
     (a, b) =>
       new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0) ||
+      (weights.get(b.source) || 1) - (weights.get(a.source) || 1) ||
       String(a.stableId).localeCompare(String(b.stableId)),
   );
+  for (const article of sorted) {
+    const key = article.publisherGroup || article.source;
+    if (!groups.has(key)) groups.set(key, []);
+    groups.get(key).push(article);
+  }
+  const selected = [],
+    selectedLinks = new Set(),
+    covered = new Set();
+  const add = (article) => {
+    if (selected.length >= limit || selectedLinks.has(article.link))
+      return false;
+    selected.push(article);
+    selectedLinks.add(article.link);
+    return true;
+  };
+  // Give each configured source focus a first opportunity before extra slots.
+  for (const category of categories) {
+    const article = sorted.find(
+      (item) =>
+        !selectedLinks.has(item.link) &&
+        item.focus?.includes(category.slug) &&
+        !covered.has(item.publisherGroup || item.source),
+    );
+    if (article && add(article))
+      covered.add(article.publisherGroup || article.source);
+  }
+  let progress = true;
+  while (selected.length < limit && progress) {
+    progress = false;
+    for (const queue of groups.values()) {
+      const article = queue.find((item) => !selectedLinks.has(item.link));
+      if (article && add(article)) progress = true;
+    }
+  }
+  return selected;
+}
+
+export async function resolveCandidateImages(
+  articles,
+  feedList,
+  {
+    limit = config.maxCandidates,
+    resolve = (article) => resolveArticleImage(article, article.imageMode),
+    concurrency = config.imageConcurrency,
+    requireImages = config.requireImages,
+  } = {},
+) {
+  const ordered = balancedLimit(articles, feedList, articles.length);
+  const tested = [],
+    eligible = [];
+  // Only resolve the current deficit. Failed images trigger the next reserve
+  // wave; successful candidates do not require probing the entire feed pool.
+  let offset = 0;
+  while (offset < ordered.length && eligible.length < limit) {
+    const wave = ordered.slice(
+      offset,
+      offset + Math.max(1, limit - eligible.length),
+    );
+    offset += wave.length;
+    const resolved = await mapLimit(wave, concurrency, async (article) => ({
+      ...article,
+      imageUrl: article.imageMode === "off" ? null : await resolve(article),
+    }));
+    tested.push(...resolved);
+    const previousKeys = new Set(eligible.map((article) => article.stableId));
+    eligible.splice(
+      0,
+      eligible.length,
+      ...suppressRepeatedSourceImages(tested).filter(
+        (article) =>
+          !requireImages ||
+          article.imageMode === "off" ||
+          Boolean(article.imageUrl),
+      ),
+    );
+    // Log decisions after all waves, since a repeated placeholder can invalidate an earlier candidate.
+    if (previousKeys.size) count("imageReserveWaves");
+  }
+  count("imageCandidatesProbed", tested.length);
+  count("imageCandidatesDeferred", ordered.length - offset);
+  const keys = new Set(eligible.map((article) => article.stableId));
+  for (const article of tested)
+    if (!keys.has(article.stableId))
+      decision(article, "images", "no-valid-editorial-image");
+  for (const article of ordered.slice(offset))
+    decision(article, "collect", "candidate-limit-before-image-probe");
+  return {
+    articles: eligible.slice(0, limit),
+    imageRejected: tested.length - eligible.length,
+  };
 }
 
 export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
@@ -326,32 +400,10 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
   const unique = dedupe(outcomes.flatMap((outcome) => outcome.items));
   // Historical rejection happens before any image/page network requests.
   const historical = await filterPreviouslyPublished(unique);
-  const enriched = await mapLimit(
-    historical.articles,
-    config.imageConcurrency,
-    async (article) => ({
-      ...article,
-      imageUrl:
-        article.imageMode === "off"
-          ? null
-          : await resolveArticleImage(article, article.imageMode),
-    }),
-  );
-  const eligible = suppressRepeatedSourceImages(enriched);
-  // `images: false` is an intentional editorial text mode. It survives the
-  // image hard rule; visual sources still need a validated image candidate.
-  const withImages = config.requireImages
-    ? eligible.filter(
-        (article) => article.imageMode === "off" || Boolean(article.imageUrl),
-      )
-    : eligible;
-  const imageKeys = new Set(withImages.map((article) => article.stableId));
-  for (const article of eligible)
-    if (!imageKeys.has(article.stableId))
-      decision(article, "images", "no-valid-editorial-image");
-  const selected = balancedLimit(withImages, feedList, config.maxCandidates);
+  const resolved = await resolveCandidateImages(historical.articles, feedList);
+  const selected = resolved.articles;
   const selectedKeys = new Set(selected.map((article) => article.stableId));
-  for (const article of withImages)
+  for (const article of selected)
     decision(
       article,
       "collect",
@@ -366,6 +418,6 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
     articles: selected,
     errors: outcomes.map((outcome) => outcome.error).filter(Boolean),
     historyRejected: historical.rejected.length,
-    imageRejected: eligible.length - withImages.length,
+    imageRejected: resolved.imageRejected,
   };
 }

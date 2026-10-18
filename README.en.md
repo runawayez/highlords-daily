@@ -34,6 +34,20 @@ npm run test:visual
 
 Default evaluation runs without a model; `--live` uses Ollama with isolated state. The default benchmark replays reference responses; only `--live` measures real model work. Numeric consistency is not factual verification. See [editorial quality and limitations](docs/EDITORIAL_QUALITY.md) and [updated project context](docs/HIGHLORDS_DAILY_PROJECT_CONTEXT.md).
 
+## Reliability and performance (5.4)
+
+- Headlines and summaries are checked independently for obvious foreign copy, including missing/incorrect language metadata. Recovery stays bounded; language heuristics are not a universal detector or a fact checker.
+- Profiles isolate publication identity, policy, history and delivery destinations. With `--config`, use an explicit `secretsFile`; ambient delivery credentials/destinations no longer inherit. Machine browser paths may be shared.
+- `DATA_DIR` controls the default memory database too. Missing presets, invalid feed focus, invalid numeric options and missing required plugins fail clearly.
+- Publisher desks share group identities; candidate quotas are distributed by publisher with first opportunities for available category focuses.
+- Image validation runs progressively and uses reserves on failure. Strict-focus and semantic reviews cache independent decisions by content, prompt, model and taxonomy. LLM metrics identify each purpose.
+- `COPY_MODE=extractive` preserves same-language source titles/sentences without requesting copy that would be discarded; `generated` keeps generated copy subject to provenance/language checks. Foreign sources still require translation.
+- Missing/invalid dates default to rejection (`FEED_UNKNOWN_DATE=reject`); `allow` records date uncertainty. Items are sorted before limits. Empty/HTML responses produce clear errors; legacy RSS version omissions and declared encodings are handled.
+- PDF recovery reconciles run state, reports and status without inference. Page occupancy/compression metrics are stored with the edition.
+- Windows/macOS/Linux launchers share one Node bootstrap, synchronize dependencies after lockfile changes, and support `EXPORT_PDF=false` and remote Ollama without a local Ollama executable. Only launcher-owned local Ollama processes are stopped.
+
+Update with `git pull --ff-only` and use your usual launcher. Completed editions remain unchanged unless `--force` is explicitly requested. Incomplete checkpoints invalidate on source/preset/plugin edits. See [5.4 migration and limitations](docs/RELIABILITY_5_4.md).
+
 ## Editorial layout and finishing (5.3)
 
 HTML and PDF now use a newspaper presentation: serif headlines, paper background, restrained red accents, a horizontal lead image and two-column stories. PDF pages are measured and composed for A4, with margins, running headers and page numbers, instead of shrinking a desktop screen.
@@ -175,7 +189,7 @@ This is the recommended day-to-day flow on Windows.
 
 ### macOS / Linux
 
-Install Git, Node.js 22.12+, Ollama, `curl`, and Chrome/Chromium/Edge.
+Install Git and Node.js 22.12+. Ollama may be local or remote; Chrome/Chromium/Edge is required only for PDF.
 
 ```bash
 git clone https://github.com/runawayez/highlords-daily.git
