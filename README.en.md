@@ -54,7 +54,7 @@ Source coverage differs by country and subject. If no available local sources ar
 
 Double-click **`CONFIGURAR-DAILY.bat`**. The assistant keeps a backup before saving new preferences; no configuration-file editing is required.
 
-Changes apply to future editions. An edition already generated today is preserved.
+Changes apply to the next generation. Every launch of **`GERAR-DAILY.bat`** rebuilds and replaces today's edition. Other dates are preserved. If generation fails before publication, the previous edition is kept.
 
 ## macOS and Linux
 
@@ -82,7 +82,7 @@ bash RUN-DAILY.sh --setup-only
 | No sources available | Check your internet connection and retry setup. Failed verification preserves previous preferences. |
 | Generation takes a while | The first run includes downloads. Complete editions and less powerful computers require more time. |
 | Some sections are absent | The newspaper avoids filling sections without eligible stories. |
-| Today's edition already exists | Open `REGERAR-DAILY.bat` to rebuild and replace today's edition. Other dates are preserved. |
+| Today's edition already exists | Open `GERAR-DAILY.bat` normally: it rebuilds and replaces today's edition. |
 
 When reporting a problem, copy the message from the window. Do not share files containing passwords or credentials.
 

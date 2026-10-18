@@ -295,9 +295,12 @@ export async function recentPublishedStories(days = config.duplicateDays) {
 export async function filterPreviouslyPublished(
   input = [],
   threshold = config.duplicateThreshold,
+  { excludeEditionDate = null } = {},
 ) {
   if (!config.historyEnabled) return { articles: input, rejected: [] };
-  const history = await recentPublishedStories(config.duplicateDays);
+  const history = (await recentPublishedStories(config.duplicateDays)).filter(
+    (story) => story.editionDate !== excludeEditionDate,
+  );
   if (!history.length) return { articles: input, rejected: [] };
 
   const articles = [];
@@ -361,26 +364,39 @@ export async function rememberEdition(edition) {
       VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
     `);
     let inserted = 0;
-    for (const story of stories) {
-      const result = insert.run(
+    db.exec("BEGIN IMMEDIATE");
+    try {
+      db.prepare("DELETE FROM published_stories WHERE edition_date = ?").run(
         edition.editionDate,
-        String(story.link || ""),
-        String(story.source || ""),
-        String(story.originalTitle || ""),
-        String(story.headline || ""),
-        String(story.category || ""),
-        String(story.topicKey || ""),
-        storyFingerprint(story),
-        String(story.publishedAt || ""),
-        now,
-        String(story.excerpt || ""),
       );
-      inserted += Number(result.changes || 0);
+      for (const story of stories) {
+        const result = insert.run(
+          edition.editionDate,
+          String(story.link || ""),
+          String(story.source || ""),
+          String(story.originalTitle || ""),
+          String(story.headline || ""),
+          String(story.category || ""),
+          String(story.topicKey || ""),
+          storyFingerprint(story),
+          String(story.publishedAt || ""),
+          now,
+          String(story.excerpt || ""),
+        );
+        inserted += Number(result.changes || 0);
+      }
+      db.exec("COMMIT");
+    } catch (error) {
+      db.exec("ROLLBACK");
+      throw error;
     }
     return inserted;
   }
 
   const data = await loadFallback();
+  data.stories = (data.stories || []).filter(
+    (story) => story.editionDate !== edition.editionDate,
+  );
   const existing = new Set(
     (data.stories || []).map((story) => `${story.editionDate}:${story.link}`),
   );

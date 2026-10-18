@@ -252,3 +252,75 @@ test("legacy SQLite history migrates without loss and allows a sourced material 
     await fs.rm(directory, { recursive: true, force: true });
   }
 });
+
+test("regeneration ignores only its own edition date and replaces that date's history", async () => {
+  const directory = await fs.mkdtemp(
+    path.join(os.tmpdir(), "highlords-regenerate-"),
+  );
+  const previous = {
+    memoryFile: config.memoryFile,
+    historyEnabled: config.historyEnabled,
+  };
+  config.memoryFile = path.join(directory, "history.sqlite");
+  config.historyEnabled = true;
+  const today = new Date().toISOString().slice(0, 10);
+  const yesterday = new Date(Date.now() - 86400000).toISOString().slice(0, 10);
+  const older = {
+    link: "https://example.org/old",
+    originalTitle: "Astrônomos identificam planeta distante",
+    headline: "Astrônomos identificam planeta distante",
+    topicKey: "planeta-distante",
+    category: "ciencia",
+    source: "Example",
+  };
+  const current = {
+    link: "https://example.org/current",
+    originalTitle: "Banco divulga resultados trimestrais",
+    headline: "Banco divulga resultados trimestrais",
+    topicKey: "resultados-banco",
+    category: "economia",
+    source: "Example",
+  };
+  try {
+    await rememberEdition({
+      editionDate: yesterday,
+      lead: older,
+      sections: [],
+    });
+    await rememberEdition({ editionDate: today, lead: current, sections: [] });
+    assert.equal(
+      (await filterPreviouslyPublished([older, current])).articles.length,
+      0,
+    );
+    const filtered = await filterPreviouslyPublished(
+      [older, current],
+      config.duplicateThreshold,
+      { excludeEditionDate: today },
+    );
+    assert.deepEqual(
+      filtered.articles.map((story) => story.link),
+      [current.link],
+    );
+    await rememberEdition({
+      editionDate: today,
+      lead: {
+        ...current,
+        link: "https://example.org/replacement",
+        headline: "Banco atualiza os resultados",
+      },
+      sections: [],
+    });
+    const history = await recentPublishedStories();
+    assert.equal(history.length, 2);
+    assert.ok(
+      history.some(
+        (story) => story.editionDate === yesterday && story.link === older.link,
+      ),
+    );
+    assert.ok(!history.some((story) => story.link === current.link));
+  } finally {
+    closeMemory();
+    Object.assign(config, previous);
+    await fs.rm(directory, { recursive: true, force: true });
+  }
+});

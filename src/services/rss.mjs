@@ -372,7 +372,11 @@ export async function resolveCandidateImages(
   };
 }
 
-export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
+export async function fetchAllFeeds(
+  onProgress = () => {},
+  feedList = feeds,
+  { excludeEditionDate = null } = {},
+) {
   const outcomes = await mapLimit(
     feedList,
     config.feedConcurrency,
@@ -403,7 +407,11 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
   );
   const unique = dedupe(outcomes.flatMap((outcome) => outcome.items));
   // Historical rejection happens before any image/page network requests.
-  const historical = await filterPreviouslyPublished(unique);
+  const historical = await filterPreviouslyPublished(
+    unique,
+    config.duplicateThreshold,
+    { excludeEditionDate },
+  );
   const resolved = config.requireImages
     ? await resolveCandidateImages(historical.articles, feedList)
     : {

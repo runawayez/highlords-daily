@@ -142,8 +142,8 @@ const messages = {
   ],
   available: ["fontes disponíveis", "available sources"],
   next: [
-    "As mudanças valem para as próximas edições; uma edição já gerada hoje será preservada. Para gerar o jornal, abra GERAR-DAILY.bat no Windows ou execute bash RUN-DAILY.sh no macOS/Linux. Para mudar suas preferências: CONFIGURAR-DAILY.bat ou bash RUN-DAILY.sh --setup-only.",
-    "New preferences apply to future editions; an edition already generated today is preserved. Open GERAR-DAILY.bat on Windows or run bash RUN-DAILY.sh on macOS/Linux. Change preferences with CONFIGURAR-DAILY.bat or bash RUN-DAILY.sh --setup-only.",
+    "As mudanças valem para a próxima geração; abrir o programa novamente refaz e substitui a edição de hoje. Para gerar o jornal, abra GERAR-DAILY.bat no Windows ou execute bash RUN-DAILY.sh no macOS/Linux. Para mudar suas preferências: CONFIGURAR-DAILY.bat ou bash RUN-DAILY.sh --setup-only.",
+    "New preferences apply to the next generation; opening the program again rebuilds and replaces today's edition. Open GERAR-DAILY.bat on Windows or run bash RUN-DAILY.sh on macOS/Linux. Change preferences with CONFIGURAR-DAILY.bat or bash RUN-DAILY.sh --setup-only.",
   ],
   cancelled: [
     "Configuração cancelada. As preferências anteriores foram preservadas.",

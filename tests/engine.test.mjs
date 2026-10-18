@@ -331,6 +331,29 @@ test("pipeline preserves HTML on PDF failure and does not repeat completed gener
       1,
       "PDF recovery must not repeat collection or inference",
     );
+    services.html = async () => "<html>replacement</html>";
+    const forced = await runPipeline(
+      { ...context, options: { force: true } },
+      services,
+    );
+    assert.equal(forced.alreadyCompleted, undefined);
+    assert.equal(collected, 2);
+    assert.equal(remembered, 2);
+    assert.equal(
+      await fs.readFile(path.join(first.editionDir, "index.html"), "utf8"),
+      "<html>replacement</html>",
+    );
+    services.select = async () => {
+      throw new Error("failed before publication");
+    };
+    await assert.rejects(
+      runPipeline({ ...context, options: { force: true } }, services),
+      /failed before publication/,
+    );
+    assert.equal(
+      await fs.readFile(path.join(first.editionDir, "index.html"), "utf8"),
+      "<html>replacement</html>",
+    );
     const metrics = await readJson(
       path.join(directory, "data", "runs", "2026-10-07", "metrics.json"),
     );

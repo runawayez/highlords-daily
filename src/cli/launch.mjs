@@ -202,7 +202,7 @@ export async function launch(args = process.argv.slice(2)) {
       await pullModel(config.ollamaHost, config.ollamaModel);
     }
     await command(process.execPath, [run, "doctor", ...profileArgs]);
-    await command(process.execPath, [run, "daily", ...args]);
+    await command(process.execPath, [run, "daily", ...args, "--force"]);
   } finally {
     process.removeListener("SIGINT", interrupt);
     process.removeListener("SIGTERM", interrupt);
