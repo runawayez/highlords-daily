@@ -64,7 +64,7 @@ O catálogo de fontes não tem a mesma cobertura para todos os países e assunto
 
 No Windows, dê dois cliques em **`CONFIGURAR-DAILY.bat`**. Não é necessário abrir nenhum arquivo de configuração. O assistente guarda uma cópia das preferências anteriores antes de salvar as novas.
 
-As mudanças são usadas nas próximas edições. Uma edição que já foi gerada hoje é preservada. Para refazê-la com as preferências e correções atuais, dê dois cliques em **`REGERAR-DAILY.bat`**. Isso substitui a edição de hoje; as outras datas continuam guardadas.
+As mudanças são usadas na próxima geração. Sempre que você abre **`GERAR-DAILY.bat`**, ele gera novamente e substitui a edição de hoje. As edições dos outros dias continuam guardadas. Se a geração falhar antes da publicação, a edição anterior é mantida.
 
 ## macOS e Linux
 
@@ -92,7 +92,7 @@ bash RUN-DAILY.sh --setup-only
 | Nenhuma fonte disponível | Verifique a conexão e tente configurar novamente. As preferências anteriores são preservadas se a verificação falhar. |
 | A edição está demorando | A primeira vez inclui downloads. Edições completas e computadores menos potentes precisam de mais tempo. |
 | Algumas categorias não apareceram | O jornal evita preencher seções sem notícias elegíveis. |
-| Já gerei a edição de hoje | Abra `REGERAR-DAILY.bat` se quiser refazer e substituir a edição de hoje. |
+| Já gerei a edição de hoje | Abra `GERAR-DAILY.bat` normalmente: ele refaz e substitui a edição de hoje. |
 
 Se precisar relatar um problema, copie a mensagem mostrada na janela. Você não precisa compartilhar arquivos que contenham senhas ou credenciais.
 

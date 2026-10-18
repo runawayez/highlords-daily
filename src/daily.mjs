@@ -140,8 +140,11 @@ export function createDailyServices(plugins) {
     },
     collect: async (ctx) =>
       runPluginHook(plugins, "afterCollect", {
-        ...(await fetchAllFeeds((event) =>
-          console.log(`[feed] ${event.feed}${event.error ? " failed" : ""}`),
+        ...(await fetchAllFeeds(
+          (event) =>
+            console.log(`[feed] ${event.feed}${event.error ? " failed" : ""}`),
+          undefined,
+          { excludeEditionDate: ctx.options.force ? ctx.editionDate : null },
         )),
         editionDate: ctx.editionDate,
         context: ctx,
