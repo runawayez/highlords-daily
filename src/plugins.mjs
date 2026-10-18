@@ -4,21 +4,52 @@ import path from "node:path";
 import { pathToFileURL } from "node:url";
 import { config } from "./config.mjs";
 
-export async function loadPlugins() {
-  if (!config.pluginsEnabled) return [];
+export async function loadPlugins({ settings = config } = {}) {
+  const required = new Set(settings.requiredPlugins || []);
+  if (!settings.pluginsEnabled) {
+    if (required.size)
+      throw new Error(
+        "Required editorial plugins cannot be disabled; use an explicit custom plugin policy.",
+      );
+    return [];
+  }
   let entries;
   try {
-    entries = await fs.readdir(config.pluginsDir, { withFileTypes: true });
-  } catch {
+    entries = await fs.readdir(settings.pluginsDir, { withFileTypes: true });
+  } catch (error) {
+    if (required.size || settings.enabledPlugins?.length)
+      throw new Error(
+        `Configured plugins directory unavailable: ${settings.pluginsDir}: ${error.message}`,
+      );
     return [];
+  }
+
+  const available = new Set(
+    entries.filter((entry) => entry.isFile()).map((entry) => entry.name),
+  );
+  for (const filename of new Set([
+    ...required,
+    ...(settings.enabledPlugins || []),
+  ])) {
+    if (!available.has(filename))
+      throw new Error(`Configured plugin missing: ${filename}`);
+    if (
+      required.has(filename) &&
+      settings.enabledPlugins &&
+      !settings.enabledPlugins.includes(filename)
+    )
+      throw new Error(`Required plugin is not enabled: ${filename}`);
   }
 
   const plugins = [];
   for (const entry of entries.sort((a, b) => a.name.localeCompare(b.name))) {
     if (!entry.isFile() || !entry.name.endsWith(".plugin.mjs")) continue;
-    if (config.enabledPlugins && !config.enabledPlugins.includes(entry.name))
+    if (
+      settings.enabledPlugins &&
+      !settings.enabledPlugins.includes(entry.name)
+    )
       continue;
-    const file = path.join(config.pluginsDir, entry.name);
+    const file = path.join(settings.pluginsDir, entry.name);
     try {
       const module = await import(
         `${pathToFileURL(file).href}?v=${Date.now()}`
@@ -32,6 +63,10 @@ export async function loadPlugins() {
         module: plugin,
       });
     } catch (error) {
+      if (required.has(entry.name))
+        throw new Error(
+          `Required plugin failed to load: ${entry.name}: ${error.message}`,
+        );
       console.warn(
         `  Plugin ${entry.name} ignorado: ${error.message || error}`,
       );

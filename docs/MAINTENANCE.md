@@ -1,3 +1,5 @@
+> Snapshot histórico de 07/10/2026. Para as correções atuais, consulte [Confiabilidade 5.4](RELIABILITY_5_4.md).
+
 # Revisão de manutenção — 2026-10-07
 
 Base: `6c91cb5f43eb341bbadc140fa7de829b322291cd` (main).

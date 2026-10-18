@@ -16,6 +16,49 @@ const strongEnglish = new Set(
     " ",
   ),
 );
+const proseSignals = {
+  es: new Set(
+    "los las una del pero también mientras fueron sus este esta".split(" "),
+  ),
+  fr: new Set("les une des dans avec pour sont cette aux mais été".split(" ")),
+  de: new Set(
+    "der die das und mit nicht ein eine für ist sind wurde".split(" "),
+  ),
+};
+
+function clearlyForeign(copy, language) {
+  const output = base(language);
+  if (clearEnglishCopy(copy, language)) return true;
+  for (const field of ["headline", "summary"]) {
+    const text = String(copy[field] || "");
+    const words = normalizeText(text).split(" ").filter(Boolean);
+    for (const [locale, signals] of Object.entries(proseSignals)) {
+      if (locale === output) continue;
+      const matches = words.filter((word) => signals.has(word)).length;
+      if (
+        matches >= (field === "headline" ? 3 : 4) &&
+        matches / words.length >= 0.3
+      )
+        return true;
+    }
+    for (const [locales, pattern] of [
+      [["ja"], /[\p{Script=Hiragana}\p{Script=Katakana}]/gu],
+      [["ja", "zh"], /\p{Script=Han}/gu],
+      [["ar", "fa", "ur", "ps"], /\p{Script=Arabic}/gu],
+      [
+        ["ru", "uk", "bg", "sr", "mk", "be", "kk", "ky", "mn"],
+        /\p{Script=Cyrillic}/gu,
+      ],
+      [["ko"], /\p{Script=Hangul}/gu],
+    ]) {
+      const hits = text.match(pattern)?.length || 0;
+      const letters = text.match(/\p{L}/gu)?.length || 1;
+      if (!locales.includes(output) && hits >= 6 && hits / letters > 0.5)
+        return true;
+    }
+  }
+  return false;
+}
 
 function unchangedSource(article, copy) {
   const summary = normalizeText(copy.summary);
@@ -39,15 +82,21 @@ function unchangedSource(article, copy) {
 
 function clearEnglishCopy(copy, language) {
   if (base(language) === "en") return false;
-  const words = normalizeText(copy.summary).split(" ");
-  const matches = words.filter((word) => strongEnglish.has(word)).length;
-  return matches >= 4 && matches / words.length >= 0.2;
+  return ["headline", "summary"].some((field) => {
+    const words = normalizeText(copy[field]).split(" ").filter(Boolean);
+    const matches = words.filter((word) => strongEnglish.has(word)).length;
+    return (
+      matches >= (field === "headline" ? 2 : 4) && matches / words.length >= 0.2
+    );
+  });
 }
 
 export function needsCopyLocalization(article, language = config.language) {
   const source = base(article.language),
     output = base(language);
   if (article.provenance?.languageFallback) return true;
+  // Metadata can be absent or incorrect. Check visible fields independently.
+  if (clearlyForeign(article, language)) return true;
   if (source === "und" || source === output) return false;
   return (
     unchangedSource(article, article) ||
@@ -79,8 +128,9 @@ export async function recoverLocalizedCopy(
     additionalProperties: false,
   };
   const key = digest({
-    version: 1,
+    version: 2,
     model,
+    modelDigest: config.ollamaModelDigest || null,
     language,
     sourceLanguage: article.language,
     title: article.originalTitle,
@@ -101,7 +151,7 @@ export async function recoverLocalizedCopy(
       !copy.headline.trim() ||
       !copy.summary.trim() ||
       unchangedSource(article, copy) ||
-      (base(article.language) === "en" && clearEnglishCopy(copy, language))
+      clearlyForeign(copy, language)
     )
       throw new Error("Translation is empty or still in the source language");
     const assessment = assessCopy(copy);
@@ -147,7 +197,7 @@ export async function recoverLocalizedCopy(
               ? "Previous attempt failed validation. Recheck output language and every number against the source."
               : undefined,
         }),
-        { schema, timeoutMs: 120000 },
+        { schema, timeoutMs: 120000, purpose: "localization" },
       );
       const result = validate(value);
       if (cache) {

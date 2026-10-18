@@ -14,13 +14,20 @@ function numberEnv(name, fallback) {
   const raw = process.env[name];
   if (raw == null || !raw.trim()) return fallback;
   const value = Number(raw);
-  return Number.isFinite(value) ? value : fallback;
+  if (!Number.isFinite(value))
+    throw new Error(`${name} must be a finite number.`);
+  return value;
 }
 
 function booleanEnv(name, fallback = false) {
   const value = process.env[name];
   if (value == null) return fallback;
-  return ["1", "true", "yes", "on"].includes(String(value).toLowerCase());
+  const normalized = String(value).trim().toLowerCase();
+  if (
+    !["1", "true", "yes", "on", "0", "false", "no", "off"].includes(normalized)
+  )
+    throw new Error(`${name} must be a boolean.`);
+  return ["1", "true", "yes", "on"].includes(normalized);
 }
 
 function normalizeOllamaHost(value) {
@@ -28,6 +35,15 @@ function normalizeOllamaHost(value) {
     .trim()
     .replace(/\/$/, "");
   if (!/^https?:\/\//i.test(host)) host = `http://${host}`;
+  const url = new URL(host);
+  if (
+    !["http:", "https:"].includes(url.protocol) ||
+    url.username ||
+    url.password
+  )
+    throw new Error(
+      "OLLAMA_HOST must be an HTTP(S) URL without embedded credentials.",
+    );
   return host;
 }
 
@@ -36,7 +52,7 @@ function normalizeLocale(value) {
   try {
     return new Intl.Locale(raw).toString();
   } catch {
-    return "pt-BR";
+    throw new Error(`Invalid locale: ${raw}`);
   }
 }
 
@@ -61,7 +77,10 @@ function imageMode(value) {
   const normalized = String(value || "auto")
     .trim()
     .toLowerCase();
-  return normalized === "page" ? "page" : "auto";
+  if (normalized === "off") return "off";
+  if (!["auto", "page"].includes(normalized))
+    throw new Error(`Invalid feed images mode: ${value}`);
+  return normalized;
 }
 
 function loadYaml(filePath, label, { optional = false } = {}) {
@@ -84,6 +103,15 @@ const presetName = slug(process.env.PRESET || "br") || "br";
 const presetDir = path.resolve(
   process.env.PRESET_DIR || `./presets/${presetName}`,
 );
+if (
+  !fs.existsSync(presetDir) &&
+  !(
+    presetName === "custom" &&
+    process.env.CATEGORIES_FILE &&
+    process.env.FEEDS_FILE
+  )
+)
+  throw new Error(`Unknown preset or missing preset directory: ${presetDir}`);
 const metadataFile = path.join(presetDir, "preset.json");
 const presetMetadata = fs.existsSync(metadataFile)
   ? JSON.parse(fs.readFileSync(metadataFile, "utf8"))
@@ -159,6 +187,28 @@ if (duplicateSlugs.length) {
 
 const validCategorySlugs = new Set(categories.map((category) => category.slug));
 const rawFeeds = Array.isArray(feedsDocument.feeds) ? feedsDocument.feeds : [];
+for (const feed of rawFeeds.filter((item) => item && item.enabled !== false)) {
+  if (!feed.name || typeof feed.url !== "string")
+    throw new Error(`Feed needs name and URL in ${feedsFile}.`);
+  let url;
+  try {
+    url = new URL(feed.url);
+  } catch {
+    throw new Error(`Invalid feed URL: ${feed.url}`);
+  }
+  if (!["http:", "https:"].includes(url.protocol))
+    throw new Error(`Invalid feed protocol: ${feed.url}`);
+  if (feed.focus != null && !Array.isArray(feed.focus))
+    throw new Error(`Feed focus must be an array: ${feed.name}`);
+  for (const focus of feed.focus || [])
+    if (!validCategorySlugs.has(slug(focus)))
+      throw new Error(`Unknown focus "${focus}" in feed ${feed.name}.`);
+  if (
+    feed.weight != null &&
+    (!Number.isFinite(Number(feed.weight)) || Number(feed.weight) <= 0)
+  )
+    throw new Error(`Feed weight must be positive: ${feed.name}`);
+}
 export const feeds = rawFeeds
   .filter((feed) => feed && feed.enabled !== false)
   .map((feed) => ({
@@ -270,6 +320,8 @@ const profileRaw =
   configuredProfiles[profileKey] ||
   builtInProfiles[profileKey] ||
   builtInProfiles.balanced;
+if (!configuredProfiles[profileKey] && !builtInProfiles[profileKey])
+  throw new Error(`Unknown editorial profile: ${profileKey}`);
 export const profile = {
   key: profileKey,
   name: String(profileRaw.name || profileKey).trim(),
@@ -360,9 +412,12 @@ export const config = {
   ),
   bundledTaxonomy:
     presetMetadata.bundledTaxonomy === true && !process.env.CATEGORIES_FILE,
-  enabledPlugins: process.env.ENABLED_PLUGINS
-    ? process.env.ENABLED_PLUGINS.split(",").map((s) => s.trim())
-    : presetMetadata.plugins || null,
+  enabledPlugins:
+    process.env.ENABLED_PLUGINS != null
+      ? process.env.ENABLED_PLUGINS.split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : presetMetadata.plugins || null,
   feedConcurrency: Math.max(
     1,
     Math.min(16, Math.floor(numberEnv("FEED_CONCURRENCY", 4))),
@@ -381,8 +436,19 @@ export const config = {
       path.join(process.env.DATA_DIR || "./data", "cache"),
   ),
   analysisCacheDays: Math.max(0, numberEnv("ANALYSIS_CACHE_DAYS", 7)),
+  copyMode: process.env.COPY_MODE || "extractive",
+  feedUnknownDate: process.env.FEED_UNKNOWN_DATE || "reject",
+  requiredPlugins:
+    process.env.REQUIRED_PLUGINS != null
+      ? process.env.REQUIRED_PLUGINS.split(",")
+          .map((s) => s.trim())
+          .filter(Boolean)
+      : !process.env.CATEGORIES_FILE && process.env.ENABLED_PLUGINS == null
+        ? presetMetadata.requiredPlugins || []
+        : [],
   ollamaKeepAlive: process.env.OLLAMA_KEEP_ALIVE || "10m",
   exportPdf: booleanEnv("EXPORT_PDF", true),
+  requirePdf: booleanEnv("REQUIRE_PDF", false),
   unattended: booleanEnv("UNATTENDED", false),
   editorialContext:
     String(
@@ -394,7 +460,8 @@ export const config = {
   outputDir: path.resolve(process.env.OUTPUT_DIR || "./output"),
   dataDir: path.resolve(process.env.DATA_DIR || "./data"),
   memoryFile: path.resolve(
-    process.env.MEMORY_FILE || "./data/highlords.sqlite",
+    process.env.MEMORY_FILE ||
+      path.join(process.env.DATA_DIR || "./data", "highlords.sqlite"),
   ),
   pluginsDir: path.resolve(process.env.PLUGINS_DIR || "./plugins"),
   lookbackHours: Math.max(12, numberEnv("LOOKBACK_HOURS", 48)),
@@ -446,3 +513,18 @@ export const config = {
 
 // Validate timezone eagerly, before collecting feeds or calling inference.
 new Intl.DateTimeFormat(config.language, { timeZone: config.timeZone });
+
+if (!["extractive", "generated"].includes(config.copyMode))
+  throw new Error("COPY_MODE must be extractive or generated.");
+if (!["reject", "allow"].includes(config.feedUnknownDate))
+  throw new Error("FEED_UNKNOWN_DATE must be reject or allow.");
+for (const key of [
+  "maxItemsPerFeed",
+  "maxCandidates",
+  "aiBatchSize",
+  "itemsPerCategory",
+  "maxItemsPerSource",
+  "maxItemsPerSourcePerSection",
+])
+  if (!Number.isInteger(config[key]))
+    throw new Error(`${key} must be an integer.`);

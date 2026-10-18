@@ -356,7 +356,14 @@ async function requestPresentationPlan(sections, editionDate) {
   };
 
   const key = digest(
-    JSON.stringify({ editionDate, compact, language: config.language }),
+    JSON.stringify({
+      version: 2,
+      editionDate,
+      compact,
+      language: config.language,
+      model: config.ollamaModel,
+      modelDigest: config.ollamaModelDigest || null,
+    }),
   );
   return cache.remember(
     "editorial-presentation",
@@ -381,7 +388,7 @@ Para cada seção:
 - não altere a ordem das seções;
 - devolva somente JSON válido.`,
         JSON.stringify({ editionDate, sections: compact }),
-        { timeoutMs: 150000, schema },
+        { timeoutMs: 150000, schema, purpose: "presentation" },
       ),
     6 * 60 * 60 * 1000,
   );

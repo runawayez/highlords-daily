@@ -319,6 +319,19 @@ export function paginateEditorialDocument() {
     pageSummaries: pages.map((page) => ({
       sections: page.names,
       stories: page.content.querySelectorAll(".story-card").length,
+      occupancy:
+        Math.round(
+          Math.min(
+            1,
+            Math.max(
+              0,
+              ((page.content.lastElementChild?.getBoundingClientRect().bottom ||
+                page.content.getBoundingClientRect().top) -
+                page.content.getBoundingClientRect().top) /
+                page.content.clientHeight,
+            ),
+          ) * 1000,
+        ) / 1000,
     })),
   };
 }

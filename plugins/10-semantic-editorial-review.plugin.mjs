@@ -1,6 +1,7 @@
 import { decision as recordDecision } from "../src/editorial/audit.mjs";
 import { categories, config, profile, publication } from "../src/config.mjs";
-import { itemsSchema, requestChat } from "../src/services/ollama-client.mjs";
+import { itemsSchema } from "../src/services/ollama-client.mjs";
+import { requestItemReview } from "../src/services/editorial-review.mjs";
 
 const validSlugs = new Set(categories.map((category) => category.slug));
 const taxonomy = categories
@@ -174,15 +175,10 @@ For EVERY supplied item return exactly one review row.
 Return only valid JSON.`;
 
 async function reviewBatch(batch) {
-  const parsed = await requestChat(
-    reviewSystem,
-    JSON.stringify(reviewPayload(batch)),
-    {
-      timeoutMs: 150000,
-      schema: reviewSchema(batch),
-    },
-  );
-  return Array.isArray(parsed?.items) ? parsed.items : [];
+  return requestItemReview(reviewSystem, reviewPayload(batch), {
+    namespace: "semantic-review",
+    schema: reviewSchema(batch),
+  });
 }
 
 async function afterAnalyze(payload) {

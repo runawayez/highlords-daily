@@ -84,8 +84,12 @@ test(
                   category: sample.expectedCategory,
                   score: sample.referenceScore,
                   topicKey: sample.stableId,
-                  headline: sample.originalTitle,
-                  summary: sample.excerpt,
+                  ...(fields.headline
+                    ? {
+                        headline: sample.originalTitle,
+                        summary: sample.excerpt,
+                      }
+                    : {}),
                   tags: [],
                 };
               }),

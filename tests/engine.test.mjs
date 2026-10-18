@@ -27,6 +27,7 @@ import {
 import { deliverEdition } from "../src/services/delivery.mjs";
 import { config } from "../src/config.mjs";
 import { researchSites } from "../src/sources/research.mjs";
+import { recordPdfRecovery } from "../src/services/pdf-recovery.mjs";
 const temporary = () => fs.mkdtemp(path.join(os.tmpdir(), "highlords-engine-"));
 
 test("Unicode titles survive normalization and segmentation across scripts", () => {
@@ -147,6 +148,19 @@ test("run checkpoints reuse successful stages after failure and invalidate on co
       return [];
     });
     assert.equal(calls, 2);
+    changed.state.status = "completed";
+    await changed.save();
+    const upgraded = await new RunState(directory, "v3").init();
+    assert.equal(
+      upgraded.state.status,
+      "completed",
+      "Completed editions require --force even after an engine update",
+    );
+    assert.equal(
+      (await new RunState(directory, "v3", { force: true }).init()).state
+        .status,
+      "running",
+    );
   } finally {
     await fs.rm(directory, { recursive: true, force: true });
   }
@@ -271,7 +285,13 @@ test("pipeline preserves HTML on PDF failure and does not repeat completed gener
       sections: [],
       lead: { id: 1 },
     }),
-    images: async (e) => e,
+    images: async (e, staging) => {
+      assert.equal(
+        path.dirname(path.dirname(staging)),
+        path.join(context.config.outputDir, ".staging"),
+      );
+      return e;
+    },
     html: async () => "<html>complete</html>",
     exports: async () => {},
     pdf: async () => {
@@ -294,6 +314,23 @@ test("pipeline preserves HTML on PDF failure and does not repeat completed gener
     assert.equal(second.alreadyCompleted, true);
     assert.equal(collected, 1);
     assert.equal(remembered, 1);
+    await atomicWrite(
+      path.join(first.editionDir, "test-2026-10-07.pdf"),
+      Buffer.from("recovered PDF fixture"),
+    );
+    await recordPdfRecovery(
+      context.editionDate,
+      context.config,
+      context.publication,
+      { pages: 1, issues: [] },
+    );
+    const repaired = await runPipeline({ ...context }, services);
+    assert.equal(repaired.pdfError, null);
+    assert.equal(
+      collected,
+      1,
+      "PDF recovery must not repeat collection or inference",
+    );
     const metrics = await readJson(
       path.join(directory, "data", "runs", "2026-10-07", "metrics.json"),
     );

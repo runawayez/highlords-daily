@@ -1,6 +1,6 @@
 {
   "name": "highlords-daily-desktop",
-  "version": "5.0.1",
+  "version": "5.4.0",
   "private": true,
   "type": "module",
   "main": "main.mjs",

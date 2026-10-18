@@ -85,7 +85,11 @@ test("plugins execute in filename order rather than directory listing order", as
       'export const afterCollect = value => value + "A";',
     );
     config.pluginsDir = directory;
-    const result = await runPluginHook(await loadPlugins(), "afterCollect", "");
+    const result = await runPluginHook(
+      await loadPlugins({ settings: { ...config, requiredPlugins: [] } }),
+      "afterCollect",
+      "",
+    );
     assert.equal(result, "AB");
   } finally {
     config.pluginsDir = previous;

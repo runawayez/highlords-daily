@@ -8,13 +8,20 @@ import {
 } from "../config.mjs";
 import { digest } from "../utils/storage.mjs";
 import { editionDate, validateDate } from "./run-state.mjs";
+import { fileURLToPath } from "node:url";
+import { sourceFingerprint } from "./source-fingerprint.mjs";
 export function createContext(options = {}) {
   const date = options.date
     ? validateDate(options.date)
     : editionDate(config.timeZone);
   const settings = Object.freeze({ ...config });
   const fingerprint = digest({
-    engine: "5.3.1-localized-source-recovery",
+    engine: "5.4.0",
+    source: sourceFingerprint([
+      fileURLToPath(new URL("../", import.meta.url)),
+      editorial.presetDir,
+      config.pluginsDir,
+    ]),
     config: settings,
     categories,
     feeds,

@@ -1,6 +1,7 @@
 import { decision as recordDecision } from "../src/editorial/audit.mjs";
 import { categories, config, publication } from "../src/config.mjs";
-import { itemsSchema, requestChat } from "../src/services/ollama-client.mjs";
+import { itemsSchema } from "../src/services/ollama-client.mjs";
+import { requestItemReview } from "../src/services/editorial-review.mjs";
 
 const validSlugs = new Set(categories.map((category) => category.slug));
 const taxonomy = categories
@@ -131,15 +132,10 @@ Rules:
 - Return exactly one row for every supplied id and only valid JSON.`;
 
 async function auditBatch(batch) {
-  const parsed = await requestChat(
-    auditSystem,
-    JSON.stringify(auditPayload(batch)),
-    {
-      timeoutMs: 150000,
-      schema: auditSchema(batch),
-    },
-  );
-  return Array.isArray(parsed?.items) ? parsed.items : [];
+  return requestItemReview(auditSystem, auditPayload(batch), {
+    namespace: "strict-focus-review",
+    schema: auditSchema(batch),
+  });
 }
 
 async function afterAnalyze(payload) {

@@ -17,5 +17,9 @@
     "20-editorial-presentation.plugin.mjs",
     "editorial-ranking.plugin.mjs",
     "99-editorial-quality-gate.plugin.mjs"
+  ],
+  "requiredPlugins": [
+    "05-editorial-contract-bootstrap.plugin.mjs",
+    "99-editorial-quality-gate.plugin.mjs"
   ]
 }

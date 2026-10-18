@@ -454,10 +454,17 @@ await new Promise((resolve, reject) => {
     code === 0 ? resolve() : reject(new Error(output)),
   );
 });
-assert.equal(
+const recoveredEdition = JSON.parse(
   await fs.readFile(path.join(upgradeEdition, "edition.json"), "utf8"),
-  preservedJson,
 );
+const originalEdition = JSON.parse(preservedJson);
+const { pdfLayout, pdfRecoveredAt, ...retainedStats } = recoveredEdition.stats;
+assert.deepEqual(
+  { ...recoveredEdition, stats: retainedStats },
+  originalEdition,
+);
+assert.ok(pdfRecoveredAt);
+assert.equal(pdfLayout.issues.length, 0);
 assert.ok(
   (await fs.readFile(path.join(upgradeEdition, "index.html"), "utf8")).includes(
     'data-design="editorial-v2"',

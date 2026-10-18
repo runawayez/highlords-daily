@@ -30,7 +30,7 @@ Atualização: `git pull --ff-only`, depois `npm ci`. Preserve `.env`, `data/` e
 
 ## Configuração regional
 
-A precedência é: defaults do preset → `.env`/ambiente. Com `--config`, o perfil YAML/JSON substitui as opções da publicação e não herda o `.env` do repositório. Caminhos no perfil são relativos ao arquivo. Segredos podem vir do ambiente ou de `secretsFile` explícito.
+A precedência é: defaults do preset → `.env`/ambiente. Com `--config`, o perfil YAML/JSON substitui as opções da publicação e não herda o `.env` do repositório. Caminhos no perfil são relativos ao arquivo. Com `--config`, destinos e segredos de entrega devem vir de `secretsFile` explícito; o ambiente não é herdado para esses canais. Sem perfil, `.env`/ambiente continuam aceitos. Caminhos de navegador são capacidades da máquina e podem ser compartilhados.
 
 ```yaml
 preset: global
@@ -208,3 +208,18 @@ BR, Global e configuração legada incluem eSports separado de Games. Dust2 Bras
 ## Qualidade editorial 5.1
 
 Consulte [EDITORIAL_QUALITY.md](EDITORIAL_QUALITY.md) para avaliação offline/live, benchmark com candidatas fixas, relatórios de decisão, migração do histórico, procedência dos textos, busca, feedback e testes visuais. O [contexto atual](HIGHLORDS_DAILY_PROJECT_CONTEXT.md) substitui o snapshot conceitual 4.0.0.
+
+
+## Confiabilidade 5.4
+
+A lista única de opções de perfil fica em `src/config-options.mjs` e aparece em `npm run config:show` como `profileOptions`. Ela inclui limites de diversidade, cores, logo, caminhos, opções de cache e política de plugins. Não inclua credenciais em perfis; use `secretsFile`.
+
+Use `COPY_MODE=extractive|generated` (`copyMode`) e `FEED_UNKNOWN_DATE=reject|allow` (`feedUnknownDate`). Presets BR/Global exigem bootstrap de contrato e quality gate quando usados com a política padrão. Uma lista explícita de plugins ou taxonomia customizada define política própria; `requiredPlugins` pode declarar seus requisitos. Uma lista vazia é respeitada. O doctor verifica importação dos plugins e respeita a configuração de PDF.
+
+`MEMORY_FILE` padrão acompanha `DATA_DIR`. Staging e backup da edição ficam em `OUTPUT_DIR/.staging`, permitindo que `dataDir` e `outputDir` estejam em volumes diferentes. Artefatos completos são movidos para o destino; backups temporários são removidos ao concluir.
+
+Na recuperação de PDF, o conteúdo das matérias permanece intacto, mas `edition.json` recebe `stats.pdfLayout`/`stats.pdfRecoveredAt`. Status de outra edição ou falha de entrega não é apagado ao recuperar um PDF antigo.
+
+As métricas `llm.<purpose>` separam tempo e contagem por finalidade. A ocupação de página mede geometria, não qualidade jornalística. O digest do modelo informado pelo Ollama participa das chaves dos caches de IA. Hashes do código/preset/plugins invalidam checkpoints incompletos; edições concluídas continuam exigindo `--force` para regeneração.
+
+O limite `CACHE_MAX_MB` continua sendo apenas de cache. Não apaga edições, históricos, modelos ou backups pessoais. Defina retenção desses dados conforme a operação; a atualização não remove arquivos do usuário.

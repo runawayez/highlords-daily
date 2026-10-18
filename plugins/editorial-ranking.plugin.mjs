@@ -213,7 +213,10 @@ async function chatJson(system, user) {
               : { type: "number", minimum: 0, maximum: 10 },
           ]),
         );
-  return requestChat(system, user, { schema: itemsSchema(properties) });
+  return requestChat(system, user, {
+    schema: itemsSchema(properties),
+    purpose: system === rankingSystem ? "ranking" : "calibration",
+  });
 }
 
 function clamp(value) {
@@ -574,6 +577,7 @@ async function evaluateBatch(batch) {
     const key = digest({
       version: 2,
       model: config.ollamaModel,
+      modelDigest: config.ollamaModelDigest || null,
       prompt: rankingSystem,
       language: config.language,
       context: config.editorialContext,

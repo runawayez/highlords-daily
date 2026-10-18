@@ -3,10 +3,32 @@ import { DiskCache, digest } from "../utils/storage.mjs";
 import { networkTask, readBody } from "./network.mjs";
 import { count } from "../engine/metrics.mjs";
 const cache = new DiskCache(config.cacheDir);
+export function decodeFeed(buffer, contentType = "") {
+  const header = buffer.subarray(0, 256).toString("ascii");
+  const encoding =
+    header.match(/<\?xml[^>]*encoding=["']([^"']+)["']/i)?.[1] ||
+    contentType.match(/charset=["']?([^;\s"']+)/i)?.[1] ||
+    "utf-8";
+  let xml;
+  try {
+    xml = new TextDecoder(encoding).decode(buffer);
+  } catch {
+    throw new Error(`Unsupported feed encoding: ${encoding}`);
+  }
+  if (!xml.trim()) throw new Error("Feed returned an empty response.");
+  if (/<(?:!doctype\s+html|html)(?:\s|>)/i.test(xml.slice(0, 1000)))
+    throw new Error(
+      "Feed returned an HTML page instead of RSS/Atom; check the URL or publisher blocking.",
+    );
+  if (!/<(?:rss|feed|rdf:RDF)(?:\s|>)/i.test(xml))
+    throw new Error("Response does not contain RSS/Atom.");
+  // Some legacy publishers omit the mandatory RSS version attribute.
+  return xml.replace(/<rss\s*>/i, '<rss version="2.0">');
+}
 export async function fetchFeedXml(url) {
-  const existing = await cache.get("feeds", url, { stale: true });
+  const existing = await cache.get("feeds-v2", url, { stale: true });
   const headers = {
-    "user-agent": "HighlordsDaily/4.1",
+    "user-agent": "HighlordsDaily/5.4",
     accept: "application/rss+xml,application/atom+xml,application/xml,text/xml",
   };
   if (existing?.etag) headers["if-none-match"] = existing.etag;
@@ -15,6 +37,7 @@ export async function fetchFeedXml(url) {
   return networkTask(url, async () => {
     const response = await fetch(url, {
       headers,
+      redirect: "follow",
       signal: AbortSignal.timeout(15000),
     });
     if (response.status === 304 && existing?.xml) {
@@ -22,9 +45,12 @@ export async function fetchFeedXml(url) {
       return existing.xml;
     }
     if (!response.ok) throw new Error(`Feed HTTP ${response.status}`);
-    const xml = (await readBody(response, 2 * 1024 * 1024)).toString("utf8");
+    const xml = decodeFeed(
+      await readBody(response, 2 * 1024 * 1024),
+      response.headers.get("content-type") || "",
+    );
     await cache.set(
-      "feeds",
+      "feeds-v2",
       url,
       {
         xml,

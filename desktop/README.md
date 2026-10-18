@@ -15,3 +15,5 @@ npm run dist
 ```
 
 Targets are NSIS (`.exe`) on Windows, DMG on macOS and AppImage on Linux. Ollama and Chrome/Chromium/Edge are still external prerequisites.
+
+Core and desktop manifests are synchronized at version 5.4.0. The CLI launchers share `src/cli/launch.mjs`; this experimental Electron shell retains its own process lifecycle. Installer behavior must still be validated on the target OS.
