@@ -4,29 +4,13 @@ O preset BR continua funcionando sem configuração. Região editorial, idiomas 
 
 ## Instalação
 
-Requisitos: Node.js 22.12 ou superior, Ollama e um modelo local. Chrome, Chromium ou Edge só são necessários para PDF. Para idiomas com outros alfabetos, instale fontes com os glifos correspondentes; Noto Sans e as famílias Noto CJK/Arabic são opções compatíveis.
+Para uso normal, siga o [guia inicial](../README.md): baixe o ZIP, extraia e abra o launcher. Não é necessário copiar `.env.example`, escolher um preset técnico ou editar YAML. O launcher prepara as dependências e abre o assistente quando não existe configuração salva. O assistente cria um preset próprio com os países e assuntos escolhidos, verifica fontes e salva `.env` internamente.
 
-```bash
-git clone https://github.com/runawayez/highlords-daily.git
-cd highlords-daily
-npm ci
-ollama pull qwen3:4b
-```
+Para alterar preferências, use `CONFIGURAR-DAILY.bat`, `bash RUN-DAILY.sh --setup-only` ou `npm run setup` após instalar as dependências. O modo `--setup-only` termina sem iniciar Ollama nem gerar uma edição. Em execução `--unattended`, ausência de configuração produz uma mensagem para concluir o setup; não há perguntas bloqueando um agendamento.
 
-Inicie o serviço Ollama (`ollama serve`, se não estiver ativo). Em outro terminal:
+Requisitos: Node.js 22.12+, Ollama local ou remoto e um navegador Chromium para PDF. O launcher baixa o modelo padrão automaticamente. SMTP é uma dependência opcional. A interface Electron continua experimental.
 
-```bash
-npm run doctor
-npm run daily
-```
-
-`npm run setup` é opcional. Os launchers continuam disponíveis para o primeiro uso. No PowerShell com scripts bloqueados, use `npm.cmd`. Não é preciso trocar a política global de execução.
-
-O envio SMTP usa Nodemailer como dependência opcional. `npm ci --omit=optional` instala o core sem SMTP; Telegram, Discord e gateway HTTP continuam disponíveis. Prettier é apenas dependência de desenvolvimento. `npm ci --omit=dev` instala para uso normal.
-
-Desktop: `npm run desktop:install`, depois `npm run desktop`. As dependências desktop possuem lockfile próprio. A interface permanece experimental; o CLI é a referência operacional.
-
-Atualização: `git pull --ff-only`, depois `npm ci`. Preserve `.env`, `data/` e `output/`. A versão 5 entende o histórico anterior; os novos checkpoints começam na primeira execução. Uma edição concluída na versão 5 não é regenerada automaticamente no mesmo dia.
+Os comandos diretos do core continuam disponíveis para integrações e desenvolvimento: `npm ci`, `npm run doctor` e `npm run daily`. O core pode usar defaults do preset BR sem `.env`, mas esse não é o caminho de primeiro uso recomendado a pessoas sem conhecimento técnico.
 
 ## Configuração regional
 
@@ -223,3 +207,14 @@ Na recuperação de PDF, o conteúdo das matérias permanece intacto, mas `editi
 As métricas `llm.<purpose>` separam tempo e contagem por finalidade. A ocupação de página mede geometria, não qualidade jornalística. O digest do modelo informado pelo Ollama participa das chaves dos caches de IA. Hashes do código/preset/plugins invalidam checkpoints incompletos; edições concluídas continuam exigindo `--force` para regeneração.
 
 O limite `CACHE_MAX_MB` continua sendo apenas de cache. Não apaga edições, históricos, modelos ou backups pessoais. Defina retenção desses dados conforme a operação; a atualização não remove arquivos do usuário.
+
+
+## Assistente de primeiro uso (5.5)
+
+Idioma do assistente (português/inglês), idioma de leitura, residência, cobertura, assuntos, extensão, relógio e PDF são escolhas independentes. Fontes selecionadas são normalizadas para a taxonomia global e verificadas antes de ativar o novo preset. Países sem fontes locais disponíveis exigem aceitação explícita de cobertura limitada; falha total de rede não modifica a configuração anterior.
+
+Os presets gerados ficam em `data/setup/presets/<id>/`. Incluem metadados, fontes ativas, categorias, preferências e resultado das verificações. O `.env` aponta para uma geração completa; há backup antes de reconfigurar. Credenciais, modelo e caminhos de dados existentes são preservados. Arquivos anteriores não são excluídos.
+
+Categorias escolhidas pelo assistente são oportunísticas (`required: false`): um dia sem notícia boa de um assunto não bloqueia todos os outros. O quality gate continua obrigatório e impede edição vazia, deriva de categoria, duplicação e cópia estrangeira evidente. Presets BR/Global manuais conservam as exigências anteriores; a flag `required` explícita tem precedência sobre o padrão do preset.
+
+Reconfigurar não substitui automaticamente uma edição já concluída no mesmo dia. O README explica que as preferências valem para as próximas edições; regeneração deliberada continua sendo uma opção avançada.

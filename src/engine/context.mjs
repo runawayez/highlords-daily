@@ -16,7 +16,7 @@ export function createContext(options = {}) {
     : editionDate(config.timeZone);
   const settings = Object.freeze({ ...config });
   const fingerprint = digest({
-    engine: "5.4.0",
+    engine: "5.5.0",
     source: sourceFingerprint([
       fileURLToPath(new URL("../", import.meta.url)),
       editorial.presetDir,

@@ -166,6 +166,9 @@ export const categories = rawCategories
     description: localized(
       category.descriptions || category.description,
     ).trim(),
+    ...(typeof category.required === "boolean"
+      ? { required: category.required }
+      : {}),
     aliases: Array.isArray(category.aliases)
       ? category.aliases.map((alias) => String(alias).trim()).filter(Boolean)
       : [],

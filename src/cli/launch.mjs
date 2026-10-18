@@ -80,10 +80,14 @@ async function pullModel(host, name) {
 export async function launch(args = process.argv.slice(2)) {
   const [major, minor] = process.versions.node.split(".").map(Number);
   if (major < 22 || (major === 22 && minor < 12))
-    throw new Error("Node.js 22.12+ is required.");
+    throw new Error(
+      "Instale o Node.js LTS em https://nodejs.org e abra novamente o programa. / Node.js 22.12+ is required.",
+    );
   const dependencies = await dependencyState(root);
   if (!dependencies.current) {
-    console.log("Synchronizing project dependencies with package-lock.json...");
+    console.log(
+      "Preparando os componentes do jornal... / Preparing the newspaper components...",
+    );
     if (process.platform === "win32")
       await command(process.env.ComSpec || "cmd.exe", [
         "/d",
@@ -98,6 +102,41 @@ export async function launch(args = process.argv.slice(2)) {
   const profileIndex = args.indexOf("--config");
   const profileArgs =
     profileIndex < 0 ? [] : args.slice(profileIndex, profileIndex + 2);
+  const setupOnly = args.includes("--setup-only");
+  if (setupOnly && profileIndex >= 0)
+    throw new Error(
+      "Use --setup-only without --config to configure this installation.",
+    );
+  const configured = await fs.access(path.join(root, ".env")).then(
+    () => true,
+    (error) => {
+      if (error.code === "ENOENT") return false;
+      throw error;
+    },
+  );
+  if (setupOnly || (!configured && profileIndex < 0)) {
+    if (
+      args.includes("--unattended") ||
+      ["1", "true", "yes", "on"].includes(
+        String(process.env.UNATTENDED || "").toLowerCase(),
+      )
+    )
+      throw new Error(
+        "Primeiro configure seu jornal: abra CONFIGURAR-DAILY.bat ou execute bash RUN-DAILY.sh --setup-only. / Complete setup before unattended use.",
+      );
+    await command(process.execPath, [
+      path.join(root, "src", "cli", "setup.mjs"),
+    ]);
+    if (setupOnly) return;
+    const saved = await fs.access(path.join(root, ".env")).then(
+      () => true,
+      () => false,
+    );
+    if (!saved)
+      throw new Error(
+        "A configuração não foi concluída; abra o programa novamente para configurar. / Setup was not completed.",
+      );
+  }
   const { config } = JSON.parse(
     await command(process.execPath, [run, "config", ...profileArgs], {
       capture: true,
@@ -125,7 +164,9 @@ export async function launch(args = process.argv.slice(2)) {
     if (!available) {
       if (!localOllama(config.ollamaHost))
         throw new Error(`Remote Ollama unavailable: ${config.ollamaHost}`);
-      console.log("Starting local Ollama...");
+      console.log(
+        "Preparando a inteligência artificial local... / Starting local AI...",
+      );
       started = spawn("ollama", ["serve"], {
         env: { ...process.env, OLLAMA_HOST: config.ollamaHost },
         stdio: "ignore",
@@ -137,7 +178,11 @@ export async function launch(args = process.argv.slice(2)) {
       for (let i = 0; i < 30 && !available; i++) {
         await new Promise((resolve) => setTimeout(resolve, 1000));
         if (startError)
-          throw new Error(`Cannot start Ollama: ${startError.message}`);
+          throw new Error(
+            startError.code === "ENOENT"
+              ? "Instale o Ollama em https://ollama.com/download e abra novamente o programa. / Install Ollama and try again."
+              : `Não consegui iniciar o Ollama. Abra o aplicativo e tente novamente. / ${startError.message}`,
+          );
         if (started.exitCode !== null)
           throw new Error("Ollama exited before its API became ready.");
         available = await tags(config.ollamaHost);
@@ -152,7 +197,7 @@ export async function launch(args = process.argv.slice(2)) {
       )
     ) {
       console.log(
-        `Downloading ${config.ollamaModel} through the configured Ollama server...`,
+        "Baixando a IA para preparar seu jornal. A primeira vez pode demorar... / Downloading local AI; the first run may take a while...",
       );
       await pullModel(config.ollamaHost, config.ollamaModel);
     }

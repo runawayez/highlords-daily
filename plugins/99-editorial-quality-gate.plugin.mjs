@@ -12,6 +12,16 @@ const optionalDailyCategories = new Set([
 function beforeRender(payload) {
   const edition = payload?.edition;
   if (!edition) return payload;
+  if (
+    !edition.lead &&
+    !(edition.sections || []).some((section) => section.articles?.length)
+  ) {
+    const error = new Error(
+      "Nenhuma notícia elegível ficou disponível para esta edição. Tente novamente mais tarde. / No eligible stories remain.",
+    );
+    error.fatal = true;
+    throw error;
+  }
 
   const result = validateNewsletterContract(edition);
   if (!result.ok) {
@@ -25,8 +35,11 @@ function beforeRender(payload) {
   const missing = Array.isArray(edition?.stats?.coverage?.missing)
     ? edition.stats.coverage.missing
     : [];
-  const isOptional = (item) =>
-    editorial.preset === "br" && optionalDailyCategories.has(item.slug);
+  const isOptional = (item) => {
+    const category = categories.find((category) => category.slug === item.slug);
+    if (typeof category?.required === "boolean") return !category.required;
+    return editorial.preset === "br" && optionalDailyCategories.has(item.slug);
+  };
   const uncovered = missing.filter(
     (item) => item.reason !== "lead-only" && !isOptional(item),
   );
