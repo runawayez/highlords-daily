@@ -231,7 +231,10 @@ IMPORTANTE:
 - os ids recebidos são LOCAIS deste lote e sempre formam uma sequência curta começando em 1; copie cada id exatamente como foi recebido;
 - devolva EXATAMENTE um item para cada id recebido, inclusive rejeitados;
 - as categorias abaixo são a fonte de verdade;
-- focus é uma pista editorial sobre a fonte;
+- focus é apenas uma pista editorial sobre a fonte, NUNCA evidência sobre o assunto da matéria;
+- classifique pelo assunto CENTRAL do título e do texto, sem preencher categorias por obrigação;
+- entrevistas musicais não são IA, séries de TV não são Games, ofertas e cupons não são inovação;
+- promoções, anúncios de afiliados e listas de ofertas recebem category null;
 - quando strictFocus for true, category deve estar dentro de focus; se nenhuma servir, use null;
 - category deve ser SOMENTE um destes slugs: ${validSlugList}; ou null;
 - headline, summary e topicKey devem falar EXCLUSIVAMENTE da matéria daquele id;
@@ -250,7 +253,7 @@ EDITORIAL:
 - tags com 2 a 6 termos específicos.
 
 Retorne SOMENTE:
-{"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"topicKey":"assunto-central","headline":"string","summary":"string","tags":["tag"]}]}`;
+{"items":[{"id":1,"category":"${exampleSlug}","score":7.2,"topicKey":"assunto-central","headline":"Título fiel à matéria recebida","summary":"Resumo factual da matéria correspondente, no idioma de saída.","tags":["tag"]}]}`;
 
 function payloadForBatch(batch) {
   return JSON.stringify(

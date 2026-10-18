@@ -372,7 +372,6 @@ export async function runSetup({
     bundledTaxonomy: false,
     plugins: [
       "05-editorial-contract-bootstrap.plugin.mjs",
-      "08-strict-focus-content-audit.plugin.mjs",
       "09-copy-integrity.plugin.mjs",
       "10-semantic-editorial-review.plugin.mjs",
       "20-editorial-presentation.plugin.mjs",

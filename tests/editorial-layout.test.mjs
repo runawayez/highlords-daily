@@ -290,6 +290,8 @@ test("edition keeps configured sections and treats highlights as references", ()
     },
   ];
 
+  for (const article of articles)
+    article.summary = "Resumo da matéria de teste com contexto suficiente.";
   const edition = normalizeNewsletter(
     {
       title: "Edição do dia",

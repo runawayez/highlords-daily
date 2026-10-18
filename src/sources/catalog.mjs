@@ -1,3 +1,4 @@
+import { sourceIdentity } from "./metadata.mjs";
 import fs from "node:fs/promises";
 import { parse as parseYaml } from "yaml";
 const regional = JSON.parse(
@@ -29,6 +30,7 @@ export function bundledSources() {
           publisher_group:
             feed.publisher_group || feed.name.split("·")[0].trim(),
           catalogStatus: "bundled",
+          ...sourceIdentity(feed.url),
         });
   });
   return [

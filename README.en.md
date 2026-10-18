@@ -82,7 +82,7 @@ bash RUN-DAILY.sh --setup-only
 | No sources available | Check your internet connection and retry setup. Failed verification preserves previous preferences. |
 | Generation takes a while | The first run includes downloads. Complete editions and less powerful computers require more time. |
 | Some sections are absent | The newspaper avoids filling sections without eligible stories. |
-| Today's edition already exists | It is preserved; generate the next day. Regeneration options are documented in the advanced reference. |
+| Today's edition already exists | Open `REGERAR-DAILY.bat` to rebuild and replace today's edition. Other dates are preserved. |
 
 When reporting a problem, copy the message from the window. Do not share files containing passwords or credentials.
 

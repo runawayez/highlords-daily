@@ -1,10 +1,12 @@
+> Correção 5.5.1: bloqueio de placeholders do modelo; revisão semântica independente sem ancoragem na categoria/fonte; metadados corretos de fontes internacionais; busca de imagens concentrada nas selecionadas; fotos compactas preservadas; layout determinístico sem chamada adicional ao Ollama. `REGERAR-DAILY.bat` refaz intencionalmente a edição atual.
+
 > Primeiro uso 5.5: o launcher abre um assistente que cria a configuração e seleciona/verifica fontes automaticamente. O usuário não edita `.env`/YAML. Veja o [guia inicial](../README.md).
 
-> Atualização 18/10/2026: o core e os manifests desktop estão em 5.5.0. Consulte [Confiabilidade 5.4](RELIABILITY_5_4.md) para políticas de perfil, datas, cópia, coleta progressiva, cache e recuperação do PDF; os snapshots abaixo registram a evolução anterior.
+> Atualização 18/10/2026: o core e os manifests desktop estão em 5.5.1. Consulte [Confiabilidade 5.4](RELIABILITY_5_4.md) para políticas de perfil, datas, cópia, coleta progressiva, cache e recuperação do PDF; os snapshots abaixo registram a evolução anterior.
 
 # Highlords Daily — contexto atual
 
-Snapshot: 18/10/2026. Versão do core: 5.5.0.
+Snapshot: 18/10/2026. Versão do core: 5.5.1.
 Repositório: https://github.com/runawayez/highlords-daily, branch `main`.
 O código e os presets da main são a fonte de verdade. Este arquivo substitui conceitualmente o contexto 4.0.0 de 07/10/2026; não é uma cópia daquele snapshot.
 

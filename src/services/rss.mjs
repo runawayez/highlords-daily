@@ -101,7 +101,11 @@ function extractImage(item, baseUrl) {
 
   candidates.push(
     ...htmlImages(
-      item.content || item.description || item.summary || "",
+      item["content:encoded"] ||
+        item.content ||
+        item.description ||
+        item.summary ||
+        "",
       baseUrl,
     ),
   );
@@ -400,7 +404,16 @@ export async function fetchAllFeeds(onProgress = () => {}, feedList = feeds) {
   const unique = dedupe(outcomes.flatMap((outcome) => outcome.items));
   // Historical rejection happens before any image/page network requests.
   const historical = await filterPreviouslyPublished(unique);
-  const resolved = await resolveCandidateImages(historical.articles, feedList);
+  const resolved = config.requireImages
+    ? await resolveCandidateImages(historical.articles, feedList)
+    : {
+        articles: balancedLimit(
+          historical.articles,
+          feedList,
+          config.maxCandidates,
+        ),
+        imageRejected: 0,
+      };
   const selected = resolved.articles;
   const selectedKeys = new Set(selected.map((article) => article.stableId));
   for (const article of selected)
