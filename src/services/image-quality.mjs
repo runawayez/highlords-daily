@@ -1,3 +1,4 @@
+import { decodeHTML } from "entities";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { DiskCache, digest, atomicWrite } from "../utils/storage.mjs";
@@ -49,7 +50,7 @@ const STOPWORDS = new Set([
 
 function safeUrl(value, baseUrl) {
   try {
-    const url = new URL(String(value || ""), baseUrl || undefined);
+    const url = new URL(decodeHTML(String(value || "")), baseUrl || undefined);
     return ["http:", "https:"].includes(url.protocol) ? url.toString() : null;
   } catch {
     return null;
@@ -71,7 +72,18 @@ export function canonicalImageKey(value = "") {
   try {
     const url = new URL(String(value));
     url.hash = "";
-    url.search = "";
+    for (const key of [
+      "w",
+      "width",
+      "h",
+      "height",
+      "q",
+      "quality",
+      "fit",
+      "format",
+      "auto",
+    ])
+      url.searchParams.delete(key);
     return url.toString().replace(/\/$/, "");
   } catch {
     return String(value || "").trim();
@@ -212,13 +224,6 @@ export function inspectImageBuffer(
       return {
         ok: false,
         reason: `dimensões insuficientes (${dimensions.width}x${dimensions.height})`,
-        ...dimensions,
-      };
-    }
-    if (totalBytes / area < 0.018) {
-      return {
-        ok: false,
-        reason: "imagem excessivamente simples/compacta para uso editorial",
         ...dimensions,
       };
     }
@@ -374,19 +379,28 @@ function candidateScore(candidate, article) {
 }
 
 function srcFromTag(tag, baseUrl) {
-  const direct =
-    attr(tag, "src") ||
-    attr(tag, "data-src") ||
-    attr(tag, "data-lazy-src") ||
-    attr(tag, "data-original");
-  if (direct && !direct.startsWith("data:")) return safeUrl(direct, baseUrl);
-  const srcset = attr(tag, "srcset") || attr(tag, "data-srcset");
-  if (!srcset) return null;
-  const parts = srcset
-    .split(",")
-    .map((part) => part.trim().split(/\s+/)[0])
-    .filter(Boolean);
-  return parts.length ? safeUrl(parts[parts.length - 1], baseUrl) : null;
+  const srcset = attr(tag, "data-srcset") || attr(tag, "srcset");
+  if (srcset) {
+    const entries = srcset
+      .split(",")
+      .map((part) => {
+        const [url, size = "0"] = part.trim().split(/\s+/);
+        return { url, size: parseFloat(size) || 0 };
+      })
+      .sort((a, b) => b.size - a.size);
+    for (const entry of entries) {
+      const url = safeUrl(entry.url, baseUrl);
+      if (url) return url;
+    }
+  }
+  for (const name of ["data-src", "data-lazy-src", "data-original", "src"]) {
+    const value = attr(tag, name);
+    if (value && !value.startsWith("data:")) {
+      const url = safeUrl(value, baseUrl);
+      if (url && !suspiciousImageUrl(url)) return url;
+    }
+  }
+  return null;
 }
 
 function metaContent(html, key) {
@@ -428,7 +442,7 @@ async function discoverPageImageCandidatesRaw(
     ).toLowerCase();
     if (!type.includes("text/html") && !type.includes("application/xhtml+xml"))
       return [];
-    const html = (await readBody(response, 750000)).toString("utf8");
+    const html = (await readPrefix(response, 1500000)).toString("utf8");
     const baseUrl = response.url || article.link;
     const candidates = [];
 
@@ -482,16 +496,6 @@ async function discoverPageImageCandidatesRaw(
   }
 }
 
-function urlContextScore(url, article) {
-  const normalized = String(url || "")
-    .normalize("NFD")
-    .replace(/[\u0300-\u036f]/g, "")
-    .toLowerCase();
-  return titleTokens(article?.originalTitle || article?.headline || "").filter(
-    (token) => normalized.includes(token),
-  ).length;
-}
-
 export async function resolveBestArticleImage(
   article,
   currentUrl = null,
@@ -500,8 +504,7 @@ export async function resolveBestArticleImage(
   let current = null;
   if (!forcePage && currentUrl) {
     current = await probeImageUrl(currentUrl);
-    if (current.ok && urlContextScore(current.url, article) > 0)
-      return current.url;
+    if (current.ok) return current.url;
   }
 
   const pageCandidates = await discoverPageImageCandidates(article);
@@ -515,13 +518,16 @@ export async function resolveBestArticleImage(
     if (probed.ok) return probed.url;
   }
 
+  if (forcePage && currentUrl) {
+    current = await probeImageUrl(currentUrl);
+  }
   return current?.ok ? current.url : null;
 }
 
 const persistent = new DiskCache(config.cacheDir);
 export async function probeImageUrl(url, options) {
   if (!safeUrl(url)) return { ok: false, reason: "Invalid URL", url };
-  const key = `v2:${url}`;
+  const key = `v3:${url}`;
   const hit = await persistent.get("image-probes", key);
   if (hit) {
     count("imageProbeCacheHits");
@@ -539,7 +545,7 @@ export async function discoverPageImageCandidates(article, options) {
   if (!article?.link) return [];
   const key = [article.link, article.originalTitle, config.language];
   return persistent.remember(
-    "image-pages",
+    "image-pages-v2",
     key,
     () =>
       networkTask(article.link, () =>
@@ -550,7 +556,7 @@ export async function discoverPageImageCandidates(article, options) {
 }
 export async function fetchValidatedImageBuffer(url, options) {
   if (!safeUrl(url)) return { ok: false, reason: "Invalid URL", url };
-  const key = `v2:${url}`;
+  const key = `v3:${url}`;
   const cached = await persistent.get("image-files", key);
   const file = path.join(
     config.cacheDir,

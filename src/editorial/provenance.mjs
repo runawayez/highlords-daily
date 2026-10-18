@@ -1,3 +1,4 @@
+import { hasInvalidCopy } from "./copy-quality.mjs";
 import { digest } from "../utils/storage.mjs";
 import { sourceSummary } from "./summary.mjs";
 import { limitCopy } from "./source-text.mjs";
@@ -45,7 +46,9 @@ export function enforceCopyProvenance(article, language = "en") {
     article.language &&
     article.language !== "und" &&
     article.language.split(/[-_]/)[0] === language.split(/[-_]/)[0];
-  const needsFallback = assessment.status !== "no-numeric-conflict-detected";
+  const needsFallback =
+    hasInvalidCopy(article) ||
+    assessment.status !== "no-numeric-conflict-detected";
   if (needsFallback && article.originalTitle) {
     const result = {
       ...article,

@@ -88,7 +88,7 @@ test("renderer composes solo text and mixed sections without exposing internal s
 });
 
 test(
-  "editorial presentation uses Ollama for hierarchy while suppressing weak graphics",
+  "editorial presentation preserves compressed photos and uses no model call",
   { timeout: 10000 },
   async () => {
     const directory = await fs.mkdtemp(
@@ -167,23 +167,23 @@ test(
         },
       });
 
-      assert.equal(calls, 1);
-      assert.equal(
-        result.edition.stats.presentationMode,
-        "ollama-art-director",
-      );
-      assert.equal(result.edition.stats.suppressedImages, 1);
+      assert.equal(calls, 0);
+      assert.equal(result.edition.stats.presentationMode, "deterministic");
+      assert.equal(result.edition.stats.suppressedImages, 0);
       assert.equal(
         result.edition.sections[0].presentation.layout,
-        "mixed-grid",
+        "balanced-grid",
       );
       assert.equal(
         result.edition.sections[0].articles[0].displayRole,
-        "feature",
+        "standard",
       );
       assert.equal(result.edition.sections[0].articles[0].displayImage, true);
-      assert.equal(result.edition.sections[0].articles[1].displayRole, "brief");
-      assert.equal(result.edition.sections[0].articles[1].displayImage, false);
+      assert.equal(
+        result.edition.sections[0].articles[1].displayRole,
+        "standard",
+      );
+      assert.equal(result.edition.sections[0].articles[1].displayImage, true);
     } finally {
       globalThis.fetch = previousFetch;
       config.ollamaHost = previousHost;

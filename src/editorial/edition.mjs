@@ -1,3 +1,4 @@
+import { hasInvalidCopy } from "./copy-quality.mjs";
 import {
   categories,
   config,
@@ -367,6 +368,7 @@ export function validateNewsletterContract(edition) {
     ...(edition?.topStories || []),
     ...(edition?.sections || []).flatMap((section) => section.articles || []),
   ].filter(Boolean)) {
+    if (hasInvalidCopy(article)) errors.push(`invalid-copy:${article.id}`);
     if (article.provenance?.languageFallback)
       errors.push(`unlocalized-source-fallback:${article.id}`);
     else if (needsCopyLocalization(article, config.language))

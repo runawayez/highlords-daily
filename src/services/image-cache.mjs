@@ -97,12 +97,16 @@ async function candidateImageUrls(article) {
   if (article?.imageMode === "off" || article?.textOnly === true) return [];
 
   const urls = [];
-  if (article?.imageUrl && /^https?:\/\//i.test(article.imageUrl))
-    urls.push(article.imageUrl);
-  const page = article.imageUrl
-    ? []
-    : await discoverPageImageCandidates(article);
-  for (const candidate of page) urls.push(candidate.url);
+  const current =
+    article?.imageUrl && /^https?:\/\//i.test(article.imageUrl)
+      ? article.imageUrl
+      : null;
+  const page =
+    !current || article.imageMode === "page"
+      ? await discoverPageImageCandidates(article)
+      : [];
+  for (const candidate of page.slice(0, 6)) urls.push(candidate.url);
+  if (current) urls.push(current);
   const unique = new Map();
   for (const url of urls) {
     const key = canonicalImageKey(url);
@@ -170,7 +174,7 @@ async function cacheRemoteImage(article, assetsDir) {
   return {
     ...article,
     originalImageUrl,
-    imageUrl: config.requireImages ? null : originalImageUrl,
+    imageUrl: null,
     imageCached: false,
     imageValidated: false,
     imageCacheError: lastError,
@@ -194,7 +198,7 @@ async function validateRemoteOnly(article) {
   return {
     ...article,
     originalImageUrl: article?.imageUrl || null,
-    imageUrl: config.requireImages ? null : article?.imageUrl || null,
+    imageUrl: null,
     imageValidated: false,
     imageCached: false,
     imageCacheError: "nenhuma imagem editorial válida encontrada",

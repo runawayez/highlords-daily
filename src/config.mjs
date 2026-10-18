@@ -1,3 +1,4 @@
+import { sourceIdentity } from "./sources/metadata.mjs";
 import fs from "node:fs";
 import path from "node:path";
 import { parse as parseYaml } from "yaml";
@@ -218,8 +219,17 @@ export const feeds = rawFeeds
     name: String(feed.name || "").trim(),
     url: String(feed.url || "").trim(),
     imageMode: imageMode(feed.images),
-    language: feed.language ? normalizeLocale(feed.language) : null,
-    country: String(feed.country || ""),
+    language:
+      (categoriesDocument.preset === "personal"
+        ? sourceIdentity(feed.url).language
+        : null) || (feed.language ? normalizeLocale(feed.language) : null),
+    country: String(
+      (categoriesDocument.preset === "personal"
+        ? sourceIdentity(feed.url).country
+        : null) ||
+        feed.country ||
+        "",
+    ),
     coverage: Array.isArray(feed.coverage) ? feed.coverage : [],
     publisherGroup: String(
       feed.publisher_group || feed.publisherGroup || feed.name,

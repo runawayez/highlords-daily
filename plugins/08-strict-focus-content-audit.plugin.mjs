@@ -139,6 +139,10 @@ async function auditBatch(batch) {
 }
 
 async function afterAnalyze(payload) {
+  if (
+    config.enabledPlugins?.includes("10-semantic-editorial-review.plugin.mjs")
+  )
+    return payload;
   const input = Array.isArray(payload?.articles) ? payload.articles : [];
   const strict = input.filter(
     (article) =>

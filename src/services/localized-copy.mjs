@@ -1,3 +1,4 @@
+import { hasInvalidCopy } from "../editorial/copy-quality.mjs";
 import { config } from "../config.mjs";
 import { assessCopy } from "../editorial/provenance.mjs";
 import { sourceSummary } from "../editorial/summary.mjs";
@@ -94,7 +95,8 @@ function clearEnglishCopy(copy, language) {
 export function needsCopyLocalization(article, language = config.language) {
   const source = base(article.language),
     output = base(language);
-  if (article.provenance?.languageFallback) return true;
+  if (hasInvalidCopy(article) || article.provenance?.languageFallback)
+    return true;
   // Metadata can be absent or incorrect. Check visible fields independently.
   if (clearlyForeign(article, language)) return true;
   if (source === "und" || source === output) return false;
@@ -148,8 +150,7 @@ export async function recoverLocalizedCopy(
         .slice(0, 6),
     };
     if (
-      !copy.headline.trim() ||
-      !copy.summary.trim() ||
+      hasInvalidCopy(copy) ||
       unchangedSource(article, copy) ||
       clearlyForeign(copy, language)
     )

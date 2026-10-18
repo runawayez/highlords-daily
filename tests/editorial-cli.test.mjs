@@ -70,7 +70,7 @@ test(
               items: input.map((row) => ({
                 id: row.id,
                 action: "keep",
-                category: row.currentCategory,
+                category: sampleFor(row).expectedCategory,
                 confidence: 0.99,
                 reason: "Fixture semantic review",
               })),
