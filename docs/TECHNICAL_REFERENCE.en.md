@@ -9,7 +9,7 @@
 <p align="center"><strong>Information without noise.</strong></p>
 
 <p align="center">
-  <a href="README.md">Português</a> · <strong>English</strong>
+  <a href="../README.md">Português</a> · <strong>English</strong>
 </p>
 
 <p align="center">

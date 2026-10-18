@@ -9,7 +9,7 @@
 <p align="center"><strong>Informação sem ruído.</strong></p>
 
 <p align="center">
-  <strong>Português</strong> · <a href="README.en.md">English</a>
+  <strong>Português</strong> · <a href="../README.en.md">English</a>
 </p>
 
 <p align="center">
