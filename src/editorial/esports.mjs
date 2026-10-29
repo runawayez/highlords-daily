@@ -17,15 +17,18 @@ function sourceText(article) {
 
 export function isEsports(article) {
   const text = sourceText(article);
-  const dedicated =
-    article.strictFocus &&
-    article.focus?.length === 1 &&
-    article.focus[0] === "esports";
   const marketSignal =
     /\b(patrocin\w*|sponsor\w*|parceria|partnership|investimento|investment|funding|receita|revenue|aquisicao|acquisition|contrata\w*|signing|substitutos|transfer\w*|dispensa\w*|demissao|layoff\w*|roster|lineup|jogadores|players|equipes|teams|organizacoes|organizations)\b/;
+  const namedOrganization =
+    /\b(?:FURIA|LOUD|MIBR|paiN|FaZe|NAVI|Team Liquid|Pain Gaming|Red Canids|Vivo Keyd|Paper Rex)\b/.test(
+      `${article?.originalTitle || ""} ${article?.excerpt || ""}`,
+    );
   return (
-    ((dedicated || proSceneSignal.test(text)) && marketSignal.test(text)) ||
-    (dedicated && competitiveSignal.test(text)) ||
+    (namedOrganization && marketSignal.test(text)) ||
+    (proSceneSignal.test(text) &&
+      marketSignal.test(text) &&
+      (esportGameSignal.test(text) ||
+        /\b(esports?|gaming|lineup|roster|pro player)\b/.test(text))) ||
     directEsportsSignal.test(text) ||
     (esportGameSignal.test(text) &&
       (competitiveSignal.test(text) || proSceneSignal.test(text)))

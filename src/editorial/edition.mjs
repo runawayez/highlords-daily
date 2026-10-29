@@ -56,13 +56,21 @@ function sectionSort(a, b) {
 }
 
 function chooseLead(requestedLead, articles) {
-  const strongest =
-    articles.filter(Boolean).slice().sort(editorialSort)[0] || null;
+  const horizon =
+    Number(config.primaryLookbackHours || config.lookbackHours) * 3600000;
+  const fresh = articles.filter(
+    (article) => article && recency(article) >= Date.now() - horizon,
+  );
+  const pool = fresh.length ? fresh : articles.filter(Boolean);
+  const strongest = pool.slice().sort(editorialSort)[0] || null;
   if (!requestedLead) return { lead: strongest, rebalanced: false };
   if (!strongest) return { lead: requestedLead, rebalanced: false };
 
   const tolerance = 0.35;
-  if (frontPageScore(requestedLead) >= frontPageScore(strongest) - tolerance) {
+  if (
+    pool.some((article) => article.id === requestedLead.id) &&
+    frontPageScore(requestedLead) >= frontPageScore(strongest) - tolerance
+  ) {
     return { lead: requestedLead, rebalanced: false };
   }
   return { lead: strongest, rebalanced: strongest.id !== requestedLead.id };
@@ -204,6 +212,7 @@ function buildCoveragePlan(curated, articles, lead) {
   const leadId = lead ? Number(lead.id) : null;
   const usedIds = new Set(leadId == null ? [] : [leadId]);
   const globalSourceCounts = new Map();
+  if (lead) registerSource(lead, globalSourceCounts);
   const states = sectionOrder(articles).map((slug) => {
     const category = categoryBySlug.get(slug);
     const requested = requestedIdsForSection(curated, slug)
@@ -226,7 +235,18 @@ function buildCoveragePlan(curated, articles, lead) {
     return {
       category,
       requested,
-      candidates: [...requested, ...fallback],
+      candidates: [...requested, ...fallback].sort((a, b) => {
+        // Old rescue stock must not displace today's reporting. The curator
+        // may break close ties, but cannot put a weak pick above a strong one.
+        const horizon =
+          Number(config.primaryLookbackHours || config.lookbackHours) * 3600000;
+        const fresh = (article) => recency(article) >= Date.now() - horizon;
+        if (fresh(a) !== fresh(b)) return Number(fresh(b)) - Number(fresh(a));
+        const priority = (article) =>
+          sectionScore(article) +
+          (requestedSet.has(Number(article.id)) ? 0.35 : 0);
+        return priority(b) - priority(a) || sectionSort(a, b);
+      }),
       selected: [],
       sectionSourceCounts: new Map(),
     };

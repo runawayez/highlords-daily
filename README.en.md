@@ -97,3 +97,11 @@ Git users can run `git pull --ff-only` instead.
 The assistant is the recommended path for ordinary use. Manual configuration, independent profiles, custom sources, scheduling, delivery and development remain in the [technical reference](docs/TECHNICAL_REFERENCE.en.md) and [engine documentation](docs/ENGINE.md).
 
 The Electron interface remains experimental; this guide uses the project launchers.
+
+### Daily curation — 5.5.3 fix
+
+Classification uses original story content. Source focus constrains allowed subjects without forcing a category or overriding a rejection. eSports validation also applies to wizard-created configurations; clear content/category contradictions are checked before and after plugins.
+
+Independent review uses smaller batches, local IDs and one retry for omitted decisions. Selection favors reporting within the primary freshness window, counts the lead toward publisher limits, and compares curator choices with stronger alternatives. Sections may remain absent when candidates fall below the rescue floor (`LLM_MIN_SCORE - 1`).
+
+Caching remains enabled. The update invalidates affected analysis and review decisions while preserving history, feed and image caches. Run `GERAR-DAILY.bat` after updating to regenerate today's edition. Corrections and exclusions are recorded in the edition's `editorial-report.html`.

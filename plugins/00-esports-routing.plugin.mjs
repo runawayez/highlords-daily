@@ -5,8 +5,7 @@ import { categories, config } from "../src/config.mjs";
 const slugs = new Set(categories.map((category) => category.slug));
 
 function routeCollected(article) {
-  if (!config.bundledTaxonomy || !slugs.has("esports") || !isEsports(article))
-    return article;
+  if (!slugs.has("esports") || !isEsports(article)) return article;
   return {
     ...article,
     focus: ["esports"],
@@ -17,7 +16,6 @@ function routeCollected(article) {
 
 function validateAnalyzed(article) {
   if (
-    !config.bundledTaxonomy ||
     !slugs.has("esports") ||
     (article.language &&
       !["und", "pt", "en"].includes(article.language.split("-")[0]))

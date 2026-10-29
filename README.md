@@ -107,3 +107,11 @@ Se você usa Git, pode atualizar com `git pull --ff-only`.
 O assistente é o caminho recomendado para uso normal. Configuração manual, perfis independentes, fontes próprias, agendamento, distribuição e desenvolvimento continuam disponíveis na [referência técnica](docs/TECHNICAL_REFERENCE.pt.md) e na [documentação do motor](docs/ENGINE.md).
 
 A interface Electron continua experimental. O guia acima usa o launcher do projeto.
+
+### Curadoria diária — correção 5.5.3
+
+A classificação considera o conteúdo original da matéria. O foco da fonte restringe assuntos permitidos, mas não força uma categoria nem anula uma rejeição. As validações de eSports também funcionam na configuração criada pelo assistente; contradições claras entre conteúdo e categoria são verificadas antes e depois dos plugins.
+
+A revisão independente usa lotes menores, IDs locais e uma tentativa adicional para respostas omitidas. A seleção privilegia matérias dentro da janela principal de atualização, considera a manchete no limite por fonte e compara as escolhas do editor com a qualidade das demais candidatas. Categorias podem ficar ausentes quando só houver matérias abaixo do piso de resgate (`LLM_MIN_SCORE - 1`).
+
+O cache permanece ativo. A atualização invalida as decisões de análise e revisão afetadas, sem apagar o histórico nem os caches de feeds e imagens. Para refazer a edição atual após atualizar, execute `GERAR-DAILY.bat`. Os motivos das correções e exclusões ficam em `editorial-report.html` na pasta da edição.

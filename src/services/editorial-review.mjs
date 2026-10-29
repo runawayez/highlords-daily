@@ -27,7 +27,7 @@ export async function requestItemReview(
   for (const item of items) {
     const { id, ...content } = item;
     const key = digest({
-      version: 1,
+      version: 2,
       model: config.ollamaModel,
       modelDigest: config.ollamaModelDigest || null,
       system,
@@ -49,20 +49,29 @@ export async function requestItemReview(
     }
     pending.push(item);
   }
-  if (pending.length) {
-    const response = await request(system, JSON.stringify(pending), {
-      schema,
+  async function reviewPending(batch) {
+    // Keep model-facing IDs short and contiguous, including mixed cache hits.
+    const localItems = batch.map((item, index) => ({ ...item, id: index + 1 }));
+    const localSchema = structuredClone(schema);
+    localSchema.properties.items.items.properties.id = {
+      type: "integer",
+      enum: localItems.map((item) => item.id),
+    };
+    const response = await request(system, JSON.stringify(localItems), {
+      schema: localSchema,
       timeoutMs: 150000,
       purpose,
     });
-    validateSchema(response, schema);
-    const expected = new Set(pending.map((item) => item.id));
+    validateSchema(response, localSchema);
     const seen = new Set();
     for (const row of response.items) {
-      if (!expected.has(row.id) || seen.has(row.id)) continue;
+      if (seen.has(row.id)) continue;
       seen.add(row.id);
-      rows.push(row);
-      const { id, ...decision } = row;
+      const id = batch[row.id - 1].id;
+      const restored = { ...row, id };
+      validateSchema(restored, rowSchema);
+      rows.push(restored);
+      const { id: ignoredId, ...decision } = restored;
       if (cache)
         await cache.set(
           namespace,
@@ -70,6 +79,19 @@ export async function requestItemReview(
           decision,
           config.analysisCacheDays * 86400000,
         );
+    }
+    return batch.filter((_, index) => !seen.has(index + 1));
+  }
+  if (pending.length) {
+    const missing = await reviewPending(pending);
+    // One bounded retry for omissions. Never throw away good decisions when
+    // the retry fails, and never fabricate approval for the missing rows.
+    if (missing.length) {
+      try {
+        await reviewPending(missing);
+      } catch {
+        count(`${purpose}.retryFailures`);
+      }
     }
   }
   return rows;

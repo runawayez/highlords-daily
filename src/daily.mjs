@@ -1,3 +1,4 @@
+import { enforceCategoryEvidence } from "./editorial/category-evidence.mjs";
 import { maintainCache } from "./services/cache-maintenance.mjs";
 import { fileURLToPath } from "node:url";
 import { createContext } from "./engine/context.mjs";
@@ -13,7 +14,7 @@ import path from "node:path";
 import { spawn } from "node:child_process";
 import { escapeHtml } from "./utils/html.mjs";
 import { uiCatalog } from "./services/i18n.mjs";
-import { config, publication } from "./config.mjs";
+import { categories, config, publication } from "./config.mjs";
 import { fetchAllFeeds } from "./services/rss.mjs";
 import {
   analyzeArticles,
@@ -151,13 +152,16 @@ export function createDailyServices(plugins) {
       }),
     analyze: (articles) => analyzeArticles(articles, logAnalysisProgress),
     rank: async (articles, ctx) => {
-      const semantic = deduplicateArticles(articles, config.duplicateThreshold);
+      const semantic = deduplicateArticles(
+        enforceCategoryEvidence(articles, categories),
+        config.duplicateThreshold,
+      );
       const result = await runPluginHook(plugins, "afterAnalyze", {
         articles: semantic.articles,
         editionDate: ctx.editionDate,
         context: ctx,
       });
-      return result.articles;
+      return enforceCategoryEvidence(result.articles, categories);
     },
     select: async (articles, ctx) => {
       try {

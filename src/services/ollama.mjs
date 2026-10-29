@@ -212,17 +212,6 @@ function tagsField(row) {
   return [];
 }
 
-function forcedCategory(article) {
-  if (
-    !article?.editorialGuardrail ||
-    !article?.strictFocus ||
-    !Array.isArray(article.focus) ||
-    article.focus.length !== 1
-  )
-    return null;
-  return validSlugs.has(article.focus[0]) ? article.focus[0] : null;
-}
-
 const exampleSlug = categories[0]?.slug || "geral";
 const analysisSystem = `Você é o editor do ${publication.name}, uma newsletter diária local e configurável.
 Analise TODAS as matérias recebidas e devolva somente JSON válido.
@@ -234,6 +223,8 @@ IMPORTANTE:
 - focus é apenas uma pista editorial sobre a fonte, NUNCA evidência sobre o assunto da matéria;
 - classifique pelo assunto CENTRAL do título e do texto, sem preencher categorias por obrigação;
 - entrevistas musicais não são IA, séries de TV não são Games, ofertas e cupons não são inovação;
+- eSports exige competição organizada de videogames: hardware para jogos não é eSports; esportes físicos são Esportes;
+- lançamentos de notebooks são Hardware/Tecnologia, estreias da Netflix são Filmes e Séries/Entretenimento, emulação de videogames é Games; use somente o slug correspondente da taxonomia abaixo;
 - promoções, anúncios de afiliados e listas de ofertas recebem category null;
 - quando strictFocus for true, category deve estar dentro de focus; se nenhuma servir, use null;
 - category deve ser SOMENTE um destes slugs: ${validSlugList}; ou null;
@@ -304,16 +295,13 @@ function parseBatch(parsed, batch) {
     seenLocalIds.add(localId);
     matchedArticleIds.add(article.id);
 
-    const lockedCategory = forcedCategory(article);
-    const category =
-      lockedCategory ||
-      normalizeCategory(
-        row?.category ??
-          row?.categoria ??
-          row?.section ??
-          row?.secao ??
-          row?.slug,
-      );
+    const category = normalizeCategory(
+      row?.category ??
+        row?.categoria ??
+        row?.section ??
+        row?.secao ??
+        row?.slug,
+    );
     const score = normalizeScore(
       row?.score ??
         row?.relevance ??
@@ -593,9 +581,10 @@ async function analyzeArticlesUncached(articles, onProgress = () => {}) {
     }
   }
 
+  const rescueFloor = Math.max(0, config.llmMinScore - 1);
   if (!analyzed.length && classified.length) {
     const rescue = classified
-      .filter((article) => article.score > 0)
+      .filter((article) => article.score >= rescueFloor && article.score > 0)
       .sort(
         (a, b) =>
           Number(b.score) - Number(a.score) ||
@@ -611,7 +600,6 @@ async function analyzeArticlesUncached(articles, onProgress = () => {}) {
       });
   }
 
-  const rescueFloor = Math.max(0, config.llmMinScore - 1);
   const targetPerCategory = config.itemsPerCategory + 1;
 
   for (const category of categories) {
@@ -648,33 +636,6 @@ async function analyzeArticlesUncached(articles, onProgress = () => {}) {
           floor: rescueFloor,
           total: count,
         });
-    }
-
-    if (count === 0) {
-      const bestCoverageCandidate = classified
-        .filter(
-          (article) =>
-            article.category === category.slug &&
-            !analyzedIds.has(article.id) &&
-            Number(article.score) > 0,
-        )
-        .sort(
-          (a, b) =>
-            Number(b.score) - Number(a.score) ||
-            new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0),
-        )[0];
-      if (
-        bestCoverageCandidate &&
-        addUnique(analyzed, bestCoverageCandidate, analyzedIds)
-      ) {
-        onProgress({
-          status: "category-rescue",
-          category: category.name,
-          count: 1,
-          floor: 0,
-          total: 1,
-        });
-      }
     }
   }
 
@@ -858,7 +819,7 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
   const pending = [];
   for (const article of articles) {
     const key = digest({
-      version: 5,
+      version: 6,
       model: config.ollamaModel,
       modelDigest: config.ollamaModelDigest || null,
       copyMode: config.copyMode,

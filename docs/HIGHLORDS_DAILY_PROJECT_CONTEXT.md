@@ -1,3 +1,5 @@
+> Correção 5.5.3 (29/10/2026): foco da fonte não força categoria nem anula rejeição; validação de evidência antes/depois dos plugins, inclusive no setup; revisão independente com IDs locais e retry limitado; seleção favorece atualidade e qualidade, inclui manchete na contagem por fonte e remove resgate de pontuação ínfima. Cache de análise/revisão versionado sem apagar histórico, feeds ou imagens.
+
 > Correção 5.5.2: bloqueio de placeholders do modelo; revisão semântica independente sem ancoragem na categoria/fonte; metadados corretos de fontes internacionais; busca de imagens concentrada nas selecionadas; fotos compactas preservadas; layout determinístico sem chamada adicional ao Ollama. `GERAR-DAILY.bat` sempre refaz a edição atual; o histórico da mesma data é substituído e não bloqueia as matérias durante a regeneração.
 
 > Primeiro uso 5.5: o launcher abre um assistente que cria a configuração e seleciona/verifica fontes automaticamente. O usuário não edita `.env`/YAML. Veja o [guia inicial](../README.md).
