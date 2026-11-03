@@ -32,5 +32,10 @@
   "pdfPending": "Edição pronta; PDF pendente.",
   "report": "Relatório editorial",
   "sourceLanguage": "Idioma original",
-  "operationFailed": "A edição foi gerada, mas houve uma falha de entrega ou após a publicação."
+  "operationFailed": "A edição foi gerada, mas houve uma falha de entrega ou após a publicação.",
+  "coverLabel": "Nesta edição",
+  "serviceLabel": "O que muda para você",
+  "readingLabel": "Leitura",
+  "minuteLabel": "min",
+  "briefLabel": "Nota breve"
 }

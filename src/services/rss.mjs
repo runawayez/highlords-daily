@@ -1,3 +1,4 @@
+import { editorialFamily } from "../editorial/balance.mjs";
 import { decision } from "../editorial/audit.mjs";
 import { cleanSourceText, limitCopy } from "../editorial/source-text.mjs";
 import { fetchFeedXml, recordFeedHealth } from "./feed-cache.mjs";
@@ -305,6 +306,28 @@ export function balancedLimit(articles, feedList, limit) {
     );
     if (article && add(article))
       covered.add(article.publisherGroup || article.source);
+  }
+  const desks = [
+    ...new Set(
+      categories.map((category) =>
+        editorialFamily({ category: category.slug }),
+      ),
+    ),
+  ];
+  if (desks.length >= 3 && config.editorialBalance !== "off") {
+    const quota = Math.max(1, Math.floor(limit / desks.length));
+    for (let round = 0; round < quota; round++) {
+      for (const desk of desks) {
+        const candidate = sorted.find(
+          (article) =>
+            !selectedLinks.has(article.link) &&
+            article.focus?.some(
+              (category) => editorialFamily({ category }) === desk,
+            ),
+        );
+        if (candidate) add(candidate);
+      }
+    }
   }
   let progress = true;
   while (selected.length < limit && progress) {

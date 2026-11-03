@@ -1,3 +1,10 @@
+import { wordTokens } from "../utils/text.mjs";
+import {
+  balanceStories,
+  editorialFamily,
+  familyOrder,
+  storyKind,
+} from "./balance.mjs";
 import { hasInvalidCopy } from "./copy-quality.mjs";
 import {
   categories,
@@ -62,13 +69,21 @@ function chooseLead(requestedLead, articles) {
     (article) => article && recency(article) >= Date.now() - horizon,
   );
   const pool = fresh.length ? fresh : articles.filter(Boolean);
-  const strongest = pool.slice().sort(editorialSort)[0] || null;
+  const publicPool = pool.filter(
+    (article) =>
+      frontPageScore(article) >= config.llmMinScore &&
+      !["community", "preview", "rumor", "reaction"].includes(
+        storyKind(article),
+      ),
+  );
+  const leadPool = publicPool.length ? publicPool : pool;
+  const strongest = leadPool.slice().sort(editorialSort)[0] || null;
   if (!requestedLead) return { lead: strongest, rebalanced: false };
   if (!strongest) return { lead: requestedLead, rebalanced: false };
 
   const tolerance = 0.35;
   if (
-    pool.some((article) => article.id === requestedLead.id) &&
+    leadPool.some((article) => article.id === requestedLead.id) &&
     frontPageScore(requestedLead) >= frontPageScore(strongest) - tolerance
   ) {
     return { lead: requestedLead, rebalanced: false };
@@ -138,7 +153,7 @@ function chooseTopStories(curated, sectionArticles, lead) {
       : Math.min(FRONT_PAGE_TARGET, sectionArticles.length);
   const selected = [];
   const selectedIds = new Set();
-  const seenCategories = new Set();
+  const seenCategories = new Set(lead ? [editorialFamily(lead)] : []);
   const seenTopics = new Set();
   const sourceCounts = new Map();
 
@@ -152,18 +167,19 @@ function chooseTopStories(curated, sectionArticles, lead) {
       return false;
     const topic = String(article.topicKey || "").trim();
     if (topic && seenTopics.has(topic)) return false;
-    if (requireFreshCategory && seenCategories.has(article.category))
+    if (requireFreshCategory && seenCategories.has(editorialFamily(article)))
       return false;
     if (!canUseSource(article, sourceCounts, new Map())) return false;
     selected.push(article);
     selectedIds.add(Number(article.id));
-    seenCategories.add(article.category);
+    seenCategories.add(editorialFamily(article));
     if (topic) seenTopics.add(topic);
     registerSource(article, sourceCounts);
     return true;
   };
 
-  for (const id of requestedIds) tryAdd(byId.get(id));
+  for (const id of requestedIds)
+    tryAdd(byId.get(id), { requireFreshCategory: true });
   const candidates = sectionArticles.slice().sort(editorialSort);
   for (const article of candidates) {
     if (selected.length >= desired) break;
@@ -464,7 +480,68 @@ export function normalizeNewsletter(curated, articles, editionDate) {
       }
     : null;
 
-  const plan = buildCoveragePlan(curated, articles, lead);
+  let plan = buildCoveragePlan(curated, articles, lead);
+  const balance = balanceStories(articles, lead, categories, config);
+  if (balance) {
+    const selected = balance.articles.filter(
+      (article) => article.id !== lead?.id,
+    );
+    const sections = categories
+      .map((category) => ({
+        slug: category.slug,
+        name: category.name,
+        articles: selected.filter(
+          (article) => article.category === category.slug,
+        ),
+      }))
+      .filter((section) => section.articles.length)
+      .sort((a, b) => {
+        const rank = (section) => {
+          const index = familyOrder.indexOf(
+            editorialFamily({ category: section.slug }),
+          );
+          return index < 0 ? 99 : index;
+        };
+        return rank(a) - rank(b);
+      });
+    const missing = categories
+      .filter(
+        (category) =>
+          !sections.some((section) => section.slug === category.slug),
+      )
+      .map((category) => ({
+        slug: category.slug,
+        name: category.name,
+        reason:
+          lead?.category === category.slug
+            ? "lead-only"
+            : articles.some(
+                  (article) =>
+                    article.category === category.slug &&
+                    Number(article.sectionScore ?? article.score ?? 0) >=
+                      balance.stats.floor,
+                )
+              ? "editorial-balance"
+              : "no-strong-candidate",
+      }));
+    plan = {
+      ...plan,
+      sections,
+      backfilled: selected.filter(
+        (article) =>
+          !requestedIdsForSection(curated, article.category).includes(
+            Number(article.id),
+          ),
+      ).length,
+      diversityRelaxed: 0,
+      coverage: {
+        ...plan.coverage,
+        visible: sections.length,
+        selectableCategories: sections.length,
+        missing,
+      },
+    };
+  }
   const sectionArticles = plan.sections.flatMap((section) => section.articles);
   const topStories = chooseTopStories(curated, sectionArticles, lead);
   const chosen = uniqueStories([lead, ...topStories, ...sectionArticles]);
@@ -473,7 +550,11 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     editionDate,
     generatedAt: new Date().toISOString(),
     curatedBy: "ollama",
-    selectionMode: plan.backfilled > 0 ? "ollama+section-backfill" : "ollama",
+    selectionMode: balance
+      ? "ollama+theme-balance"
+      : plan.backfilled > 0
+        ? "ollama+section-backfill"
+        : "ollama",
     preset: editorial.preset,
     profile: profile.name,
     language: config.language,
@@ -492,6 +573,21 @@ export function normalizeNewsletter(curated, articles, editionDate) {
     sectionOrder: plan.sections.map((section) => section.slug),
     sections: plan.sections,
     stats: {
+      balance: balance?.stats || { enabled: false },
+      readingMinutes: Math.max(
+        1,
+        Math.ceil(
+          chosen.reduce(
+            (sum, article) =>
+              sum +
+              wordTokens(
+                `${article.headline || ""} ${article.summary || ""}`,
+                config.language,
+              ).length,
+            0,
+          ) / 180,
+        ),
+      ),
       stories: chosen.length,
       sources: new Set(chosen.map((article) => sourceKey(article))).size,
       candidates: articles.length,
@@ -528,4 +624,32 @@ export function fallbackNewsletter(articles, editionDate) {
   );
   edition.selectionMode = "ranking-fallback";
   return edition;
+}
+
+// Image fallback may replace a story. Rebuild the final selection from those
+// prepared stories, so replacements cannot bypass family/entity limits.
+export function reconcileBalancedEdition(edition) {
+  if (!edition.stats?.balance?.enabled) return edition;
+  const articles = uniqueStories([
+    edition.lead,
+    ...(edition.sections || []).flatMap((section) => section.articles || []),
+  ]);
+  const next = normalizeNewsletter(
+    {
+      leadId: edition.lead?.id,
+      title: edition.title,
+      intro: edition.intro,
+      ui: edition.ui,
+      topStoryIds: (edition.topStories || []).map((article) => article.id),
+      sections: Object.fromEntries(
+        (edition.sections || []).map((section) => [
+          section.slug,
+          section.articles.map((article) => article.id),
+        ]),
+      ),
+    },
+    articles,
+    edition.editionDate,
+  );
+  return { ...edition, ...next, stats: { ...edition.stats, ...next.stats } };
 }

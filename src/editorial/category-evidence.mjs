@@ -20,9 +20,34 @@ function supportsSource(article) {
 export function categoryEvidence(article, taxonomy) {
   if (!supportsSource(article)) return null;
   const slugs = new Set(taxonomy.map((category) => category.slug));
-  const title = normalizeText(article.originalTitle || "");
+  const title = normalizeText(article.originalTitle || "")
+    .normalize("NFD")
+    .replace(/\p{M}/gu, "");
   const available = (...choices) => choices.find((slug) => slugs.has(slug));
   if (isEsports(article)) return available("esports") || null;
+  if (
+    /\b(galaxy|iphone|xiaomi|smartphone|celular)\b/.test(title) &&
+    /\b(ultra|pro|design|lancamento|versao global|vazado|modelo|camera)\b/.test(
+      title,
+    )
+  )
+    return available("mobile-gadgets", "tecnologia") || null;
+  if (
+    /\b(compilando html|compilador|compiler|framework|biblioteca)\b/.test(
+      title,
+    ) &&
+    /\b(pitch|rust|html|programacao|programming)\b/.test(title)
+  )
+    return available("desenvolvimento", "ia-desenvolvimento") || null;
+  if (
+    article.category === "esportes" &&
+    /\b(barcelona|scotland|escocia|premier league|brasileirao)\b/.test(title) &&
+    /\b(flick|jogadores|players|nations league|tecnico|liga|futebol)\b/.test(
+      title,
+    )
+  )
+    return available("futebol", "esportes") || null;
+
   if (
     /\b(macbook|notebook|laptop|geforce|radeon|ryzen)\b/.test(title) &&
     /\b(anuncia|lanca|lancamento|apresenta|announces|launches|unveils|oled|processador|gpu)\b/.test(

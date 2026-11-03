@@ -15,5 +15,10 @@
   "archiveTitle": "أرشيف الأعداد",
   "latest": "أحدث عدد",
   "fallbackTitle": "ما يستحق اهتمامك اليوم",
-  "fallbackIntro": "مجموعة مختارة من الأخبار التي تستحق اهتمامك اليوم."
+  "fallbackIntro": "مجموعة مختارة من الأخبار التي تستحق اهتمامك اليوم.",
+  "coverLabel": "في هذا العدد",
+  "serviceLabel": "ما الذي يتغير لك",
+  "readingLabel": "قراءة",
+  "minuteLabel": "دقيقة",
+  "briefLabel": "موجز"
 }

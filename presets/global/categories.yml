@@ -82,3 +82,10 @@ categories:
     labels: {"en": "Future & Innovation", "es": "Futuro e innovación", "fr": "Futur et innovation", "de": "Zukunft & Innovation", "ja": "未来・イノベーション", "zh": "未来与创新", "ar": "المستقبل والابتكار", "pt": "Futuro & Inovação"}
     description: Tecnologias emergentes e inovação aplicada com potencial transformador, como robótica, computação quântica, VR/AR, computação espacial, novas interfaces, energia avançada, mobilidade futura, protótipos e novas plataformas tecnológicas. Descobertas científicas sem inovação aplicada pertencem a Ciência; produtos já estabelecidos pertencem às categorias de tecnologia correspondentes.
     aliases: [future, innovation, futuro, inovação, inovacao, emerging tech, tecnologias emergentes, robótica, robotica, computação quântica, computacao quantica]
+
+  - slug: mundo
+    name: Mundo
+    required: false
+    labels: {"en": "World", "es": "Mundo", "fr": "Monde", "de": "Welt", "ja": "世界", "zh": "国际", "ar": "العالم", "pt": "Mundo"}
+    description: Geopolítica, relações internacionais, diplomacia, conflitos, eleições estrangeiras e acontecimentos internacionais relevantes. Política doméstica pertence a Política & Sociedade; o foco central em investimentos ou mercados pode permanecer em Economia.
+    aliases: [world, international, internacional, geopolitics, geopolítica, diplomacia]

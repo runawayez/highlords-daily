@@ -5,6 +5,11 @@ const base = JSON.parse(
   fs.readFileSync(new URL("../locales/en.json", import.meta.url), "utf8"),
 );
 const optionalKeys = new Set([
+  "coverLabel",
+  "serviceLabel",
+  "readingLabel",
+  "minuteLabel",
+  "briefLabel",
   "sourceLanguage",
   "operationFailed",
   "searchArchive",

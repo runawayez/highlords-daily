@@ -1,3 +1,5 @@
+> Atualização 5.6.0 (03/11/2026): equilíbrio por famílias temáticas, expansão opcional de Mundo, seleção com piso e limites por entidades/futebol/tecnologia, capa com três chamadas e serviço, notas breves, aproveitamento da última página e histórico das últimas sete edições. Consulte [Diversidade 5.6](DIVERSITY_5_6.md).
+
 > Correção 5.5.3 (29/10/2026): foco da fonte não força categoria nem anula rejeição; validação de evidência antes/depois dos plugins, inclusive no setup; revisão independente com IDs locais e retry limitado; seleção favorece atualidade e qualidade, inclui manchete na contagem por fonte e remove resgate de pontuação ínfima. Cache de análise/revisão versionado sem apagar histórico, feeds ou imagens.
 
 > Correção 5.5.2: bloqueio de placeholders do modelo; revisão semântica independente sem ancoragem na categoria/fonte; metadados corretos de fontes internacionais; busca de imagens concentrada nas selecionadas; fotos compactas preservadas; layout determinístico sem chamada adicional ao Ollama. `GERAR-DAILY.bat` sempre refaz a edição atual; o histórico da mesma data é substituído e não bloqueia as matérias durante a regeneração.

@@ -219,6 +219,18 @@ export function paginateEditorialDocument() {
         "Lead exceeds the A4 content area; edition HTML is preserved.",
       );
   }
+  const digest = shell.querySelector(".cover-digest");
+  if (digest) {
+    const block = copy(digest);
+    current.content.append(block);
+    if (!fits(current))
+      current.content.querySelector(".lead-wrap")?.classList.add("pdf-compact");
+    // Cover calls are references; body stories remain intact later in the PDF.
+    if (!fits(current)) block.querySelector(".service-callout")?.remove();
+    while (!fits(current) && block.querySelectorAll(".cover-call").length > 1)
+      block.querySelector(".cover-call:last-child")?.remove();
+    if (!fits(current)) block.remove();
+  }
   const sections = [...shell.querySelectorAll(".newsletter-section")];
   const isTextSingle = (section) =>
     section &&
@@ -235,6 +247,28 @@ export function paginateEditorialDocument() {
     const name = heading.querySelector("h2")?.textContent || "";
     for (const row of section.querySelectorAll(".section-grid"))
       addRow(section.id, copy(row), heading, name);
+  }
+  // Try reclaiming a sparse tail page using compact geometry on its complete
+  // cards. Restore every class/node if it does not fit; never truncate copy.
+  if (pages.length > 1) {
+    const last = pages.at(-1),
+      before = pages.at(-2);
+    const units = [...last.content.children];
+    const rows = units.flatMap((unit) => [
+      ...unit.querySelectorAll(".section-grid"),
+    ]);
+    const originalClasses = rows.map((row) => row.className);
+    for (const row of rows) row.classList.add("pdf-compact");
+    for (const unit of units) before.content.append(unit);
+    if (fits(before)) {
+      last.element.remove();
+      pages.pop();
+    } else {
+      units.forEach((unit) => last.content.append(unit));
+      rows.forEach((row, index) => {
+        row.className = originalClasses[index];
+      });
+    }
   }
   // A sparse final page can take an entire preceding section when both fit.
   if (pages.length > 1) {
@@ -302,6 +336,7 @@ export function paginateEditorialDocument() {
     scale: 1,
     issues,
     highlights: "references-not-reprinted",
+    coverCalls: documentRoot.querySelectorAll(".cover-call").length,
     compactBlocks: documentRoot.querySelectorAll(".pdf-compact").length,
     flowSplitStories:
       documentRoot.querySelectorAll("[data-flow-single]").length,

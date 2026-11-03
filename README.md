@@ -115,3 +115,15 @@ A classificação considera o conteúdo original da matéria. O foco da fonte re
 A revisão independente usa lotes menores, IDs locais e uma tentativa adicional para respostas omitidas. A seleção privilegia matérias dentro da janela principal de atualização, considera a manchete no limite por fonte e compara as escolhas do editor com a qualidade das demais candidatas. Categorias podem ficar ausentes quando só houver matérias abaixo do piso de resgate (`LLM_MIN_SCORE - 1`).
 
 O cache permanece ativo. A atualização invalida as decisões de análise e revisão afetadas, sem apagar o histórico nem os caches de feeds e imagens. Para refazer a edição atual após atualizar, execute `GERAR-DAILY.bat`. Os motivos das correções e exclusões ficam em `editorial-report.html` na pasta da edição.
+
+### Jornal geral e diversidade — 5.6.0
+
+O equilíbrio automático reúne categorias em grandes temas: Tecnologia (incluindo IA e Desenvolvimento), Sociedade, Mundo, Economia, Ciência/Saúde/Meio Ambiente, Cultura, Esportes e Games/eSports. Em edições com pelo menos três grandes temas elegíveis, a seleção busca até 16 matérias, com piso de qualidade, limites por fonte e repetição de entidades, até duas notícias de futebol e tecnologia em até aproximadamente 25% da edição (arredondamento mínimo de uma matéria). As metas são flexíveis; uma edição pode ficar menor quando faltarem boas candidatas. Jornais especializados e taxonomias próprias continuam com sua seleção por categoria.
+
+O assistente configura automaticamente os tamanhos curto (até 10), equilibrado (até 16) e completo (até 22). Configurações pessoais anteriores que já acompanhavam Política & Sociedade recebem Mundo; para cobertura BR, acrescentam-se os feeds geral e internacional da Agência Brasil. Esse ajuste ocorre em memória, preservando os arquivos salvos. Overrides explícitos de categorias e feeds permanecem sob controle do usuário. A atualização não habilita interesses que a pessoa não escolheu.
+
+A capa apresenta até três chamadas de temas diferentes, uma estimativa de leitura e, quando disponível, uma chamada de serviço com link para a matéria original. Projetos pessoais, rumores, prévias de partidas e reações rotineiras recebem menos prioridade e podem aparecer como notas breves. A paginação tenta aproveitar o espaço restante com cartões completos, sem cortar o texto.
+
+O relatório `editorial-report.html` mostra a distribuição e motivos de exclusão. O arquivo local `data/diversity-history.json` acompanha as últimas sete edições; regenerar a mesma data substitui sua medição. A presença de notícias locais depende das fontes e do escopo disponíveis; o programa não deduz uma cidade a partir do fuso horário.
+
+Em perfis avançados, `editionMaxStories` ajusta o tamanho e `editorialBalance: off` mantém a seleção anterior. Não é necessário editar o `.env` para usar os novos padrões. Veja [as regras editoriais](docs/DIVERSITY_5_6.md).

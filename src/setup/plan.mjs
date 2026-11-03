@@ -46,7 +46,7 @@ export const interests = [
     value: "society",
     pt: "Política e sociedade",
     en: "Politics and society",
-    slugs: ["politica-sociedade"],
+    slugs: ["politica-sociedade", "mundo"],
   },
   {
     value: "science",

@@ -77,3 +77,17 @@ export function limitCopy(value, maximum, language = "en") {
       : [...prefix].filter((c) => !/^[\uD800-\uDFFF]$/u.test(c)).join("");
   return `${words.trimEnd()}…`;
 }
+
+export function soberCopy(value = "") {
+  return String(value)
+    .replace(
+      /[\p{Extended_Pictographic}\uFE0F]+\s*(?:RAINHA|REI|BOMBA|URGENTE)!*/gu,
+      "",
+    )
+    .replace(
+      /\b(CONFIRMADO|CONFIRMADA|REVELADO|REVELADA|INCRÍVEL)\b/g,
+      (word) => word.toLocaleLowerCase("pt-BR"),
+    )
+    .replace(/\s+/g, " ")
+    .trim();
+}

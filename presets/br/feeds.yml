@@ -278,3 +278,23 @@ feeds:
     focus: [clima-futuro]
     strict_focus: true
     images: page
+
+  - name: Agência Brasil Internacional
+    publisher_group: Agência Brasil
+    url: https://agenciabrasil.ebc.com.br/rss/internacional/feed.xml
+    language: pt-BR
+    country: BR
+    coverage: [BR, GLOBAL]
+    focus: [mundo]
+    strict_focus: true
+    images: page
+
+  - name: Agência Brasil Geral
+    publisher_group: Agência Brasil
+    url: https://agenciabrasil.ebc.com.br/rss/geral/feed.xml
+    language: pt-BR
+    country: BR
+    coverage: [BR]
+    focus: [politica-sociedade]
+    strict_focus: true
+    images: page

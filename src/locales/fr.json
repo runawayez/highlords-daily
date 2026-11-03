@@ -15,5 +15,10 @@
   "archiveTitle": "Archives des éditions",
   "latest": "Dernière édition",
   "fallbackTitle": "Ce qui mérite votre attention aujourd’hui",
-  "fallbackIntro": "Une sélection concise des informations qui méritent votre attention."
+  "fallbackIntro": "Une sélection concise des informations qui méritent votre attention.",
+  "coverLabel": "Dans cette édition",
+  "serviceLabel": "Ce qui change pour vous",
+  "readingLabel": "Lecture",
+  "minuteLabel": "min",
+  "briefLabel": "En bref"
 }

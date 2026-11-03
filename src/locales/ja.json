@@ -15,5 +15,10 @@
   "archiveTitle": "バックナンバー",
   "latest": "最新号",
   "fallbackTitle": "今日注目すべきニュース",
-  "fallbackIntro": "今日の注目ニュースを厳選してお届けします。"
+  "fallbackIntro": "今日の注目ニュースを厳選してお届けします。",
+  "coverLabel": "今号の主な記事",
+  "serviceLabel": "暮らしへの影響",
+  "readingLabel": "読了時間",
+  "minuteLabel": "分",
+  "briefLabel": "短報"
 }

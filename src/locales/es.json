@@ -15,5 +15,10 @@
   "archiveTitle": "Archivo de ediciones",
   "latest": "Última edición",
   "fallbackTitle": "Lo que merece tu atención hoy",
-  "fallbackIntro": "Una selección breve de las noticias que merecen tu atención hoy."
+  "fallbackIntro": "Una selección breve de las noticias que merecen tu atención hoy.",
+  "coverLabel": "En esta edición",
+  "serviceLabel": "Qué cambia para ti",
+  "readingLabel": "Lectura",
+  "minuteLabel": "min",
+  "briefLabel": "Breve"
 }

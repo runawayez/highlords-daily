@@ -1,3 +1,4 @@
+import { balancedPreview } from "../tests/fixtures/balanced-preview.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import assert from "node:assert/strict";
@@ -322,6 +323,7 @@ if (!text.error && text.status === 0) {
 const variants = [];
 for (const name of [
   "approved-design",
+  "balanced-newspaper",
   "maximum-copy",
   "uneven-copy",
   "raster-images",
@@ -329,7 +331,8 @@ for (const name of [
   "rtl",
   "legacy",
 ]) {
-  let sample = designPreview();
+  let sample =
+    name === "balanced-newspaper" ? balancedPreview() : designPreview();
   if (name === "uneven-copy") sample = unevenCopy();
   if (name === "raster-images") sample = rasterPreview;
   if (name === "maximum-copy") {
@@ -391,6 +394,22 @@ for (const name of [
       layout.pageSummaries.every((page) => page.stories > 0),
       `${name}: empty page`,
     );
+    if (name === "balanced-newspaper") {
+      assert.equal(sample.stats.stories, 16);
+      assert.ok(
+        layout.pages <= 6,
+        "General edition must fit within six readable pages",
+      );
+      assert.equal(
+        layout.coverCalls,
+        3,
+        "PDF cover must present three distinct-family calls",
+      );
+      assert.ok(
+        layout.pageSummaries.at(-1).occupancy >= 0.25,
+        "Tail page must not be nearly empty",
+      );
+    }
     if (name === "approved-design")
       assert.ok(layout.pages <= 3, "Normal edition should remain compact");
     if (name === "uneven-copy")

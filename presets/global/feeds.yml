@@ -38,7 +38,7 @@ feeds:
     language: en-GB
     country: GB
     coverage: [GLOBAL]
-    focus: [politica-sociedade, economia, saude, clima-meio-ambiente]
+    focus: [mundo, politica-sociedade, economia, saude, clima-meio-ambiente]
     images: page
 
   # Science, climate and environment.

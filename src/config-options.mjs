@@ -30,6 +30,8 @@ export const fields = {
   maxCandidates: "MAX_CANDIDATES",
   maxItemsPerFeed: "MAX_ITEMS_PER_FEED",
   aiBatchSize: "AI_BATCH_SIZE",
+  editorialBalance: "EDITORIAL_BALANCE",
+  editionMaxStories: "EDITION_MAX_STORIES",
   itemsPerCategory: "ITEMS_PER_CATEGORY",
   llmMinScore: "LLM_MIN_SCORE",
   requireImages: "REQUIRE_IMAGES",

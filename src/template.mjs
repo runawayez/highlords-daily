@@ -1,3 +1,4 @@
+import { storyKind, editorialFamily } from "./editorial/balance.mjs";
 import { editorialStyles } from "./presentation/editorial-styles.mjs";
 import { fitEditorialRow } from "./presentation/fit-row.mjs";
 import { uiCatalog, direction } from "./services/i18n.mjs";
@@ -134,7 +135,7 @@ function storyCard(
   return `<article class="${classes}" data-story-id="${escapeHtml(article.stableId || article.link || article.id || "")}">
     ${image}
     <div class="story-body">
-      <div class="story-meta"><span class="source">${escapeHtml(article.source)}</span><span>${escapeHtml(category)}</span>${article.provenance?.languageFallback ? `<span>${escapeHtml(ui.sourceLanguage)}: ${escapeHtml(article.language || "und")}</span>` : ""}</div>
+      <div class="story-meta"><span class="source">${escapeHtml(article.source)}</span><span>${escapeHtml(category)}</span>${role === "brief" ? `<span>${escapeHtml(ui.briefLabel)}</span>` : ""}${article.provenance?.languageFallback ? `<span>${escapeHtml(ui.sourceLanguage)}: ${escapeHtml(article.language || "und")}</span>` : ""}</div>
       <h${lead ? "2" : "3"}><a href="${escapeHtml(safeUrl(article.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(article.headline || article.originalTitle)}</a></h${lead ? "2" : "3"}>
       <p>${escapeHtml(article.summary || article.excerpt || "")}</p>
       ${tags}
@@ -175,6 +176,30 @@ function frontPageMarkup(edition, ui, labels) {
   return `<section class="front-page" id="front-page">
     <div class="front-page-start"><div class="front-page-heading"><span class="front-page-kicker">TOP</span><h2>${escapeHtml(edition.frontPageTitle || ui.fallbackTitle)}</h2><span class="front-page-count">${stories.length} ${escapeHtml(highlightLabel)}</span></div>${rows[0] || ""}</div>
     ${rows.slice(1).join("")}
+  </section>`;
+}
+
+function coverDigest(edition, ui, labels) {
+  const seen = new Set(edition.lead ? [editorialFamily(edition.lead)] : []);
+  const references = (edition.topStories || [])
+    .filter((article) => {
+      const family = editorialFamily(article);
+      if (seen.has(family)) return false;
+      seen.add(family);
+      return true;
+    })
+    .slice(0, 3);
+  const stories = (edition.sections || []).flatMap(
+    (section) => section.articles || [],
+  );
+  const service = stories.find(
+    (article) =>
+      storyKind(article) === "service" && article.id !== edition.lead?.id,
+  );
+  if (!references.length && !service) return "";
+  return `<section class="cover-digest" id="front-page" aria-label="${escapeHtml(ui.coverLabel)}">
+    ${references.length ? `<div class="cover-kicker">${escapeHtml(ui.coverLabel)}${edition.stats?.readingMinutes ? `<span>${escapeHtml(ui.readingLabel)} · ${edition.stats.readingMinutes} ${escapeHtml(ui.minuteLabel)}</span>` : ""}</div><div class="cover-calls">${references.map((article) => `<div class="cover-call"><span>${escapeHtml(labels.get(article.category) || article.category)}</span><h3><a href="${escapeHtml(safeUrl(article.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(article.headline || article.originalTitle)}</a></h3></div>`).join("")}</div>` : ""}
+    ${service ? `<aside class="service-callout"><strong>${escapeHtml(ui.serviceLabel)}</strong><a href="${escapeHtml(safeUrl(service.link))}" target="_blank" rel="noopener noreferrer">${escapeHtml(service.headline || service.originalTitle)} ↗</a></aside>` : ""}
   </section>`;
 }
 
@@ -257,6 +282,7 @@ export function renderNewsletterHtml(edition, logoDataUri = "") {
     ? `<img class="logo" src="${logoDataUri}" alt="${escapeHtml(publication.name)}">`
     : `<div class="logo-fallback">${escapeHtml(initials())}</div>`;
   const frontPage = frontPageMarkup(edition, ui, labels);
+  const digest = coverDigest(edition, ui, labels);
   const sections = visibleSections
     .map((section, index) => sectionMarkup(section, index, ui, labels))
     .join("");
@@ -282,8 +308,9 @@ ${editorialStyles(publication)}
   <nav class="index">${nav}</nav>
   <main>
     <section class="lead-wrap"><div class="lead-label">${escapeHtml(ui.leadLabel)}</div>${storyCard(edition.lead, { lead: true, role: "feature", ui, labels })}</section>
+    ${digest}
     ${stats}
-    ${frontPage}
+    ${digest ? "" : frontPage}
     ${sections}
   </main>
   <footer class="footer"><strong>${escapeHtml(publication.name)}</strong><a href="../index.html">${escapeHtml(ui.archiveTitle)}</a><span>${escapeHtml(formatDate(edition.editionDate))}</span></footer>

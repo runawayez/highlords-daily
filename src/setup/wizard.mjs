@@ -367,6 +367,7 @@ export async function runSetup({
     editorialContext: `Reader living in ${countryName(residence, "en")}. Prioritize news about ${preferences.coverage.map((c) => countryName(c, "en")).join(", ")}. Output language: ${language}. Do not imply local availability or laws without source evidence.`,
     sourceLanguages: [],
     maxCandidates: size === "short" ? 80 : size === "complete" ? 160 : 120,
+    editionMaxStories: size === "short" ? 10 : size === "complete" ? 22 : 16,
     maxItemsPerFeed: 20,
     llmMinScore: 4.0,
     bundledTaxonomy: false,
@@ -409,6 +410,8 @@ export async function runSetup({
     OLLAMA_MODEL: previous.OLLAMA_MODEL || "qwen3:4b",
     ITEMS_PER_CATEGORY:
       size === "short" ? "1" : size === "complete" ? "3" : "2",
+    EDITORIAL_BALANCE: "auto",
+    EDITION_MAX_STORIES: String(metadata.editionMaxStories),
     MAX_CANDIDATES: String(metadata.maxCandidates),
     MAX_ITEMS_PER_FEED: "20",
     EXPORT_PDF: String(exportPdf),

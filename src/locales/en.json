@@ -32,5 +32,10 @@
   "pdfPending": "Edition ready; PDF pending.",
   "report": "Editorial report",
   "sourceLanguage": "Source language",
-  "operationFailed": "The edition was generated, but a delivery or post-publication operation failed."
+  "operationFailed": "The edition was generated, but a delivery or post-publication operation failed.",
+  "coverLabel": "In this edition",
+  "serviceLabel": "What changes for you",
+  "readingLabel": "Read",
+  "minuteLabel": "min",
+  "briefLabel": "Brief"
 }

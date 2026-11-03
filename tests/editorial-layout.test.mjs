@@ -149,7 +149,7 @@ test("semantic review ignores low-confidence destructive changes", () => {
   assert.equal(result.stats.ignored, 1);
 });
 
-test("BR preset exposes ten daily sections with five contractual cores", async () => {
+test("BR preset exposes eleven daily sections with five contractual cores", async () => {
   const categories = parse(
     await fs.readFile(
       new URL("../presets/br/categories.yml", import.meta.url),
@@ -175,7 +175,7 @@ test("BR preset exposes ten daily sections with five contractual cores", async (
     .map((category) => category.slug);
   const sourceCoverage = new Set(feeds.flatMap((feed) => feed.focus || []));
 
-  assert.deepEqual(categorySlugs, brDailySlugs);
+  assert.deepEqual(categorySlugs, [...brDailySlugs, "mundo"]);
   assert.deepEqual(requiredSlugs, brRequiredSlugs);
   for (const slug of brDailySlugs) {
     assert.ok(sourceCoverage.has(slug), `BR has no source for ${slug}`);
@@ -210,10 +210,10 @@ test("global preset remains independent from the compact BR daily taxonomy", asy
       "utf8",
     ),
   ).categories;
-  assert.equal(categories.length, 16);
+  assert.equal(categories.length, 17);
 });
 
-test("edition keeps configured sections and treats highlights as references", () => {
+test("edition balances thematic families and treats highlights as references", () => {
   const articles = [
     {
       id: 1,
@@ -313,7 +313,7 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.equal(edition.topStories.length, 3);
   assert.deepEqual(
     edition.sections.map((section) => section.slug),
-    ["tecnologia", "games", "esports", "economia", "ciencia-saude"],
+    ["economia", "ciencia-saude", "games", "esports"],
   );
 
   const sectionIds = new Set(
@@ -335,13 +335,14 @@ test("edition keeps configured sections and treats highlights as references", ()
   assert.ok(!html.includes('class="hero-intro"'));
   assert.ok(!html.includes("Texto de abertura"));
   assert.ok(html.includes('id="front-page"'));
-  assert.equal((html.match(/class="front-story"/g) || []).length, 3);
+  assert.equal((html.match(/class="cover-call"/g) || []).length, 3);
   assert.ok(!html.includes('id="ia-desenvolvimento"'));
   assert.ok(
     html.indexOf('class="lead-wrap"') < html.indexOf('id="front-page"'),
   );
-  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="tecnologia"'));
-  assert.ok(html.indexOf('id="tecnologia"') < html.indexOf('id="games"'));
+  assert.ok(html.indexOf('id="front-page"') < html.indexOf('id="economia"'));
+  assert.ok(html.indexOf('id="economia"') < html.indexOf('id="games"'));
+  assert.ok(!html.includes('id="tecnologia"'));
   assert.ok(html.indexOf('id="games"') < html.indexOf('id="esports"'));
   assert.ok(
     html.includes(

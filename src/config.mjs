@@ -155,6 +155,51 @@ const profilesDocument = loadYaml(
   { optional: true },
 );
 
+if (
+  categoriesDocument.preset === "personal" &&
+  !process.env.CATEGORIES_FILE &&
+  !process.env.FEEDS_FILE &&
+  categoriesDocument.categories?.some(
+    (category) =>
+      category.slug === "politica-sociedade" && category.enabled !== false,
+  ) &&
+  !categoriesDocument.categories?.some((category) => category.slug === "mundo")
+) {
+  const globalTaxonomy = loadYaml(
+    new URL("../presets/global/categories.yml", import.meta.url),
+    "Taxonomia global",
+  );
+  const world = globalTaxonomy.categories?.find(
+    (category) => category.slug === "mundo",
+  );
+  if (world) categoriesDocument.categories.push({ ...world, required: false });
+  // Validated EBC feeds; failures are handled by the normal collection layer.
+  if (
+    (process.env.COVERAGE
+      ? process.env.COVERAGE.split(",").map((value) => value.trim())
+      : presetMetadata.coverage || []
+    ).includes("BR")
+  ) {
+    for (const [desk, name, focus] of [
+      ["internacional", "Agência Brasil Internacional", ["mundo"]],
+      ["geral", "Agência Brasil Geral", ["politica-sociedade"]],
+    ]) {
+      const url = `https://agenciabrasil.ebc.com.br/rss/${desk}/feed.xml`;
+      if (!feedsDocument.feeds?.some((feed) => feed.url === url))
+        feedsDocument.feeds.push({
+          name,
+          url,
+          focus,
+          strict_focus: true,
+          publisher_group: "Agência Brasil",
+          language: "pt-BR",
+          country: "BR",
+          coverage: ["BR", "GLOBAL"],
+        });
+    }
+  }
+}
+
 const rawCategories = Array.isArray(categoriesDocument.categories)
   ? categoriesDocument.categories
   : [];
@@ -403,7 +448,25 @@ export const editorial = {
   profilesFile,
 };
 
+if (
+  process.env.EDITORIAL_BALANCE &&
+  !["auto", "off"].includes(process.env.EDITORIAL_BALANCE)
+)
+  throw new Error("EDITORIAL_BALANCE must be auto or off.");
 export const config = {
+  editorialBalance: process.env.EDITORIAL_BALANCE || "auto",
+  editionMaxStories: Math.max(
+    6,
+    Math.min(
+      40,
+      Math.floor(
+        numberEnv(
+          "EDITION_MAX_STORIES",
+          presetMetadata.editionMaxStories || 16,
+        ),
+      ),
+    ),
+  ),
   ollamaHost: normalizeOllamaHost(process.env.OLLAMA_HOST),
   ollamaModel: process.env.OLLAMA_MODEL || "qwen3:4b",
   language: outputLanguage,

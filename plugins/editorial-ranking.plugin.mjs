@@ -1,3 +1,4 @@
+import { storyKind } from "../src/editorial/balance.mjs";
 import { coverageEvidence } from "../src/editorial/coverage.mjs";
 import { DiskCache, digest } from "../src/utils/storage.mjs";
 import { count } from "../src/engine/metrics.mjs";
@@ -517,7 +518,12 @@ function calculateScores(article, dimensions) {
   const cycle = article.newSinceLastEdition === false ? 5 : 10;
   const previous = clamp(article.score);
   const promo = clamp(dimensions.promotionalLevel);
-  const softPenalty = heuristicSoftPenalty(article);
+  const softPenalty = Math.max(
+    heuristicSoftPenalty(article),
+    { community: 1.2, preview: 1.1, rumor: 0.9, reaction: 0.8 }[
+      storyKind(article)
+    ] || 0,
+  );
 
   const section = clamp(
     sectionBase(dimensions) * 0.82 +
@@ -563,6 +569,8 @@ Para CADA id devolva EXATAMENTE estas chaves em inglês:
 - resultado rotineiro de jogo não vira 8 por envolver time/seleção famosa; despedida, aposentadoria, título, recorde ou eliminação histórica podem virar 8–10;
 - ofertas, descontos, cupons e listas de compra devem ter promotionalLevel alto e editorialValue baixo, salvo quando o fato econômico/tecnológico central for realmente relevante;
 - fama de pessoa, empresa, clube ou marca não substitui importância do acontecimento;
+- relevância inclui direitos do consumidor, saúde pública, trabalho, serviços, decisões políticas e acontecimentos locais; não favoreça tecnologia e futebol por volume de publicações;
+- projetos pessoais, rumores de produtos, prévias de jogos e declarações rotineiras podem ser notas breves, com impacto e interesse público modestos;
 - não invente contexto além do headline/summary fornecidos.
 
 Retorne SOMENTE JSON neste formato e repita todos os ids:

@@ -15,5 +15,10 @@
   "archiveTitle": "往期归档",
   "latest": "最新一期",
   "fallbackTitle": "今天值得关注的新闻",
-  "fallbackIntro": "精选今天最值得关注的新闻。"
+  "fallbackIntro": "精选今天最值得关注的新闻。",
+  "coverLabel": "本期导读",
+  "serviceLabel": "与你相关",
+  "readingLabel": "阅读",
+  "minuteLabel": "分钟",
+  "briefLabel": "简讯"
 }

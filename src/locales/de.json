@@ -15,5 +15,10 @@
   "archiveTitle": "Ausgabenarchiv",
   "latest": "Neueste Ausgabe",
   "fallbackTitle": "Was heute Ihre Aufmerksamkeit verdient",
-  "fallbackIntro": "Eine kurze Auswahl der wichtigsten Nachrichten des Tages."
+  "fallbackIntro": "Eine kurze Auswahl der wichtigsten Nachrichten des Tages.",
+  "coverLabel": "In dieser Ausgabe",
+  "serviceLabel": "Was sich für Sie ändert",
+  "readingLabel": "Lesezeit",
+  "minuteLabel": "Min",
+  "briefLabel": "Kurzmeldung"
 }

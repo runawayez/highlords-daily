@@ -81,6 +81,8 @@ export function editorialReport(
           peakRssBytes: context.metrics.peakRssBytes,
         }
       : {},
+    diversity: edition?.stats?.balance || null,
+    readingMinutes: edition?.stats?.readingMinutes || null,
     selected: [...selected],
     decisions: context.metrics?.decisions || [],
     caveat:
@@ -95,5 +97,5 @@ export function renderEditorialReport(report) {
         `<tr><td>${escapeHtml(item.title)}</td><td>${escapeHtml(item.source)}</td><td>${escapeHtml(item.stage)}</td><td>${escapeHtml(item.reason)}</td><td><pre>${escapeHtml(JSON.stringify(item, null, 2))}</pre></td></tr>`,
     )
     .join("");
-  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Editorial report — ${escapeHtml(report.editionDate)}</title><style>body{font:14px system-ui;margin:24px;color:#222}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}pre{white-space:pre-wrap;max-width:480px}input{padding:10px;width:min(90%,600px);margin:16px 0}</style><h1>Editorial report — ${escapeHtml(report.editionDate)}</h1><p>${escapeHtml(report.status)} ${escapeHtml(report.error || "")}</p><p>${escapeHtml(report.caveat)}</p><label>Filter <input id="filter" type="search"></label><table><thead><tr><th>Story</th><th>Source</th><th>Stage</th><th>Decision</th><th>Evidence</th></tr></thead><tbody>${rows}</tbody></table><script>document.querySelector('#filter').addEventListener('input',e=>{const q=e.target.value.toLocaleLowerCase();document.querySelectorAll('tbody tr').forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(q))});</script></html>`;
+  return `<!doctype html><html lang="en"><meta charset="utf-8"><meta name="viewport" content="width=device-width"><title>Editorial report — ${escapeHtml(report.editionDate)}</title><style>body{font:14px system-ui;margin:24px;color:#222}table{border-collapse:collapse;width:100%}td,th{border:1px solid #ddd;padding:8px;text-align:left;vertical-align:top}pre{white-space:pre-wrap;max-width:480px}input{padding:10px;width:min(90%,600px);margin:16px 0}</style><h1>Editorial report — ${escapeHtml(report.editionDate)}</h1><p>${escapeHtml(report.status)} ${escapeHtml(report.error || "")}</p><p>${escapeHtml(report.caveat)}</p>${report.diversity?.enabled ? `<h2>Editorial diversity</h2><pre>${escapeHtml(JSON.stringify(report.diversity, null, 2))}</pre>` : ""}<label>Filter <input id="filter" type="search"></label><table><thead><tr><th>Story</th><th>Source</th><th>Stage</th><th>Decision</th><th>Evidence</th></tr></thead><tbody>${rows}</tbody></table><script>document.querySelector('#filter').addEventListener('input',e=>{const q=e.target.value.toLocaleLowerCase();document.querySelectorAll('tbody tr').forEach(row=>row.hidden=!row.textContent.toLocaleLowerCase().includes(q))});</script></html>`;
 }

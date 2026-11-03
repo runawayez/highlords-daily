@@ -105,3 +105,13 @@ Classification uses original story content. Source focus constrains allowed subj
 Independent review uses smaller batches, local IDs and one retry for omitted decisions. Selection favors reporting within the primary freshness window, counts the lead toward publisher limits, and compares curator choices with stronger alternatives. Sections may remain absent when candidates fall below the rescue floor (`LLM_MIN_SCORE - 1`).
 
 Caching remains enabled. The update invalidates affected analysis and review decisions while preserving history, feed and image caches. Run `GERAR-DAILY.bat` after updating to regenerate today's edition. Corrections and exclusions are recorded in the edition's `editorial-report.html`.
+
+### General newspaper and diversity — 5.6.0
+
+Automatic balancing groups individual categories into editorial families: Technology (including AI and Development), Society, World, Economy, Science/Health/Environment, Culture, Sports and Games/eSports. Editions with at least three eligible families target up to 16 stories, with a quality floor, publisher/entity limits, at most two football stories, and technology at approximately 25% or less (minimum rounding of one story). Targets never require weak filler. Specialized publications and custom taxonomies retain category-based selection.
+
+Guided setup configures short (up to 10), balanced (up to 16) and complete (up to 22) editions. Older personal presets already following Politics & Society gain World; BR coverage also gains Agência Brasil's general and international feeds. This is an in-memory compatibility upgrade; saved files and explicit category/feed overrides are preserved. Unselected interests remain disabled.
+
+The cover presents up to three calls from different families, estimated reading time and, when available, a service-story link. Community projects, rumors, match previews and routine reactions receive lower priority and can become briefs. PDF composition attempts to reclaim tail-page space using complete cards, without cutting text.
+
+The editorial report includes distribution and exclusion reasons. `data/diversity-history.json` tracks the last seven edition dates, replacing measurements when a date is regenerated. Local coverage depends on available sources and scope; the application does not infer a city from a time zone. Advanced profiles support `editionMaxStories` and `editorialBalance: off`; the new defaults require no manual environment editing.

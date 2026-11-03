@@ -41,6 +41,31 @@ function normalizeDecision(row) {
     category,
     confidence: normalizeConfidence(row?.confidence),
     reason: normalizeReason(row?.reason),
+    metadata: {
+      ...(typeof row?.storyType === "string"
+        ? { storyType: row.storyType }
+        : {}),
+      ...(["football", "other"].includes(row?.sport)
+        ? { sport: row.sport }
+        : {}),
+      ...(["local", "national", "international", "unknown"].includes(
+        row?.geographicScope,
+      )
+        ? { geographicScope: row.geographicScope }
+        : {}),
+      editorialEntities: Array.isArray(row?.entities)
+        ? [
+            ...new Set(
+              row.entities
+                .filter(
+                  (value) => typeof value === "string" && value.length <= 80,
+                )
+                .map((value) => value.trim().toLowerCase())
+                .filter(Boolean),
+            ),
+          ].slice(0, 3)
+        : [],
+    },
   };
 }
 
@@ -96,6 +121,7 @@ export function applySemanticReview(articles, rows = []) {
       stats.reclassified += 1;
       output.push({
         ...article,
+        ...decision.metadata,
         category: decision.category,
         semanticReview: "reclassified",
         semanticReviewConfidence: decision.confidence,
@@ -108,6 +134,7 @@ export function applySemanticReview(articles, rows = []) {
     if (decision.action !== "keep") stats.ignored += 1;
     output.push({
       ...article,
+      ...decision.metadata,
       semanticReview: "kept",
       semanticReviewConfidence: decision.confidence,
       semanticReviewReason: decision.reason,
@@ -127,19 +154,41 @@ function reviewPayload(batch) {
 }
 
 function reviewSchema(batch) {
-  return itemsSchema({
-    id: {
-      type: "integer",
-      enum: batch.map((article) => Number(article.id)),
+  return itemsSchema(
+    {
+      id: {
+        type: "integer",
+        enum: batch.map((article) => Number(article.id)),
+      },
+      action: { type: "string", enum: ["keep", "reclassify", "reject"] },
+      category: {
+        type: ["string", "null"],
+        enum: [...categories.map((category) => category.slug), null],
+      },
+      confidence: { type: "number", minimum: 0, maximum: 1 },
+      reason: { type: "string" },
+      storyType: {
+        type: "string",
+        enum: [
+          "major-development",
+          "report",
+          "service",
+          "analysis",
+          "community",
+          "preview",
+          "rumor",
+          "reaction",
+        ],
+      },
+      sport: { type: "string", enum: ["football", "other"] },
+      geographicScope: {
+        type: "string",
+        enum: ["local", "national", "international", "unknown"],
+      },
+      entities: { type: "array", maxItems: 3, items: { type: "string" } },
     },
-    action: { type: "string", enum: ["keep", "reclassify", "reject"] },
-    category: {
-      type: ["string", "null"],
-      enum: [...categories.map((category) => category.slug), null],
-    },
-    confidence: { type: "number", minimum: 0, maximum: 1 },
-    reason: { type: "string" },
-  });
+    ["id", "action", "category", "confidence", "reason"],
+  );
 }
 
 const reviewSystem = `You are the senior editorial reviewer for ${publication.name}.
@@ -170,6 +219,10 @@ For EVERY supplied item return exactly one review row.
 - confidence is 0..1 and should reflect certainty in the audit decision.
 - reason must be short and factual.
 - do not invent facts and do not reward clickbait.
+- Also provide storyType (major-development, report, service, analysis, community, preview, rumor, reaction), sport (football or other), geographicScope (local, national, international, unknown) and entities (up to 3 CENTRAL named companies, clubs or products; empty if none). These describe source content, never infer a place from the output language or publisher.
+- Smartphone design/leaks belong to Mobile/Gadgets, a personal compiler/framework project belongs to Development, and association football stays Football when that category exists.
+- World covers geopolitics, diplomacy, conflicts and international events; domestic politics belongs to Politics/Society. An investment-focused interpretation of an election may stay Economy.
+- A valid niche project, match preview, rumor or routine reaction is not a major development. Mark it accurately so it can become a brief instead of displacing public-interest reporting.
 
 Return only valid JSON.`;
 

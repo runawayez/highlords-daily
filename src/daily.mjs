@@ -1,3 +1,4 @@
+import { recordDiversity } from "./editorial/diversity-history.mjs";
 import { enforceCategoryEvidence } from "./editorial/category-evidence.mjs";
 import { maintainCache } from "./services/cache-maintenance.mjs";
 import { fileURLToPath } from "node:url";
@@ -6,6 +7,7 @@ import { runPipeline } from "./engine/pipeline.mjs";
 import { atomicWrite } from "./utils/storage.mjs";
 import {
   normalizeNewsletter,
+  reconcileBalancedEdition,
   fallbackNewsletter,
 } from "./editorial/edition.mjs";
 import { curateFrontPage } from "./editorial/front-page.mjs";
@@ -182,6 +184,7 @@ export function createDailyServices(plugins) {
     },
     images: async (edition, directory, ctx) => {
       const result = await cacheEditionImages(edition, directory, ctx);
+      result.edition = reconcileBalancedEdition(result.edition);
       result.edition.stats.imagesCached = result.cached;
       result.edition.stats.imageCacheFailures = result.failed;
       const rendered = await runPluginHook(plugins, "beforeRender", {
@@ -229,6 +232,11 @@ export function createDailyServices(plugins) {
       await updateArchive(config.outputDir);
     },
     afterWrite: async (edition, directory, ctx) => {
+      try {
+        await recordDiversity(edition, config.dataDir);
+      } catch (error) {
+        console.warn(`Diversity history unavailable: ${error.message}`);
+      }
       const paths = {
         html: path.join(directory, "index.html"),
         json: path.join(directory, "edition.json"),

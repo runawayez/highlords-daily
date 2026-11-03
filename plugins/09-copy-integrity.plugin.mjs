@@ -1,6 +1,6 @@
 import { config } from "../src/config.mjs";
 import { sourceSummary } from "../src/editorial/summary.mjs";
-import { limitCopy } from "../src/editorial/source-text.mjs";
+import { limitCopy, soberCopy } from "../src/editorial/source-text.mjs";
 
 function baseLanguage(value) {
   return String(value || "")
@@ -47,8 +47,15 @@ export function applyCopyIntegrity(article, targetLanguage = config.language) {
 
   return {
     ...article,
-    headline: limitCopy(originalTitle || article.headline, 220, targetLanguage),
-    summary: sourceSummary(originalExcerpt || article.summary, targetLanguage),
+    headline: limitCopy(
+      soberCopy(originalTitle || article.headline),
+      220,
+      targetLanguage,
+    ),
+    summary: sourceSummary(
+      soberCopy(originalExcerpt || article.summary),
+      targetLanguage,
+    ),
     tags: sourceBackedTags(article),
     copyIntegrity: "source-preserved",
   };

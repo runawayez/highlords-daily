@@ -71,3 +71,10 @@ categories:
     labels: {"en": "Climate & Future", "es": "Clima y Futuro", "fr": "Climat et Futur", "de": "Klima & Zukunft", "ja": "気候・未来", "zh": "气候与未来", "ar": "المناخ والمستقبل", "pt": "Clima & Futuro"}
     description: Mudanças climáticas, meio ambiente, biodiversidade, sustentabilidade e tecnologias emergentes com potencial transformador, como robótica, computação quântica, VR/AR, energia avançada, mobilidade futura e novas interfaces.
     aliases: [climate, environment, clima, meio ambiente, sustentabilidade, future, innovation, futuro, inovação, emerging tech, robótica, computação quântica]
+
+  - slug: mundo
+    name: Mundo
+    required: false
+    labels: {"en": "World", "es": "Mundo", "fr": "Monde", "de": "Welt", "ja": "世界", "zh": "国际", "ar": "العالم", "pt": "Mundo"}
+    description: Geopolítica, relações internacionais, diplomacia, conflitos, eleições estrangeiras e acontecimentos internacionais relevantes. Política doméstica pertence a Política & Sociedade; o foco central em investimentos ou mercados pode permanecer em Economia.
+    aliases: [world, international, internacional, geopolitics, geopolítica, diplomacia]

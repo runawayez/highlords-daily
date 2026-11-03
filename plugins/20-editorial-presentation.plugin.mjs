@@ -1,3 +1,4 @@
+import { storyKind } from "../src/editorial/balance.mjs";
 import fs from "node:fs/promises";
 import path from "node:path";
 import { config } from "../src/config.mjs";
@@ -222,8 +223,16 @@ function applyMaterializedPlan(section, plan) {
     .filter(Boolean);
   const featureId = plan.featureId == null ? null : Number(plan.featureId);
   const articles = ordered.map((article, index) => {
-    let displayRole = "standard";
-    if (featureId != null && Number(article.id) === featureId)
+    let displayRole = ["community", "preview", "reaction", "rumor"].includes(
+      storyKind(article),
+    )
+      ? "brief"
+      : "standard";
+    if (
+      displayRole !== "brief" &&
+      featureId != null &&
+      Number(article.id) === featureId
+    )
       displayRole = "feature";
     else if (
       !article.displayImage &&

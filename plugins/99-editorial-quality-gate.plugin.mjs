@@ -36,6 +36,11 @@ function beforeRender(payload) {
     ? edition.stats.coverage.missing
     : [];
   const isOptional = (item) => {
+    if (
+      edition.stats?.balance?.enabled &&
+      ["editorial-balance", "no-strong-candidate"].includes(item.reason)
+    )
+      return true;
     const category = categories.find((category) => category.slug === item.slug);
     if (typeof category?.required === "boolean") return !category.required;
     return editorial.preset === "br" && optionalDailyCategories.has(item.slug);
