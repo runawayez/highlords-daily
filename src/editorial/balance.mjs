@@ -167,6 +167,16 @@ export function balanceStories(articles, lead, taxonomy, settings) {
         Number(b.frontPageScore || 0) - Number(a.frontPageScore || 0) ||
         new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0),
     );
+  // A multi-publisher event may fill at most one slot (two for a major one,
+  // so the economic or political angle can run beside the main report).
+  const withinBreakingCap = (article, chosen) => {
+    if (!article.breaking?.id) return true;
+    const cap = article.breaking.level === "major" ? 2 : 1;
+    return (
+      chosen.filter((item) => item.breaking?.id === article.breaking.id)
+        .length < cap
+    );
+  };
   const canAdd = (article) => {
     if (selected.some((item) => Number(item.id) === Number(article.id)))
       return false;
@@ -184,6 +194,7 @@ export function balanceStories(articles, lead, taxonomy, settings) {
       selected.some((item) => item.topicKey === article.topicKey)
     )
       return false;
+    if (!withinBreakingCap(article, selected)) return false;
     if (
       (article.editorialEntities || []).some(
         (entity) => (entities.get(entity) || 0) >= 2,
@@ -207,6 +218,28 @@ export function balanceStories(articles, lead, taxonomy, settings) {
     selected.push(article);
     register(article);
   };
+  // The day's biggest events come first: they bypass family, category and
+  // source caps (only topic and cluster caps apply), so a global story is never
+  // crowded out by quotas designed to spread routine coverage.
+  for (const article of sorted
+    .filter((item) => item.breaking?.id)
+    .sort(
+      (a, b) =>
+        Number(b.breaking.level === "major") -
+          Number(a.breaking.level === "major") ||
+        Number(b.frontPageScore || 0) - Number(a.frontPageScore || 0),
+    )) {
+    if (selected.length >= target) break;
+    if (selected.some((item) => Number(item.id) === Number(article.id)))
+      continue;
+    if (!withinBreakingCap(article, selected)) continue;
+    if (
+      article.topicKey &&
+      selected.some((item) => item.topicKey === article.topicKey)
+    )
+      continue;
+    add(article);
+  }
   // One strong story per family, then weighted targets, then best remaining.
   for (const family of [...familyOrder, ...represented]) {
     if (selected.length >= target || counts.get(family)) continue;
@@ -239,7 +272,9 @@ export function balanceStories(articles, lead, taxonomy, settings) {
     const removable = selected
       .filter(
         (article) =>
-          article.id !== lead?.id && editorialFamily(article) === "technology",
+          article.id !== lead?.id &&
+          !article.breaking?.id &&
+          editorialFamily(article) === "technology",
       )
       .sort((a, b) => selectionScore(a) - selectionScore(b))[0];
     if (!removable) break;

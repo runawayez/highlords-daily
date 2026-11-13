@@ -1,3 +1,5 @@
+> Atualização 5.7.0 (13/11/2026): detecção de grandes notícias por cobertura de vários veículos em várias editorias, antes da análise; categoria fora do foco é remapeada em vez de descartada; piso de nota, ranking e balanço protegem o evento; lotes de análise por editoria; `npm run editorial:why` para diagnóstico. Consulte [Grandes notícias 5.7](BREAKING_NEWS_5_7.md).
+
 > Atualização 5.6.0 (03/11/2026): equilíbrio por famílias temáticas, expansão opcional de Mundo, seleção com piso e limites por entidades/futebol/tecnologia, capa com três chamadas e serviço, notas breves, aproveitamento da última página e histórico das últimas sete edições. Consulte [Diversidade 5.6](DIVERSITY_5_6.md).
 
 > Correção 5.5.3 (29/10/2026): foco da fonte não força categoria nem anula rejeição; validação de evidência antes/depois dos plugins, inclusive no setup; revisão independente com IDs locais e retry limitado; seleção favorece atualidade e qualidade, inclui manchete na contagem por fonte e remove resgate de pontuação ínfima. Cache de análise/revisão versionado sem apagar histórico, feeds ou imagens.

@@ -1,5 +1,6 @@
 import { editorialFamily } from "../editorial/balance.mjs";
 import { decision } from "../editorial/audit.mjs";
+import { detectBreaking } from "../editorial/breaking.mjs";
 import { cleanSourceText, limitCopy } from "../editorial/source-text.mjs";
 import { fetchFeedXml, recordFeedHealth } from "./feed-cache.mjs";
 import { mapLimit } from "../utils/concurrency.mjs";
@@ -277,6 +278,10 @@ export function balancedLimit(articles, feedList, limit) {
   const groups = new Map();
   const sorted = [...articles].sort(
     (a, b) =>
+      // Representatives of multi-publisher events always enter the candidate
+      // pool first; the cluster is capped upstream by detectBreaking.
+      Number(Boolean(b.breaking?.representative)) -
+        Number(Boolean(a.breaking?.representative)) ||
       new Date(b.publishedAt || 0) - new Date(a.publishedAt || 0) ||
       (weights.get(b.source) || 1) - (weights.get(a.source) || 1) ||
       String(a.stableId).localeCompare(String(b.stableId)),
@@ -429,6 +434,13 @@ export async function fetchAllFeeds(
     },
   );
   const unique = dedupe(outcomes.flatMap((outcome) => outcome.items));
+  // Detect events covered by many publishers before any candidate cap, so the
+  // day's biggest stories cannot be crowded out of the analysis pool.
+  const breakingClusters = detectBreaking(unique);
+  for (const cluster of breakingClusters)
+    console.log(
+      `  Grande notícia (${cluster.level}): ${cluster.label} — ${cluster.publishers} veículos, ${cluster.families.length} editorias.`,
+    );
   // Historical rejection happens before any image/page network requests.
   const historical = await filterPreviouslyPublished(
     unique,
@@ -463,5 +475,6 @@ export async function fetchAllFeeds(
     errors: outcomes.map((outcome) => outcome.error).filter(Boolean),
     historyRejected: historical.rejected.length,
     imageRejected: resolved.imageRejected,
+    breakingClusters,
   };
 }

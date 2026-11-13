@@ -1,4 +1,10 @@
 import { decision } from "../editorial/audit.mjs";
+import {
+  breakingFloor,
+  isBreaking,
+  remapToFocus,
+} from "../editorial/breaking.mjs";
+import { editorialFamily } from "../editorial/balance.mjs";
 import { enforceCopyProvenance } from "../editorial/provenance.mjs";
 import { limitCopy } from "../editorial/source-text.mjs";
 import { recoverLocalizedCopy } from "./localized-copy.mjs";
@@ -227,6 +233,7 @@ IMPORTANTE:
 - lançamentos de notebooks são Hardware/Tecnologia, estreias da Netflix são Filmes e Séries/Entretenimento, emulação de videogames é Games; use somente o slug correspondente da taxonomia abaixo;
 - promoções, anúncios de afiliados e listas de ofertas recebem category null;
 - quando strictFocus for true, category deve estar dentro de focus; se nenhuma servir, use null;
+- coveredByPublishers indica quantos veículos distintos cobrem o MESMO acontecimento. Valores acima de 3 indicam um grande acontecimento do dia: não o trate como notícia rotineira, avalie o impacto do fato e escolha a categoria que melhor descreve o assunto central dentro de focus;
 - category deve ser SOMENTE um destes slugs: ${validSlugList}; ou null;
 - headline, summary e topicKey devem falar EXCLUSIVAMENTE da matéria daquele id;
 - duas matérias sobre o mesmo acontecimento devem receber topicKey igual ou muito parecido;
@@ -256,6 +263,7 @@ function payloadForBatch(batch) {
       country: article.country,
       focus: article.focus,
       strictFocus: Boolean(article.strictFocus),
+      coveredByPublishers: article.breaking?.publishers || undefined,
       editorialGuardrail: article.editorialGuardrail || null,
       title: article.originalTitle,
       excerpt: article.excerpt,
@@ -295,20 +303,29 @@ function parseBatch(parsed, batch) {
     seenLocalIds.add(localId);
     matchedArticleIds.add(article.id);
 
-    const category = normalizeCategory(
+    let category = normalizeCategory(
       row?.category ??
         row?.categoria ??
         row?.section ??
         row?.secao ??
         row?.slug,
     );
-    const score = normalizeScore(
+    let score = normalizeScore(
       row?.score ??
         row?.relevance ??
         row?.relevancia ??
         row?.rating ??
         row?.nota,
     );
+    if (!category && isBreaking(article)) {
+      // A multi-publisher event is never a null/offer: use the source's desk.
+      category = remapToFocus(article, categories);
+      if (category)
+        decision(article, "analysis", "breaking-category-assigned", {
+          category,
+          cluster: article.breaking.id,
+        });
+    }
     if (!category) {
       invalidCategory += 1;
       decision(article, "analysis", "invalid-category");
@@ -321,15 +338,31 @@ function parseBatch(parsed, batch) {
       article.focus.length &&
       !article.focus.includes(category)
     ) {
-      strictMismatch += 1;
-      decision(article, "analysis", "strict-focus-mismatch", { category });
-      continue;
+      const remapped = isBreaking(article)
+        ? remapToFocus(article, categories)
+        : null;
+      if (!remapped) {
+        strictMismatch += 1;
+        decision(article, "analysis", "strict-focus-mismatch", { category });
+        continue;
+      }
+      decision(article, "analysis", "breaking-focus-remapped", {
+        from: category,
+        category: remapped,
+        cluster: article.breaking.id,
+      });
+      category = remapped;
     }
+
+    const modelScore = score;
+    const floor = breakingFloor(article);
+    if (floor && score < floor) score = floor;
 
     const normalized = {
       ...article,
       category,
       score,
+      ...(score !== modelScore ? { modelScoreBeforeBreaking: modelScore } : {}),
       topicKey: topicKey(
         textField(
           row,
@@ -535,7 +568,16 @@ function addUnique(target, article, ids) {
 }
 
 async function analyzeArticlesUncached(articles, onProgress = () => {}) {
-  const selected = articles.slice(0, config.maxCandidates);
+  // Batch by source desk: a small model mixes up ids and categories when one
+  // batch interleaves sports, tech and economy. The sort is stable, so recency
+  // order inside each desk is preserved.
+  const deskOf = (article) =>
+    article.focus?.length
+      ? editorialFamily({ category: article.focus[0] })
+      : "";
+  const selected = articles
+    .slice(0, config.maxCandidates)
+    .sort((a, b) => deskOf(a).localeCompare(deskOf(b)));
   const analyzed = [];
   const classified = [];
   const analyzedIds = new Set();
@@ -819,7 +861,10 @@ export async function analyzeArticles(articles, onProgress = () => {}) {
   const pending = [];
   for (const article of articles) {
     const key = digest({
-      version: 6,
+      version: 7,
+      breaking: article.breaking
+        ? [article.breaking.level, article.breaking.publishers]
+        : null,
       model: config.ollamaModel,
       modelDigest: config.ollamaModelDigest || null,
       copyMode: config.copyMode,
