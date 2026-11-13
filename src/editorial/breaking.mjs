@@ -39,6 +39,15 @@ const DEFAULTS = {
   maxRepresentatives: 10,
 };
 
+// Commercial content is not news the press "covers": retail promotions pile
+// up around dates like Black Friday and would otherwise look like an event.
+const PROMOTIONAL =
+  /\b(black friday|oferta|ofertas|cupom|cupons|desconto|descontos|promocao|promocoes|imperdivel|menor preco|liquidacao|off)\b/;
+
+export function isPromotional(article) {
+  return PROMOTIONAL.test(strip(article?.originalTitle || ""));
+}
+
 function strip(value) {
   return normalizeText(value).normalize("NFD").replace(/\p{M}/gu, "");
 }
@@ -163,7 +172,24 @@ function pruneToCore(members, options) {
       .filter(([, count]) => count >= needed)
       .map(([token]) => token),
   );
-  if (!core.size) return [];
+  // One shared word is a topic ("fazenda"), not an event: require two.
+  if (core.size < 2) return [];
+  // The core terms must also be a real pair: two of them appearing together
+  // in at least three stories from at least three publishers. An idiom ("abre
+  // o jogo") or a polysemous word ("fazenda") is shared by unrelated stories,
+  // but an event carries its name and its subject in many newsrooms at once.
+  const coreList = [...core];
+  let coherent = false;
+  for (let a = 0; a < coreList.length && !coherent; a += 1) {
+    for (let b = a + 1; b < coreList.length && !coherent; b += 1) {
+      const pair = members.filter(
+        ({ tokens }) => tokens.has(coreList[a]) && tokens.has(coreList[b]),
+      );
+      const outlets = new Set(pair.map(({ article }) => publisherOf(article)));
+      if (pair.length >= 3 && outlets.size >= 3) coherent = true;
+    }
+  }
+  if (!coherent) return [];
   return members.filter(({ tokens }) =>
     [...tokens].some((token) => core.has(token)),
   );
@@ -189,7 +215,9 @@ export function detectBreaking(articles, overrides = {}, now = new Date()) {
   const options = { ...DEFAULTS, ...overrides };
   const cutoff = now.getTime() - options.windowHours * 3600000;
   const recent = articles.filter(
-    (article) => new Date(article.publishedAt || 0).getTime() >= cutoff,
+    (article) =>
+      new Date(article.publishedAt || 0).getTime() >= cutoff &&
+      !isPromotional(article),
   );
   if (recent.length < options.notablePublishers) return [];
 

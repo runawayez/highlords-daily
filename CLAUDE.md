@@ -33,6 +33,7 @@ Windows: `GERAR-DAILY.bat` sempre refaz a edição do dia.
 - Nada de IA paga, cloud ou framework pesado obrigatório. Compatibilidade Windows/macOS/Linux.
 - `data/`, `output/` e `.env` ficam fora do Git. Nunca leia nem mostre o `.env`.
 - Toda decisão que descarta uma matéria precisa de `decision(...)` com motivo, para o relatório explicar.
+- O qwen3:4b às vezes devolve notas na escala 0–1 e usa `esportes` como lixeira: `score-scale.mjs` e `sports-evidence.mjs` corrigem isso. Antes de culpar foco estrito ou corte, veja o histograma de notas (`editorial:why -- --summary`).
 - Sinal de cobertura mede atenção da imprensa, não fato verificado. Não o descreva como checagem.
 
 ## Testes

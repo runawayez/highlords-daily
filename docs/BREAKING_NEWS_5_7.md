@@ -59,3 +59,14 @@ O relatório HTML/JSON de cada edição ganha as decisões `breaking-cluster`, `
 - Cache de análise versionado (v7); histórico, feeds e imagens não são apagados.
 - A qualidade do modelo local continua limitando a edição. Esta versão não troca o modelo.
 - Nove testes antigos falham nesta máquina por usarem a taxonomia local em vez do preset BR (`unknown-section:ia-desenvolvimento`); falhavam antes da 5.7.
+
+## Correções 5.7.1 (13/11/2026)
+
+A primeira edição gerada com a 5.7.0 mostrou quatro problemas, três deles medidos no relatório:
+
+1. **Escala de nota errada do modelo.** 84 das 150 notas da análise estavam entre 0 e 1 (nenhuma exatamente 0), enquanto o resto ficava em 6–8. "Senado aprova ajuste fiscal" (0,99) e o apagão da Microsoft (0,87) caíram em `below-score`. A leitura mais provável é que o qwen3:4b respondeu alguns lotes com "confiança" 0–1; a resposta bruta não é guardada, então isso é inferência. Agora um lote em que **todas** as notas positivas são ≤ 1 (e ao menos duas existem) é multiplicado por 10 e registrado como `score-rescaled`; o prompt exige a escala 0–10. Notas isoladas baixas e lotes mistos não são alterados.
+2. **"Esportes" como lixeira.** O modelo rotulava como esportes uma matéria de preço de iPhone, uma promoção de supermercado e itens de economia. `src/editorial/sports-evidence.mjs` exige vocabulário esportivo no título ou texto da fonte para aceitar `esportes`/`futebol`, na análise (volta para a editoria da fonte) e na revisão semântica (mantém a categoria anterior). É um filtro lexical: bloqueia rótulos sem nenhuma evidência, não entende o assunto.
+3. **Falsos positivos do detector.** Promoções (Black Friday, oferta, cupom, desconto) não formam mais grupo, e o grupo precisa ter dois termos centrais que aparecem juntos em 3 ou mais matérias de 3 ou mais veículos. Isso barra "Black Friday" e o grupo "Fazenda" (ministério + reality + "abre o jogo"). Reaplicado nas candidatas de 13/11: Microsoft/Outlook (major, 9 veículos) e Manchester United/Pochettino (notable, 8 veículos).
+4. **Diagnóstico.** `editorial-report.json` ganha `breaking.clusters` e `breaking.pool` (tudo o que o detector viu), para investigar um evento não detectado com dados em vez de suposição.
+
+Não confirmado: por que o Microsoft não foi agrupado na execução real com o conjunto completo da coleta. O replay com as candidatas o detecta; `breaking.pool` permitirá fechar essa lacuna na próxima edição. Também não foi medido o efeito dessas correções com o Ollama real.

@@ -476,5 +476,15 @@ export async function fetchAllFeeds(
     historyRejected: historical.rejected.length,
     imageRejected: resolved.imageRejected,
     breakingClusters,
+    // Everything the detector saw, so a missed event can be diagnosed from the
+    // report instead of guessed.
+    breakingPool: unique.map((article) => ({
+      source: article.source,
+      publisher: article.publisherGroup || article.source,
+      title: article.originalTitle,
+      publishedAt: article.publishedAt,
+      focus: article.focus,
+      cluster: article.breaking?.id || null,
+    })),
   };
 }

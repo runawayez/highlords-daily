@@ -84,6 +84,7 @@ export function editorialReport(
     diversity: edition?.stats?.balance || null,
     readingMinutes: edition?.stats?.readingMinutes || null,
     selected: [...selected],
+    breaking: context.breaking || null,
     decisions: context.metrics?.decisions || [],
     caveat:
       "A score or matching number is not a fact check. Omission reasons describe the observed stage, not an inferred editorial motive.",

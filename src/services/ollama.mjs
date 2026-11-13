@@ -5,6 +5,11 @@ import {
   remapToFocus,
 } from "../editorial/breaking.mjs";
 import { editorialFamily } from "../editorial/balance.mjs";
+import { detectScoreScale } from "../editorial/score-scale.mjs";
+import {
+  hasSportsEvidence,
+  isSportsCategory,
+} from "../editorial/sports-evidence.mjs";
 import { enforceCopyProvenance } from "../editorial/provenance.mjs";
 import { limitCopy } from "../editorial/source-text.mjs";
 import { recoverLocalizedCopy } from "./localized-copy.mjs";
@@ -243,7 +248,7 @@ CATEGORIAS CONFIGURADAS:
 ${taxonomy}
 
 EDITORIAL:
-- score 0–10 combina novidade, impacto, utilidade, relevância e interesse editorial;
+- score 0–10 combina novidade, impacto, utilidade, relevância e interesse editorial. Use SEMPRE a escala de 0 a 10 (por exemplo 7.2); NUNCA use escala de 0 a 1 nem porcentagem;
 - notícia válida e comum pode ficar entre 4 e 7; reserve 8–10 para grandes destaques;
 - fora do escopo recebe category null e score 0;
 - headline curta e natural em ${config.language};
@@ -272,7 +277,7 @@ function payloadForBatch(batch) {
   );
 }
 
-function parseBatch(parsed, batch) {
+export function parseBatch(parsed, batch) {
   const rows = rowsFrom(parsed);
   const byLocalId = new Map(
     batch.map((article, index) => [index + 1, article]),
@@ -285,6 +290,9 @@ function parseBatch(parsed, batch) {
   let invalidCategory = 0;
   let strictMismatch = 0;
   let belowScore = 0;
+  // 10 when the model answered the whole batch on a 0-1 scale.
+  const scoreScale = detectScoreScale(rows);
+  if (scoreScale !== 1) count("analysisScoreRescaledBatches");
 
   for (const row of rows) {
     const localId = normalizeId(
@@ -317,6 +325,27 @@ function parseBatch(parsed, batch) {
         row?.rating ??
         row?.nota,
     );
+    if (scoreScale !== 1 && score > 0) {
+      decision(article, "analysis", "score-rescaled", {
+        from: score,
+        to: Math.min(10, Number((score * scoreScale).toFixed(2))),
+      });
+      score = Math.min(10, Number((score * scoreScale).toFixed(2)));
+    }
+    if (category && isSportsCategory(category) && !hasSportsEvidence(article)) {
+      // The model's "esportes" label has no support in the source text: fall
+      // back to the source's own non-sports desk, or drop the label.
+      const fallback = (article.focus || []).find(
+        (slug) =>
+          !isSportsCategory(slug) &&
+          categories.some((item) => item.slug === slug),
+      );
+      decision(article, "analysis", "sports-without-evidence", {
+        category,
+        fallback: fallback || null,
+      });
+      category = fallback || null;
+    }
     if (!category && isBreaking(article)) {
       // A multi-publisher event is never a null/offer: use the source's desk.
       category = remapToFocus(article, categories);
