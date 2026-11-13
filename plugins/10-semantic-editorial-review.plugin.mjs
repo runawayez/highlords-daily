@@ -1,5 +1,9 @@
 import { decision as recordDecision } from "../src/editorial/audit.mjs";
 import { isBreaking } from "../src/editorial/breaking.mjs";
+import {
+  hasSportsEvidence,
+  isSportsCategory,
+} from "../src/editorial/sports-evidence.mjs";
 import { categories, config, profile, publication } from "../src/config.mjs";
 import { itemsSchema } from "../src/services/ollama-client.mjs";
 import { requestItemReview } from "../src/services/editorial-review.mjs";
@@ -118,6 +122,16 @@ export function applySemanticReview(articles, rows = []) {
       decision.category !== article.category &&
       decision.confidence >= RECLASSIFY_CONFIDENCE
     ) {
+      if (isSportsCategory(decision.category) && !hasSportsEvidence(article)) {
+        // No sports vocabulary in the source: keep the analysis category.
+        recordDecision(article, "semantic-review", "sports-without-evidence", {
+          suggestedCategory: decision.category,
+        });
+        stats.kept += 1;
+        stats.ignored += 1;
+        output.push(article);
+        continue;
+      }
       if (!allowedByStrictFocus(article, decision.category)) {
         if (isBreaking(article)) {
           stats.kept += 1;

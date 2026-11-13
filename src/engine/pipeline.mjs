@@ -66,6 +66,10 @@ export async function runPipeline(context, services) {
       const collected = await measure("collect", () =>
         state.stage("collected", () => services.collect(context)),
       );
+      context.breaking = {
+        clusters: collected.breakingClusters || [],
+        pool: collected.breakingPool || [],
+      };
       if (!collected.articles?.length)
         throw new Error("No new eligible articles remain.");
       const analyzed = await measure("analysis", () =>
