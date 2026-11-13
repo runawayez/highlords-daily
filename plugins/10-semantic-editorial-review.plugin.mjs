@@ -1,4 +1,5 @@
 import { decision as recordDecision } from "../src/editorial/audit.mjs";
+import { isBreaking } from "../src/editorial/breaking.mjs";
 import { categories, config, profile, publication } from "../src/config.mjs";
 import { itemsSchema } from "../src/services/ollama-client.mjs";
 import { requestItemReview } from "../src/services/editorial-review.mjs";
@@ -100,9 +101,12 @@ export function applySemanticReview(articles, rows = []) {
       continue;
     }
 
+    // A story many publishers cover is never "outside the publication scope".
+    // The reviewer may still reclassify it, but cannot reject it.
     if (
       decision.action === "reject" &&
-      decision.confidence >= REJECT_CONFIDENCE
+      decision.confidence >= REJECT_CONFIDENCE &&
+      !isBreaking(article)
     ) {
       stats.rejected += 1;
       continue;
@@ -115,7 +119,10 @@ export function applySemanticReview(articles, rows = []) {
       decision.confidence >= RECLASSIFY_CONFIDENCE
     ) {
       if (!allowedByStrictFocus(article, decision.category)) {
-        stats.rejected += 1;
+        if (isBreaking(article)) {
+          stats.kept += 1;
+          output.push(article);
+        } else stats.rejected += 1;
         continue;
       }
       stats.reclassified += 1;

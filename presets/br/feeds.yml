@@ -12,6 +12,13 @@ feeds:
     url: https://canaltech.com.br/rss/
     focus: [tecnologia, ia-desenvolvimento, games, entretenimento, esports, ciencia-saude, clima-futuro]
 
+  # Segurança e privacidade: ciberataques, vazamentos e falhas de serviços.
+  # publisher_group evita que o feed dedicado conte como um segundo veículo.
+  - name: Canaltech Segurança
+    publisher_group: Canaltech
+    url: https://canaltech.com.br/rss/seguranca/
+    focus: [tecnologia]
+
   - name: TecMundo
     url: https://www.tecmundo.com.br/rss
     focus: [tecnologia, ia-desenvolvimento, games, entretenimento, esports, ciencia-saude, clima-futuro]

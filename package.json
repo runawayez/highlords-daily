@@ -1,6 +1,6 @@
 {
   "name": "highlords-daily",
-  "version": "5.6.0",
+  "version": "5.7.0",
   "private": true,
   "type": "module",
   "description": "Local-first universal daily newsletter engine powered by RSS/Atom and Ollama, with configurable locale, editorial profiles, memory and multi-format exports.",
@@ -48,6 +48,7 @@
     "format": "prettier --write \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\"",
     "format:check": "prettier --check \"src/**/*.mjs\" \"plugins/**/*.mjs\" \"presets/**/*.mjs\" \"scripts/**/*.mjs\" \"tests/**/*.mjs\" \"desktop/*.mjs\"",
     "editorial:evaluate": "node src/cli/run.mjs evaluate",
+    "editorial:why": "node scripts/why-missing.mjs",
     "feedback:import": "node src/cli/run.mjs feedback",
     "test:visual": "node scripts/visual-regression.mjs",
     "layout:preview": "node src/cli/run.mjs preview",

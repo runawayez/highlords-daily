@@ -116,6 +116,10 @@ A revisão independente usa lotes menores, IDs locais e uma tentativa adicional 
 
 O cache permanece ativo. A atualização invalida as decisões de análise e revisão afetadas, sem apagar o histórico nem os caches de feeds e imagens. Para refazer a edição atual após atualizar, execute `GERAR-DAILY.bat`. Os motivos das correções e exclusões ficam em `editorial-report.html` na pasta da edição.
 
+### Grandes notícias — 5.7.0
+
+O motor detecta assuntos cobertos por vários veículos em várias editorias (por exemplo, um apagão global) antes da análise e os protege: a categoria fora do foco da fonte é remapeada em vez de descartada, a nota recebe um piso, o ranking os eleva e o balanço os coloca na edição. Os lotes de análise passam a ser agrupados por editoria. Para investigar uma ausência, use `npm run editorial:why -- <termo>`. Detalhes e limites em [docs/BREAKING_NEWS_5_7.md](docs/BREAKING_NEWS_5_7.md). O cache de análise é versionado; para refazer a edição atual, execute `GERAR-DAILY.bat`.
+
 ### Jornal geral e diversidade — 5.6.0
 
 O equilíbrio automático reúne categorias em grandes temas: Tecnologia (incluindo IA e Desenvolvimento), Sociedade, Mundo, Economia, Ciência/Saúde/Meio Ambiente, Cultura, Esportes e Games/eSports. Em edições com pelo menos três grandes temas elegíveis, a seleção busca até 16 matérias, com piso de qualidade, limites por fonte e repetição de entidades, até duas notícias de futebol e tecnologia em até aproximadamente 25% da edição (arredondamento mínimo de uma matéria). As metas são flexíveis; uma edição pode ficar menor quando faltarem boas candidatas. Jornais especializados e taxonomias próprias continuam com sua seleção por categoria.

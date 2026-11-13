@@ -1,4 +1,5 @@
 import { storyKind } from "../src/editorial/balance.mjs";
+import { breakingLift, isBreaking } from "../src/editorial/breaking.mjs";
 import { coverageEvidence } from "../src/editorial/coverage.mjs";
 import { DiskCache, digest } from "../src/utils/storage.mjs";
 import { count } from "../src/engine/metrics.mjs";
@@ -749,6 +750,31 @@ async function globalCalibrate(articles) {
   });
 }
 
+function applyBreakingLift(article) {
+  if (!isBreaking(article)) return article;
+  const lift = breakingLift(article);
+  const sectionScore = clamp(Number(article.sectionScore || 0) + lift.section);
+  const frontPageScore = clamp(
+    Number(article.frontPageScore || 0) + lift.front,
+  );
+  return {
+    ...article,
+    score: Number(sectionScore.toFixed(2)),
+    sectionScore: Number(sectionScore.toFixed(2)),
+    frontPageScore: Number(frontPageScore.toFixed(2)),
+    rankingSignals: {
+      ...(article.rankingSignals || {}),
+      breaking: {
+        cluster: article.breaking.id,
+        level: article.breaking.level,
+        publishers: article.breaking.publishers,
+        sectionLift: lift.section,
+        frontPageLift: lift.front,
+      },
+    },
+  };
+}
+
 async function applyHumanRanking(input) {
   const sanitized = config.bundledTaxonomy
     ? sanitizeCategories(input)
@@ -806,7 +832,9 @@ async function applyHumanRanking(input) {
     }
   }
 
-  const calibrated = await globalCalibrate(result);
+  // Applied after global calibration so a small model cannot undo the signal
+  // that many publishers across desks are covering the same event.
+  const calibrated = (await globalCalibrate(result)).map(applyBreakingLift);
   return calibrated.sort((a, b) => {
     const editorialA = Math.max(
       Number(a.frontPageScore || 0),

@@ -106,6 +106,10 @@ Independent review uses smaller batches, local IDs and one retry for omitted dec
 
 Caching remains enabled. The update invalidates affected analysis and review decisions while preserving history, feed and image caches. Run `GERAR-DAILY.bat` after updating to regenerate today's edition. Corrections and exclusions are recorded in the edition's `editorial-report.html`.
 
+### Major stories — 5.7.0
+
+The engine detects events covered by many publishers across several desks (for example a global outage) before analysis and protects them: a category outside the source focus is remapped instead of dropped, the score gets a floor, ranking lifts them and balancing places them in the edition. Analysis batches are now grouped by desk. To find out why a story is missing, run `npm run editorial:why -- <term>`. Details and limits are in [docs/BREAKING_NEWS_5_7.md](docs/BREAKING_NEWS_5_7.md) (Portuguese). The analysis cache is versioned; run `GERAR-DAILY.bat` to regenerate today's edition.
+
 ### General newspaper and diversity — 5.6.0
 
 Automatic balancing groups individual categories into editorial families: Technology (including AI and Development), Society, World, Economy, Science/Health/Environment, Culture, Sports and Games/eSports. Editions with at least three eligible families target up to 16 stories, with a quality floor, publisher/entity limits, at most two football stories, and technology at approximately 25% or less (minimum rounding of one story). Targets never require weak filler. Specialized publications and custom taxonomies retain category-based selection.
